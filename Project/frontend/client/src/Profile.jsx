@@ -100,9 +100,9 @@ const Profile = () => {
           </ul>
         </nav>
         <div className="user-profile">
-          <img src="images/bell.png" alt="Bell Icon" className="bell-icon" />
+          <img src="/images/bell.png" alt="Bell Icon" className="bell-icon" />
           <img
-            src="images/profileimg.png"
+            src="/images/profileimg.png"
             alt="Profile"
             className="profile-img"
             onClick={handleProfileClick} // Add onClick handler
