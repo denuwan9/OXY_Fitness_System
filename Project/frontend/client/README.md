@@ -1,12 +1,106 @@
-# React + Vite
+# OXY FITNESS - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the frontend application for the OXY FITNESS system, built with React and Vite.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Modern and responsive UI design
+- User authentication (Login/Register)
+- Profile management
+- Program browsing and enrollment
+- Coach profiles and scheduling
+- Membership management
+- Contact information
+- Online shop
 
-## Expanding the ESLint configuration
+## Prerequisites
 
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- Node.js (v14 or higher)
+- npm (v6 or higher)
+
+## Installation
+
+1. Clone the repository
+2. Navigate to the client directory:
+   ```bash
+   cd frontend/client
+   ```
+3. Install dependencies:
+   ```bash
+   npm install
+   ```
+4. Create a `.env` file based on `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+
+## Development
+
+To start the development server:
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+## Building for Production
+
+To build the application for production:
+
+```bash
+npm run build
+```
+
+The built files will be in the `dist` directory.
+
+## Preview Production Build
+
+To preview the production build locally:
+
+```bash
+npm run preview
+```
+
+## Project Structure
+
+```
+frontend/client/
+├── src/
+│   ├── components/
+│   │   └── layout/
+│   │       ├── Layout.jsx
+│   │       ├── Layout.css
+│   │       ├── Header.jsx
+│   │       ├── Header.css
+│   │       ├── Footer.jsx
+│   │       └── Footer.css
+│   ├── pages/
+│   │   ├── Home.jsx
+│   │   ├── Home.css
+│   │   ├── Login.jsx
+│   │   ├── Login.css
+│   │   ├── Register.jsx
+│   │   └── Register.css
+│   ├── assets/
+│   ├── App.jsx
+│   └── main.jsx
+├── public/
+│   └── images/
+├── .env
+├── .env.example
+├── index.html
+├── package.json
+├── vite.config.js
+└── README.md
+```
+
+## Contributing
+
+1. Create a new branch for your feature
+2. Make your changes
+3. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
