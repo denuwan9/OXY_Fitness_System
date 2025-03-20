@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
-import Login from './login.jsx'
-import Profile from './Profile.jsx'
-import Signup from './Signup.jsx'
-import UserManager from './UserManager.jsx'
+import Login from './pages/login.jsx'
+import Profile from './pages/Profile.jsx'
+import Signup from './pages/Signup.jsx'
+import UserManager from './pages/UserManager.jsx'
 
 
 
