@@ -14,10 +14,15 @@ router.get('/user/:userId', auth, scheduleController.getUserSchedule);
 router.post('/change-request/:userId', auth, scheduleController.requestScheduleChange);
 
 // Approve schedule change (Operation Manager only)
-router.put('/approve/:scheduleId/:sessionId', auth, checkRole('operation_manager'), scheduleController.approveScheduleChange);
+router.put('/approve-change/:scheduleId/:sessionId', auth, checkRole('manager'), scheduleController.approveScheduleChange);
 
-// Assign meal plan (Coach only)
-router.post('/assign-meal-plan', auth, checkRole('coach'), scheduleController.assignMealPlan);
+// Exercise plan routes (Coach only)
+router.post('/exercise-plan', auth, checkRole('coach'), scheduleController.updateExercisePlan);
+router.get('/exercise-plan/:scheduleId/:day', auth, scheduleController.getExercisePlan);
+
+// Meal plan routes
+router.post('/meal-plan', auth, checkRole('coach'), scheduleController.assignMealPlan);
+router.get('/meal-plan/:scheduleId', auth, scheduleController.getMealPlan);
 
 // Generate PDF report
 router.get('/report/:userId', auth, scheduleController.generatePDFReport);

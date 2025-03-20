@@ -1,5 +1,6 @@
 const Schedule = require('../models/Schedule');
 const MealPlan = require('../models/MealPlan');
+const ExercisePlan = require('../models/ExercisePlan');
 const User = require('../models/User');
 const PDFDocument = require('pdfkit');
 
@@ -139,19 +140,85 @@ exports.approveScheduleChange = async (req, res) => {
   }
 };
 
+// Create or update exercise plan
+exports.updateExercisePlan = async (req, res) => {
+  try {
+    const { scheduleId, day, exercises } = req.body;
+    const coachId = req.user._id;
+
+    let exercisePlan = await ExercisePlan.findOne({ scheduleId, day });
+
+    if (exercisePlan) {
+      exercisePlan.exercises = exercises;
+      exercisePlan.updatedAt = Date.now();
+    } else {
+      exercisePlan = new ExercisePlan({
+        scheduleId,
+        day,
+        exercises,
+        createdBy: coachId
+      });
+    }
+
+    await exercisePlan.save();
+    res.json(exercisePlan);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get exercise plan
+exports.getExercisePlan = async (req, res) => {
+  try {
+    const { scheduleId, day } = req.params;
+    const exercisePlan = await ExercisePlan.findOne({ scheduleId, day });
+
+    if (!exercisePlan) {
+      return res.status(404).json({ message: 'Exercise plan not found' });
+    }
+
+    res.json(exercisePlan);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Assign meal plan
 exports.assignMealPlan = async (req, res) => {
   try {
-    const { scheduleId, mealPlanId } = req.body;
+    const { scheduleId, meals, membershipType } = req.body;
     const schedule = await Schedule.findById(scheduleId);
 
     if (!schedule) {
       return res.status(404).json({ message: 'Schedule not found' });
     }
 
-    schedule.mealPlan = mealPlanId;
+    const mealPlan = new MealPlan({
+      membershipType,
+      meals
+    });
+
+    await mealPlan.save();
+
+    schedule.mealPlan = mealPlan._id;
     await schedule.save();
-    res.json(schedule);
+
+    res.json({ schedule, mealPlan });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get meal plan
+exports.getMealPlan = async (req, res) => {
+  try {
+    const schedule = await Schedule.findById(req.params.scheduleId).populate('mealPlan');
+    
+    if (!schedule || !schedule.mealPlan) {
+      return res.status(404).json({ message: 'Meal plan not found' });
+    }
+
+    res.json(schedule.mealPlan);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -203,6 +270,24 @@ exports.generatePDFReport = async (req, res) => {
         doc.text(`Dinner: ${meal.dinner}`);
         doc.text('Snacks:');
         meal.snacks.forEach(snack => doc.text(`- ${snack}`));
+        doc.moveDown();
+      });
+    }
+
+    // Add exercise plans
+    const exercisePlans = await ExercisePlan.find({ scheduleId: schedule._id });
+    if (exercisePlans.length > 0) {
+      doc.fontSize(16).text('Exercise Plans');
+      doc.moveDown();
+      exercisePlans.forEach(plan => {
+        doc.fontSize(12).text(`Day: ${plan.day}`);
+        plan.exercises.forEach(exercise => {
+          doc.text(`Exercise: ${exercise.name}`);
+          doc.text(`Sets: ${exercise.sets}, Reps: ${exercise.reps}`);
+          if (exercise.weight) doc.text(`Weight: ${exercise.weight} kg`);
+          if (exercise.duration) doc.text(`Duration: ${exercise.duration} minutes`);
+          if (exercise.notes) doc.text(`Notes: ${exercise.notes}`);
+        });
         doc.moveDown();
       });
     }
