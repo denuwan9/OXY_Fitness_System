@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
-import "./Login.css";
+import { Link, useNavigate } from "react-router-dom";
+import "./Login.css"; // Ensure this is the correct CSS file
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -9,7 +9,7 @@ const Login = () => {
   });
 
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,7 +31,7 @@ const Login = () => {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0; // Return true if no errors
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
@@ -44,44 +44,15 @@ const Login = () => {
     }
   };
 
-  const handleProfileClick = () => {
-    navigate("/profile"); // Navigate to the profile page
-  };
-
   return (
     <div className="login-page">
-      {/* Header */}
-      <header>
-        <div className="logo">OXY FITNESS</div>
-        <nav>
-          <ul>
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Coaches</a></li>
-            <li><a href="#">Programs</a></li>
-            <li><a href="#">Memberships</a></li>
-            <li><a href="#">Contacts</a></li>
-            <li><a href="#">Shop</a></li>
-          </ul>
-        </nav>
-        <div className="user-profile">
-          <img src="/images/bell.png" alt="Bell Icon" className="bell-icon" /> 
-          <img
-            src="/images/profileimg.png" 
-            alt="Profile"
-            className="profile-img"
-            onClick={handleProfileClick} // Add onClick handler
-            style={{ cursor: "pointer" }} // Add pointer cursor
-          />
-        </div>
-      </header>
-
       {/* Login Form Container */}
       <div className="container">
         {/* Left Column (Image) */}
-        <div className="left-column"></div>
+        <div className="left-column1"></div>
 
         {/* Right Column (Form) */}
-        <div className="right-column">
+        <div className="right-column1">
           <h2>Login</h2>
           <form onSubmit={handleSubmit}>
             {/* Email */}
@@ -131,83 +102,6 @@ const Login = () => {
           </div>
         </div>
       </div>
-
-      {/* Footer Section */}
-      <footer className="footer">
-        <div className="footer-container">
-          {/* About Section */}
-          <div className="footer-section">
-            <h3 className="footer-heading">About OXY FITNESS</h3>
-            <p className="footer-text">
-              OXY FITNESS is your ultimate destination for fitness and wellness. We offer premium supplements, expert coaching, and top-notch fitness programs to help you achieve your goals.
-            </p>
-            <div className="social-icons">
-              <a href="#" className="social-icon">
-                <i className="fab fa-facebook-f"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-twitter"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-instagram"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-linkedin-in"></i>
-              </a>
-            </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Quick Links</h3>
-            <ul className="footer-links">
-              <li><a href="#">Home</a></li>
-              <li><a href="#">Coaches</a></li>
-              <li><a href="#">Programs</a></li>
-              <li><a href="#">Memberships</a></li>
-              <li><a href="#">Shop</a></li>
-              <li><a href="#">Contact Us</a></li>
-            </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Contact Us</h3>
-            <ul className="footer-contact">
-              <li>
-                <i className="fas fa-map-marker-alt"></i> 123 Fitness Street, Colombo, Sri Lanka
-              </li>
-              <li>
-                <i className="fas fa-phone"></i> +94 112 345 678
-              </li>
-              <li>
-                <i className="fas fa-envelope"></i> info@oxyfitness.com
-              </li>
-            </ul>
-          </div>
-
-          {/* Newsletter Subscription */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Subscribe to Our Newsletter</h3>
-            <p className="footer-text">
-              Get the latest updates on fitness tips, exclusive offers, and new products.
-            </p>
-            <form className="newsletter-form">
-              <input type="email" placeholder="Enter your email" required />
-              <button type="submit">Subscribe</button>
-            </form>
-          </div>
-        </div>
-
-        {/* Footer Bottom */}
-        <div className="footer-bottom">
-          <p>&copy; 2023 OXY FITNESS. All rights reserved.</p>
-          <ul className="footer-legal">
-            <li><a href="#">Privacy Policy</a></li>
-            <li><a href="#">Terms & Conditions</a></li>
-          </ul>
-        </div>
-      </footer>
     </div>
   );
 };

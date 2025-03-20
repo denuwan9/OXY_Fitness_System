@@ -4,6 +4,7 @@ import App from './App.jsx'
 import Login from './login.jsx'
 import Profile from './Profile.jsx'
 import Signup from './Signup.jsx'
+import UserManager from './UserManager.jsx'
 
 
 

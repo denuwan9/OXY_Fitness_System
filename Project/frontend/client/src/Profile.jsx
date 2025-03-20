@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
+import { Link, useNavigate } from "react-router-dom";
 import "./Profile.css"; // Import the CSS file
 
 const Profile = () => {
@@ -30,12 +30,32 @@ const Profile = () => {
   });
   const [bmiResult, setBmiResult] = useState(null);
 
+  // State for validation errors
+  const [errors, setErrors] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+  });
+
+  // Mock user role (replace with actual role from your authentication system)
+  const userRole = "admin"; // Can be "user", "manager", or "admin"
+
   const navigate = useNavigate(); // Initialize useNavigate
 
   // Function to handle avatar upload
   const handleAvatarUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (!file.type.startsWith("image/")) {
+        alert("Please upload an image file.");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        alert("File size should be less than 5MB.");
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatar(reader.result);
@@ -48,6 +68,91 @@ const Profile = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setProfileInfo({ ...profileInfo, [name]: value });
+
+    // Validate input on change
+    validateField(name, value);
+  };
+
+  // Function to validate a specific field
+  const validateField = (name, value) => {
+    let errorMessage = "";
+
+    switch (name) {
+      case "firstName":
+      case "lastName":
+        if (!value.trim()) {
+          errorMessage = "This field is required.";
+        } else if (!/^[A-Za-z\s]+$/.test(value)) {
+          errorMessage = "Only letters and spaces are allowed.";
+        }
+        break;
+
+      case "email":
+        if (!value.trim()) {
+          errorMessage = "This field is required.";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          errorMessage = "Invalid email address.";
+        }
+        break;
+
+      case "phone":
+        if (!value.trim()) {
+          errorMessage = "This field is required.";
+        } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(value)) {
+          errorMessage = "Phone number must be in the format (555) 123-4567.";
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    setErrors({ ...errors, [name]: errorMessage });
+  };
+
+  // Function to validate the entire form
+  const validateForm = () => {
+    let isValid = true;
+    const newErrors = {};
+
+    // Validate firstName
+    if (!profileInfo.firstName.trim()) {
+      newErrors.firstName = "First Name is required.";
+      isValid = false;
+    } else if (!/^[A-Za-z\s]+$/.test(profileInfo.firstName)) {
+      newErrors.firstName = "Only letters and spaces are allowed.";
+      isValid = false;
+    }
+
+    // Validate lastName
+    if (!profileInfo.lastName.trim()) {
+      newErrors.lastName = "Last Name is required.";
+      isValid = false;
+    } else if (!/^[A-Za-z\s]+$/.test(profileInfo.lastName)) {
+      newErrors.lastName = "Only letters and spaces are allowed.";
+      isValid = false;
+    }
+
+    // Validate email
+    if (!profileInfo.email.trim()) {
+      newErrors.email = "Email is required.";
+      isValid = false;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileInfo.email)) {
+      newErrors.email = "Invalid email address.";
+      isValid = false;
+    }
+
+    // Validate phone
+    if (!profileInfo.phone.trim()) {
+      newErrors.phone = "Phone Number is required.";
+      isValid = false;
+    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(profileInfo.phone)) {
+      newErrors.phone = "Phone number must be in the format (555) 123-4567.";
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
   };
 
   // Function to toggle edit mode
@@ -57,9 +162,10 @@ const Profile = () => {
 
   // Function to save changes
   const saveChanges = () => {
-    setIsEditing(false);
-    // Add logic to save changes (e.g., API call)
-    console.log("Profile updated:", profileInfo);
+    if (validateForm()) {
+      setIsEditing(false);
+      console.log("Profile updated:", profileInfo);
+    }
   };
 
   // Function to handle BMI input changes
@@ -80,36 +186,49 @@ const Profile = () => {
     }
   };
 
-  const handleProfileClick = () => {
-    navigate("/profile"); // Navigate to the profile page
-  };
-
   return (
-    <div className="Profile-page">
-      {/* Header */}
-      <header>
-        <div className="logo">OXY FITNESS</div>
-        <nav>
+    <div className="profile-page">
+      {/* Left Side Menu */}
+      <div className="left-side-menu">
+        <div className="menu-logo">OXY FITNESS</div>
+        <nav className="menu-nav">
           <ul>
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Coaches</a></li>
-            <li><a href="#">Programs</a></li>
-            <li><a href="#">Memberships</a></li>
-            <li><a href="#">Contacts</a></li>
-            <li><a href="#">Shop</a></li>
+            {/* Home Button */}
+            <li>
+              <Link to="/home" className="menu-button">
+                <span className="button-icon">🏠</span>
+                <span className="button-text">Home</span>
+              </Link>
+            </li>
+
+            {/* Profile Button */}
+            <li>
+              <Link to="/profile" className="menu-button">
+                <span className="button-icon">👤</span>
+                <span className="button-text">Profile</span>
+              </Link>
+            </li>
+
+            {/* Edit Profile Button */}
+            <li>
+              <button onClick={toggleEditMode} className="menu-button">
+                <span className="button-icon">✏️</span>
+                <span className="button-text">Edit Profile</span>
+              </button>
+            </li>
+
+            {/* Manage Profiles Button (Visible only to managers or admins) */}
+            {(userRole === "manager" || userRole === "admin") && (
+              <li>
+                <Link to="/usermanager" className="menu-button">
+                  <span className="button-icon">👥</span>
+                  <span className="button-text">Manage Profiles</span>
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
-        <div className="user-profile">
-          <img src="/images/bell.png" alt="Bell Icon" className="bell-icon" />
-          <img
-            src="/images/profileimg.png"
-            alt="Profile"
-            className="profile-img"
-            onClick={handleProfileClick} // Add onClick handler
-            style={{ cursor: "pointer" }} // Add pointer cursor
-          />
-        </div>
-      </header>
+      </div>
 
       {/* Profile Container */}
       <div className="profile-container">
@@ -138,23 +257,23 @@ const Profile = () => {
           <h1>Profile Information</h1>
           <h2>Personal Details</h2>
 
-          {/* Edit Profile Button */}
-          <button className="edit-profile-button" onClick={toggleEditMode}>
-            {isEditing ? "Cancel" : "Edit Profile"}
-          </button>
-
           <div className="details-grid">
             {/* First Name */}
             <div className="detail">
               <span className="label">First Name</span>
               {isEditing ? (
-                <input
-                  type="text"
-                  name="firstName"
-                  value={profileInfo.firstName}
-                  onChange={handleInputChange}
-                  className="edit-input"
-                />
+                <>
+                  <input
+                    type="text"
+                    name="firstName"
+                    value={profileInfo.firstName}
+                    onChange={handleInputChange}
+                    className="edit-input"
+                  />
+                  {errors.firstName && (
+                    <span className="error-message">{errors.firstName}</span>
+                  )}
+                </>
               ) : (
                 <span className="value">{profileInfo.firstName}</span>
               )}
@@ -164,13 +283,18 @@ const Profile = () => {
             <div className="detail">
               <span className="label">Last Name</span>
               {isEditing ? (
-                <input
-                  type="text"
-                  name="lastName"
-                  value={profileInfo.lastName}
-                  onChange={handleInputChange}
-                  className="edit-input"
-                />
+                <>
+                  <input
+                    type="text"
+                    name="lastName"
+                    value={profileInfo.lastName}
+                    onChange={handleInputChange}
+                    className="edit-input"
+                  />
+                  {errors.lastName && (
+                    <span className="error-message">{errors.lastName}</span>
+                  )}
+                </>
               ) : (
                 <span className="value">{profileInfo.lastName}</span>
               )}
@@ -180,13 +304,18 @@ const Profile = () => {
             <div className="detail">
               <span className="label">Email</span>
               {isEditing ? (
-                <input
-                  type="email"
-                  name="email"
-                  value={profileInfo.email}
-                  onChange={handleInputChange}
-                  className="edit-input"
-                />
+                <>
+                  <input
+                    type="email"
+                    name="email"
+                    value={profileInfo.email}
+                    onChange={handleInputChange}
+                    className="edit-input"
+                  />
+                  {errors.email && (
+                    <span className="error-message">{errors.email}</span>
+                  )}
+                </>
               ) : (
                 <span className="value">{profileInfo.email}</span>
               )}
@@ -196,13 +325,18 @@ const Profile = () => {
             <div className="detail">
               <span className="label">Phone Number</span>
               {isEditing ? (
-                <input
-                  type="tel"
-                  name="phone"
-                  value={profileInfo.phone}
-                  onChange={handleInputChange}
-                  className="edit-input"
-                />
+                <>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={profileInfo.phone}
+                    onChange={handleInputChange}
+                    className="edit-input"
+                  />
+                  {errors.phone && (
+                    <span className="error-message">{errors.phone}</span>
+                  )}
+                </>
               ) : (
                 <span className="value">{profileInfo.phone}</span>
               )}
@@ -316,83 +450,6 @@ const Profile = () => {
           )}
         </div>
       </div>
-
-      {/* Footer Section */}
-      <footer className="footer">
-        <div className="footer-container">
-          {/* About Section */}
-          <div className="footer-section">
-            <h3 className="footer-heading">About OXY FITNESS</h3>
-            <p className="footer-text">
-              OXY FITNESS is your ultimate destination for fitness and wellness. We offer premium supplements, expert coaching, and top-notch fitness programs to help you achieve your goals.
-            </p>
-            <div className="social-icons">
-              <a href="#" className="social-icon">
-                <i className="fab fa-facebook-f"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-twitter"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-instagram"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-linkedin-in"></i>
-              </a>
-            </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Quick Links</h3>
-            <ul className="footer-links">
-              <li><a href="#">Home</a></li>
-              <li><a href="#">Coaches</a></li>
-              <li><a href="#">Programs</a></li>
-              <li><a href="#">Memberships</a></li>
-              <li><a href="#">Shop</a></li>
-              <li><a href="#">Contact Us</a></li>
-            </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Contact Us</h3>
-            <ul className="footer-contact">
-              <li>
-                <i className="fas fa-map-marker-alt"></i> 123 Fitness Street, Colombo, Sri Lanka
-              </li>
-              <li>
-                <i className="fas fa-phone"></i> +94 112 345 678
-              </li>
-              <li>
-                <i className="fas fa-envelope"></i> info@oxyfitness.com
-              </li>
-            </ul>
-          </div>
-
-          {/* Newsletter Subscription */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Subscribe to Our Newsletter</h3>
-            <p className="footer-text">
-              Get the latest updates on fitness tips, exclusive offers, and new products.
-            </p>
-            <form className="newsletter-form">
-              <input type="email" placeholder="Enter your email" required />
-              <button type="submit">Subscribe</button>
-            </form>
-          </div>
-        </div>
-
-        {/* Footer Bottom */}
-        <div className="footer-bottom">
-          <p>&copy; 2023 OXY FITNESS. All rights reserved.</p>
-          <ul className="footer-legal">
-            <li><a href="#">Privacy Policy</a></li>
-            <li><a href="#">Terms & Conditions</a></li>
-          </ul>
-        </div>
-      </footer>
     </div>
   );
 };

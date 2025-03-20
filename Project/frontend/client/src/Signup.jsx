@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
+import { Link } from "react-router-dom";
 import "./Signup.css";
 
 const Signup = () => {
@@ -13,7 +13,6 @@ const Signup = () => {
   });
 
   const [errors, setErrors] = useState({});
-  const navigate = useNavigate(); // Initialize useNavigate
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -23,7 +22,7 @@ const Signup = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Name validation
+    // Name validation (only letters and spaces)
     const nameRegex = /^[A-Za-z\s]+$/;
     if (!formData.firstName.match(nameRegex)) {
       newErrors.firstName = "First name should contain only letters and spaces.";
@@ -38,7 +37,7 @@ const Signup = () => {
       newErrors.email = "Please enter a valid email address.";
     }
 
-    // Phone number validation
+    // Phone number validation (10-15 digits, optional + at the start)
     const phoneRegex = /^\+?\d{10,15}$/;
     if (!formData.phone.match(phoneRegex)) {
       newErrors.phone = "Please enter a valid phone number.";
@@ -68,37 +67,8 @@ const Signup = () => {
     }
   };
 
-  const handleProfileClick = () => {
-    navigate("/profile"); // Navigate to the profile page
-  };
-
   return (
     <div className="signup-page">
-      {/* Header */}
-      <header>
-        <div className="logo">OXY FITNESS</div>
-        <nav>
-          <ul>
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Coaches</a></li>
-            <li><a href="#">Programs</a></li>
-            <li><a href="#">Memberships</a></li>
-            <li><a href="#">Contacts</a></li>
-            <li><a href="#">Shop</a></li>
-          </ul>
-        </nav>
-        <div className="user-profile">
-          <img src="/images/bell.png" alt="Bell Icon" className="bell-icon" />
-          <img
-            src="/images/profileimg.png"
-            alt="Profile"
-            className="profile-img"
-            onClick={handleProfileClick} // Add onClick handler
-            style={{ cursor: "pointer" }} // Add pointer cursor
-          />
-        </div>
-      </header>
-
       {/* Signup Form Container */}
       <div className="container">
         {/* Left Column (Image) */}
@@ -190,104 +160,38 @@ const Signup = () => {
                 onChange={handleChange}
                 required
               />
-              {errors.confirmPassword && <span className="error">{errors.confirmPassword}</span>}
+              {errors.confirmPassword && (
+                <span className="error">{errors.confirmPassword}</span>
+              )}
             </div>
 
             {/* Terms and Conditions */}
             <div className="form-group checkbox">
               <input type="checkbox" id="terms" name="terms" required />
-              <label htmlFor="terms">I've read and agree with terms of service and our privacy policy</label>
+              <label htmlFor="terms">
+                I've read and agree with terms of service and our privacy policy
+              </label>
             </div>
 
             {/* Create Account Button */}
             <div className="form-group">
               <button type="submit">Create Account</button>
             </div>
-          </form>
 
-          {/* Sign In Link */}
-          <div className="signin-link">
-            <p>Already have an account? <Link to="/login">Sign in</Link></p>
-          </div>
+            {/* Forgot Password Link */}
+            <div className="forgot-password">
+              <a href="#forgot-password">Forgot Password?</a>
+            </div>
+
+            {/* Sign In Link */}
+            <div className="signin-link">
+              <p>
+                Already have an account? <Link to="/login">Sign in</Link>
+              </p>
+            </div>
+          </form>
         </div>
       </div>
-
-      {/* Footer Section */}
-      <footer className="footer">
-        <div className="footer-container">
-          {/* About Section */}
-          <div className="footer-section">
-            <h3 className="footer-heading">About OXY FITNESS</h3>
-            <p className="footer-text">
-              OXY FITNESS is your ultimate destination for fitness and wellness. We offer premium supplements, expert coaching, and top-notch fitness programs to help you achieve your goals.
-            </p>
-            <div className="social-icons">
-              <a href="#" className="social-icon">
-                <i className="fab fa-facebook-f"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-twitter"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-instagram"></i>
-              </a>
-              <a href="#" className="social-icon">
-                <i className="fab fa-linkedin-in"></i>
-              </a>
-            </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Quick Links</h3>
-            <ul className="footer-links">
-              <li><a href="#">Home</a></li>
-              <li><a href="#">Coaches</a></li>
-              <li><a href="#">Programs</a></li>
-              <li><a href="#">Memberships</a></li>
-              <li><a href="#">Shop</a></li>
-              <li><a href="#">Contact Us</a></li>
-            </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Contact Us</h3>
-            <ul className="footer-contact">
-              <li>
-                <i className="fas fa-map-marker-alt"></i> 123 Fitness Street, Colombo, Sri Lanka
-              </li>
-              <li>
-                <i className="fas fa-phone"></i> +94 112 345 678
-              </li>
-              <li>
-                <i className="fas fa-envelope"></i> info@oxyfitness.com
-              </li>
-            </ul>
-          </div>
-
-          {/* Newsletter Subscription */}
-          <div className="footer-section">
-            <h3 className="footer-heading">Subscribe to Our Newsletter</h3>
-            <p className="footer-text">
-              Get the latest updates on fitness tips, exclusive offers, and new products.
-            </p>
-            <form className="newsletter-form">
-              <input type="email" placeholder="Enter your email" required />
-              <button type="submit">Subscribe</button>
-            </form>
-          </div>
-        </div>
-
-        {/* Footer Bottom */}
-        <div className="footer-bottom">
-          <p>&copy; 2023 OXY FITNESS. All rights reserved.</p>
-          <ul className="footer-legal">
-            <li><a href="#">Privacy Policy</a></li>
-            <li><a href="#">Terms & Conditions</a></li>
-          </ul>
-        </div>
-      </footer>
     </div>
   );
 };

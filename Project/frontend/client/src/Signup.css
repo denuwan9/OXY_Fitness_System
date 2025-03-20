@@ -7,64 +7,11 @@
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
-  flex-direction: column;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   min-height: 100vh;
-}
-
-/* Header */
-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 40px;
-  background: #fff;
-  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.logo {
-  font-size: 22px;
-  font-weight: bold;
-  color: #0073e6;
-  transition: color 0.3s ease;
-}
-
-.logo:hover {
-  color: #005bb5;
-}
-
-/* Navigation */
-nav ul {
-  display: flex;
-  list-style: none;
-  padding: 0;
-}
-
-nav ul li {
-  margin: 0 15px;
-}
-
-nav ul li a {
-  text-decoration: none;
-  color: #494949;
-  font-weight: 600;
-  transition: color 0.3s ease, transform 0.2s ease;
-}
-
-nav ul li a.active {
-  color: #0073e6;
-  font-weight: 700;
-}
-
-nav ul li a:hover {
-  color: #0073e6;
-  transform: scale(1.1);
-}
-
-/* Profile Image */
-.user-profile {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+  padding: 20px; /* Prevent form from touching edges */
 }
 
 /* Container Styles */
@@ -73,58 +20,87 @@ nav ul li a:hover {
   border-radius: 8px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   display: flex;
-  overflow: hidden;
+  overflow: hidden; /* Prevent scrolling */
   width: 90%;
   max-width: 1000px;
-  margin: 20px auto;
-  flex-grow: 1;
-  flex-direction: column;
+  min-height: 700px; /* Increased height to fit all content */
+  flex-direction: column; /* Stack columns vertically on small screens */
+}
+
+@media (min-width: 768px) {
+  .container {
+    flex-direction: row; /* Side-by-side layout for larger screens */
+    min-height: 600px; /* Adjust height for larger screens */
+  }
 }
 
 /* Left Column (Image) */
 .left-column {
-  flex: 1;
-  background-image: url("https://images.pexels.com/photos/1229356/pexels-photo-1229356.jpeg?cs=srgb&dl=pexels-anush-1229356.jpg&fm=jpg");
-  background-size: cover;
-  background-position: center;
-  min-height: 300px;
+  flex: 0.8; /* Adjust the flex ratio as needed */
+  background-image: url("https://media.istockphoto.com/id/542197916/photo/running-on-treadmill.jpg?s=612x612&w=0&k=20&c=CYywmb71uOepSHWa534hG9230AzawSa4i3sA89o4qCQ=");
+  background-size: cover; /* Ensures the image covers the entire column */
+  background-position: center; /* Centers the image */
+  background-repeat: no-repeat; /* Prevents the image from repeating */
+  position: relative;
+  display: flex; /* Ensures it stretches to match the right column */
+  min-height: 100%; /* Ensures the column takes up full height */
+}
+
+/* Optional: Add an overlay to the left column */
+.left-column::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent overlay */
 }
 
 /* Right Column (Form) */
 .right-column {
   flex: 1;
-  padding: 20px;
+  padding: 20px; /* Reduced padding to fit more content */
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start; /* Align content to the top */
+  overflow-y: auto; /* Enable vertical scrolling */
+  max-height: 100vh; /* Limit height to viewport height */
 }
 
 .right-column h2 {
   text-align: center;
-  margin-bottom: 20px;
-  font-size: 1.5rem;
-  color: #0991a3;
+  margin-bottom: 10px; /* Reduced margin */
+  font-size: 1.8rem; /* Slightly smaller font size */
+  color: #333;
+}
+
+.right-column p {
+  text-align: center;
+  margin-bottom: 15px; /* Reduced margin */
+  color: #555;
+  font-size: 0.9rem; /* Smaller font size */
 }
 
 /* Form Styles */
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 10px; /* Reduced margin */
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 10px;
+  margin-bottom: 5px; /* Reduced margin */
   font-weight: bold;
   color: #555;
-  font-size: 1.1rem;
+  font-size: 1rem; /* Smaller font size */
 }
 
 .form-group input {
   width: 100%;
-  padding: 15px;
+  padding: 10px; /* Reduced padding */
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 1rem;
+  font-size: 0.9rem; /* Smaller font size */
   box-sizing: border-box;
   background-color: rgba(255, 255, 255, 0.9);
 }
@@ -134,30 +110,14 @@ nav ul li a:hover {
   outline: none;
 }
 
-.form-group.checkbox {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.form-group.checkbox input {
-  margin-right: 10px;
-}
-
-.form-group.checkbox label {
-  margin: 0;
-  font-weight: normal;
-  font-size: 0.9rem;
-}
-
 .form-group button {
   width: 100%;
-  padding: 15px;
-  background-color: #0991a3;
+  padding: 10px; /* Reduced padding */
+  background-color: #333;
   color: white;
   border: none;
   border-radius: 4px;
-  font-size: 1.1rem;
+  font-size: 1rem; /* Smaller font size */
   cursor: pointer;
 }
 
@@ -165,14 +125,43 @@ nav ul li a:hover {
   opacity: 0.9;
 }
 
+.form-group.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px; /* Reduced margin */
+}
+
+.form-group.checkbox label {
+  margin: 0;
+  font-weight: normal;
+  font-size: 0.8rem; /* Smaller font size */
+}
+
+.forgot-password {
+  text-align: center;
+  margin-top: 10px; /* Reduced margin */
+}
+
+.forgot-password a {
+  color: #333;
+  text-decoration: none;
+  font-size: 0.9rem; /* Smaller font size */
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+
 .signin-link {
   text-align: center;
-  margin-top: 15px;
+  margin-top: 10px; /* Reduced margin */
 }
 
 .signin-link a {
   color: #333;
   text-decoration: none;
+  font-size: 0.9rem; /* Smaller font size */
 }
 
 .signin-link a:hover {
@@ -182,178 +171,7 @@ nav ul li a:hover {
 /* Error message styling */
 .error {
   color: red;
-  font-size: 0.9rem;
+  font-size: 0.8rem; /* Smaller font size */
   margin-top: 5px;
   display: block;
-}
-
-
-
-
-
-/* Footer Styles */
-.footer {
-  background: #2c3e50;
-  color: #fff;
-  padding: 60px 20px 20px;
-  font-family: "Poppins", sans-serif;
-}
-
-.footer-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  max-width: 1200px;
-  margin: 0 auto;
-  gap: 30px;
-}
-
-.footer-section {
-  flex: 1 1 250px;
-  margin-bottom: 30px;
-}
-
-.footer-heading {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: #0991a3;
-}
-
-.footer-text {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #bdc3c7;
-}
-
-.social-icons {
-  display: flex;
-  gap: 15px;
-  margin-top: 15px;
-}
-
-.social-icon {
-  color: #bdc3c7;
-  font-size: 18px;
-  transition: color 0.3s ease, transform 0.3s ease;
-}
-
-.social-icon:hover {
-  color: #0991a3;
-  transform: translateY(-3px);
-}
-
-.footer-links {
-  list-style: none;
-  padding: 0;
-}
-
-.footer-links li {
-  margin-bottom: 10px;
-}
-
-.footer-links a {
-  color: #bdc3c7;
-  text-decoration: none;
-  font-size: 14px;
-  transition: color 0.3s ease;
-}
-
-.footer-links a:hover {
-  color: #00e1ff;
-}
-
-.footer-contact {
-  list-style: none;
-  padding: 0;
-}
-
-.footer-contact li {
-  margin-bottom: 15px;
-  font-size: 14px;
-  color: #bdc3c7;
-  display: flex;
-  align-items: center;
-}
-
-.footer-contact i {
-  margin-right: 10px;
-  color: #00e1ff;
-}
-
-.newsletter-form {
-  display: flex;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.newsletter-form input {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 5px;
-  font-size: 14px;
-  background: #34495e;
-  color: #fff;
-}
-
-.newsletter-form input::placeholder {
-  color: #bdc3c7;
-}
-
-.newsletter-form button {
-  padding: 10px 20px;
-  background-color: #237b86;
-  color: #ffffff;
-  border: none;
-  border-radius: 5px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.newsletter-form button:hover {
-  background-color: #0991a3;
-}
-
-.footer-bottom {
-  text-align: center;
-  padding: 20px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin-top: 40px;
-  font-size: 14px;
-  color: #bdc3c7;
-}
-
-.footer-legal {
-  list-style: none;
-  padding: 0;
-  margin-top: 10px;
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-}
-
-.footer-legal a {
-  color: #bdc3c7;
-  text-decoration: none;
-  transition: color 0.3s ease;
-}
-
-.footer-legal a:hover {
-  color: #0991a3;
-}
-
-/* Responsive Design for Smaller Screens */
-@media (min-width: 768px) {
-  .container {
-    flex-direction: row;
-  }
-  .left-column {
-    min-height: auto;
-  }
-  .right-column {
-    padding: 40px;
-  }
 }
