@@ -1,22 +1,31 @@
-const express = require("express");
-const dotenv = require("dotenv").config();
-const dbConnect = require("./config/dbConnect");
-const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
+import express from "express"
+import dotenv from "dotenv"
+import cors from "cors"
+import cookieparser from "cookie-parser"
+import DbCon from "./utlis/db.js"
+import AuthRoutes from "./routes/authRoutes.js"
+import AdminRoutes from "./routes/AdminRoutes.js"
 
-dbConnect();
 
-const app = express();
+dotenv.config()
+const PORT = process.env.PORT || 3000
+const app = express()
 
-//Middleware
-app.use(express.json());
+// mongo db
+DbCon()
 
-//Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
+app.use(express.json())
+app.use(cookieparser())
+app.use(cors()) 
 
-//Start the server
-const PORT = process.env.PORT || 7002;
-app.listen(PORT, () =>{
-    console.log(`Server is running at port ${PORT}`);  
-});
+app.use("/api/auth",AuthRoutes)
+app.use("/api/admin",AdminRoutes)
+
+
+app.get("/", (req, res) => {
+    res.send("Hello World")
+    })
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`)
+    })
