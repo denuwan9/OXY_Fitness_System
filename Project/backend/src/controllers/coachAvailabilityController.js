@@ -76,12 +76,16 @@ exports.assignMember = async (req, res) => {
       return res.status(404).json({ message: 'Member not found' });
     }
     
-    const coachAvailability = await CoachAvailability.findOne({ coachId: req.user._id });
+    let coachAvailability = await CoachAvailability.findOne({ coachId: req.user._id });
     console.log('Found coach availability:', coachAvailability);
     
     if (!coachAvailability) {
-      console.log('Coach availability not found');
-      return res.status(404).json({ message: 'Coach availability not found' });
+      console.log('Creating new coach availability');
+      coachAvailability = new CoachAvailability({
+        coachId: req.user._id,
+        availability: [],
+        assignedMembers: []
+      });
     }
     
     // Check if member is already assigned

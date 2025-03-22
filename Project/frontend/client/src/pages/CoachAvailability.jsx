@@ -40,6 +40,7 @@ import {
 import { styled } from '@mui/material/styles';
 import { mockUsers } from '../mockData/scheduleData';
 import coachAvailabilityService from '../services/coachAvailabilityService';
+import userService from '../services/userService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -68,6 +69,7 @@ const CoachAvailability = () => {
   const [isFirstTime, setIsFirstTime] = useState(true);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [loading, setLoading] = useState(false);
+  const [members, setMembers] = useState([]);
 
   const days = [
     'Monday',
@@ -245,6 +247,26 @@ const CoachAvailability = () => {
       setLoading(false);
     }
   };
+
+  const loadMembers = async () => {
+    try {
+      const membersData = await userService.getMembers();
+      setMembers(membersData);
+    } catch (error) {
+      console.error('Error loading members:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to load members',
+        severity: 'error'
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (openMemberDialog) {
+      loadMembers();
+    }
+  }, [openMemberDialog]);
 
   if (!user || (user.role !== 'coach' && user.role !== 'instructor')) {
     return (
@@ -554,12 +576,12 @@ const CoachAvailability = () => {
               value={selectedMember?._id || ''}
               label="Select Member"
               onChange={(e) => {
-                const member = mockUsers.find(m => m._id === e.target.value);
+                const member = members.find(m => m._id === e.target.value);
                 setSelectedMember(member);
               }}
             >
-              {mockUsers
-                .filter(member => member.role === 'member' && !assignedMembers.some(m => m.memberId._id === member._id))
+              {members
+                .filter(member => !assignedMembers.some(m => m.memberId._id === member._id))
                 .map((member) => (
                   <MenuItem key={member._id} value={member._id}>
                     {member.name} - {member.membershipType}

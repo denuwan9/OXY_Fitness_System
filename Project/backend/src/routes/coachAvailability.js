@@ -4,21 +4,12 @@ const auth = require('../middleware/auth');
 const checkRole = require('../middleware/checkRole');
 const coachAvailabilityController = require('../controllers/coachAvailabilityController');
 
-// Get coach availability
-router.get('/:coachId', auth, (req, res, next) => {
-  console.log('GET /coach-availability/:coachId - Request received');
-  console.log('Coach ID:', req.params.coachId);
+// Get all assigned members (coach only)
+router.get('/assigned-members', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
+  console.log('GET /coach-availability/assigned-members - Request received');
   console.log('User:', req.user);
   next();
-}, coachAvailabilityController.getCoachAvailability);
-
-// Update coach availability (coach only)
-router.put('/', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
-  console.log('PUT /coach-availability - Request received');
-  console.log('User:', req.user);
-  console.log('Body:', req.body);
-  next();
-}, coachAvailabilityController.updateCoachAvailability);
+}, coachAvailabilityController.getAssignedMembers);
 
 // Assign member to coach (coach only)
 router.post('/assign-member', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
@@ -36,11 +27,20 @@ router.delete('/remove-member/:memberId', auth, checkRole(['coach', 'instructor'
   next();
 }, coachAvailabilityController.removeMember);
 
-// Get all assigned members (coach only)
-router.get('/assigned-members', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
-  console.log('GET /coach-availability/assigned-members - Request received');
+// Update coach availability (coach only)
+router.put('/', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
+  console.log('PUT /coach-availability - Request received');
+  console.log('User:', req.user);
+  console.log('Body:', req.body);
+  next();
+}, coachAvailabilityController.updateCoachAvailability);
+
+// Get coach availability
+router.get('/:coachId', auth, (req, res, next) => {
+  console.log('GET /coach-availability/:coachId - Request received');
+  console.log('Coach ID:', req.params.coachId);
   console.log('User:', req.user);
   next();
-}, coachAvailabilityController.getAssignedMembers);
+}, coachAvailabilityController.getCoachAvailability);
 
 module.exports = router; 

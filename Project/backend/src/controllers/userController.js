@@ -96,8 +96,26 @@ const getUserById = async (req, res) => {
   }
 };
 
+// Get all members
+const getMembers = async (req, res) => {
+  try {
+    const members = await User.find({ role: 'user' })
+      .select('-password')
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json({
+      message: 'Members retrieved successfully',
+      members
+    });
+  } catch (error) {
+    console.error('Get members error:', error);
+    res.status(500).json({ message: 'Error retrieving members', error: error.message });
+  }
+};
+
 module.exports = {
   createUser,
   getUsers,
-  getUserById
+  getUserById,
+  getMembers
 }; 
