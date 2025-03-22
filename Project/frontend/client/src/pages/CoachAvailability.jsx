@@ -87,6 +87,7 @@ const CoachAvailability = () => {
   useEffect(() => {
     console.log('CoachAvailability component mounted');
     console.log('Current user:', user);
+    console.log('User ID:', user?.id || user?._id);
     if (user && (user.role === 'coach' || user.role === 'instructor')) {
       loadCoachAvailability();
     }
@@ -95,8 +96,9 @@ const CoachAvailability = () => {
   const loadCoachAvailability = async () => {
     try {
       setLoading(true);
-      console.log('Loading coach availability for user:', user._id);
-      const data = await coachAvailabilityService.getCoachAvailability(user._id);
+      const userId = user?.id || user?._id;
+      console.log('Loading coach availability for user:', userId);
+      const data = await coachAvailabilityService.getCoachAvailability(userId);
       console.log('Received data:', data);
       
       if (data) {

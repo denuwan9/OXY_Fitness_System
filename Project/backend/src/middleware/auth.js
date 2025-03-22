@@ -11,9 +11,16 @@ module.exports = (req, res, next) => {
 
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    
+    // Map the decoded token data to match the expected user object structure
+    req.user = {
+      _id: decoded.userId,
+      role: decoded.role
+    };
+    
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     res.status(401).json({ message: 'Token is not valid' });
   }
 }; 

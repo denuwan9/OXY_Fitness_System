@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = '/api/coach-availability';
+const API_URL = `${import.meta.env.VITE_API_URL}/coach-availability`;
 
 const coachAvailabilityService = {
   // Get coach availability
