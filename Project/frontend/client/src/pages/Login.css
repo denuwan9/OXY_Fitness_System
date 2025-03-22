@@ -75,6 +75,16 @@
   margin-top: 5px;
 }
 
+.error-alert {
+  background-color: #ffe6e6;
+  color: #ff4444;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  border: 1px solid #ffcccc;
+  text-align: center;
+}
+
 .login-button {
   width: 100%;
   padding: 12px;
@@ -87,8 +97,13 @@
   transition: background 0.3s ease;
 }
 
-.login-button:hover {
+.login-button:hover:not(:disabled) {
   background: #005bb5;
+}
+
+.login-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 .login-footer {

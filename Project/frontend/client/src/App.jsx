@@ -6,6 +6,8 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import ScheduleRoutes from './routes/ScheduleRoutes';
+import Unauthorized from './pages/Unauthorized';
 import Schedule from './pages/Schedule';
 import CoachScheduleManager from './components/CoachScheduleManager';
 import OperationManagerSchedule from './components/OperationManagerSchedule';
@@ -23,6 +25,10 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/forgot-password" element={<Login />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
+              
+              {/* Schedule Routes */}
+              <Route path="/schedule/*" element={<ScheduleRoutes />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/coach/schedule-manager" element={<CoachScheduleManager />} />
               <Route path="/operation-manager/schedule-requests" element={<OperationManagerSchedule />} />
