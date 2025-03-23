@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./Login.css"; // Ensure this is the correct CSS file
 import { post } from "../services/ApiEndpoint";
-
+import { toast} from "react-hot-toast"
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -38,35 +38,26 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     // Validate the form
     if (validateForm()) {
       try {
-     
-        const response = await post("/api/auth/login", {
+        const request = await post("/api/auth/login", {
           email: formData.email,
           password: formData.password,
         });
-  
-        // Handle successful login
-        console.log("Login successful:", response.data);
-  
-        
-        localStorage.setItem("token", response.data.token);
-  
-        navigate("/home"); 
+        const response = request.data;
+
+        if(request.status==200){
+          toast.success(response.message)
+        }
+        localStorage.setItem("token", response.token);
+        console.log(response);
       } catch (error) {
-        
-        console.error("Login failed:", error.response?.data || error.message);
-        alert("Login failed. Please check your credentials.");
+        console.log(error);
       }
-    } else {
-      
-      alert("Please fix the errors in the form.");
     }
   };
-
-
 
   return (
     <div className="login-page">

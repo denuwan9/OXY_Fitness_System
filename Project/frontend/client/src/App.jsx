@@ -5,10 +5,12 @@ import Signup from "./pages/Signup.jsx";
 import Profile from "./pages/Profile.jsx";
 import UserManager from "./pages/UserManager.jsx";
 import Home from "./pages/Home.jsx";
+import { Toaster } from "react-hot-toast"
 
 const App = () => {
   return (
     <Router>
+      <Toaster/>
       <Routes>
         <Route path="/home" element={<Home />} />
         <Route path="/profile" element={<Profile />} />

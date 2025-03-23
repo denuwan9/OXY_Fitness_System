@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import "./Signup.css";
 import { post } from "../services/ApiEndpoint";
+import { toast} from "react-hot-toast"
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -76,6 +77,9 @@ const Signup = () => {
         });
 
         const response = request.data;
+        if(request.status==200){
+          toast.success(response.message)
+        }
         console.log("Account created successfully:", response);
 
         // Navigate to the home page after successful account creation

@@ -16,7 +16,10 @@ DbCon()
 
 app.use(express.json())
 app.use(cookieparser())
-app.use(cors()) 
+app.use(cors({
+    credentials: true,
+    origin:"http://localhost:5177"
+}));
 
 app.use("/api/auth",AuthRoutes)
 app.use("/api/admin",AdminRoutes)
