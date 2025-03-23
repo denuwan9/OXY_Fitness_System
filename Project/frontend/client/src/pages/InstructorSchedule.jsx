@@ -35,7 +35,9 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import {
   FitnessCenter,
@@ -51,7 +53,9 @@ import {
   Person
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { mockSchedules, mockUsers, mockGymLocations, mockWorkoutTypes } from '../mockData/scheduleData';
+import { mockSchedules, mockWorkoutTypes } from '../mockData/scheduleData';
+import coachAvailabilityService from '../services/coachAvailabilityService';
+import userService from '../services/userService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -100,9 +104,46 @@ const InstructorSchedule = () => {
     dinner: '',
     snacks: ''
   });
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filter members based on instructor/coach
-  const members = mockUsers.filter(member => member.role === 'member');
+  useEffect(() => {
+    loadAssignedMembers();
+  }, [user]);
+
+  const loadAssignedMembers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const assignedMembers = await coachAvailabilityService.getAssignedMembers();
+      const allMembers = await userService.getMembers();
+      
+      console.log('Assigned Members:', assignedMembers);
+      console.log('All Members:', allMembers);
+      
+      // Filter members to show only those assigned to this instructor
+      const relevantMembers = allMembers.filter(member => {
+        const isAssigned = assignedMembers.some(assigned => {
+          console.log('Comparing:', {
+            memberId: member._id,
+            assignedMemberId: assigned.memberId._id,
+            isMatch: member._id === assigned.memberId._id
+          });
+          return member._id === assigned.memberId._id;
+        });
+        return isAssigned;
+      });
+      
+      console.log('Relevant Members:', relevantMembers);
+      setMembers(relevantMembers);
+    } catch (err) {
+      setError('Failed to load assigned members. Please try again later.');
+      console.error('Error loading assigned members:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDateChange = (date) => {
     setSelectedDate(date);
@@ -111,7 +152,7 @@ const InstructorSchedule = () => {
   const handleMemberSelect = (member) => {
     setSelectedMember(member);
     // Find member's schedule
-    const memberSchedule = mockSchedules.find(s => s.userId === member.id);
+    const memberSchedule = mockSchedules.find(s => s.userId === member._id);
     if (memberSchedule) {
       setScheduleData({
         time: memberSchedule.sessions[0]?.time || '',
@@ -136,7 +177,7 @@ const InstructorSchedule = () => {
 
   const handleDownloadReport = () => {
     // Implement PDF report generation
-    console.log('Downloading report for member:', selectedMember?.id);
+    console.log('Downloading report for member:', selectedMember?._id);
   };
 
   if (!user || (user.role !== 'instructor' && user.role !== 'coach')) {
@@ -168,36 +209,50 @@ const InstructorSchedule = () => {
         <Grid item xs={12} md={4}>
           <StyledPaper>
             <Typography variant="h6" gutterBottom>
-              Members
+              Assigned Members
             </Typography>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Membership</TableCell>
-                    <TableCell>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {members.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>{member.name}</TableCell>
-                      <TableCell>{member.membershipType}</TableCell>
-                      <TableCell>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleMemberSelect(member)}
-                          color={selectedMember?.id === member.id ? "primary" : "default"}
-                        >
-                          <Person />
-                        </IconButton>
-                      </TableCell>
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : error ? (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {error}
+              </Alert>
+            ) : members.length === 0 ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                No members assigned to you yet.
+              </Alert>
+            ) : (
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Name</TableCell>
+                      <TableCell>Membership</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                  </TableHead>
+                  <TableBody>
+                    {members.map((member) => (
+                      <TableRow key={member._id}>
+                        <TableCell>{member.name}</TableCell>
+                        <TableCell>{member.membershipType}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleMemberSelect(member)}
+                            color={selectedMember?._id === member._id ? "primary" : "default"}
+                          >
+                            <Person />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </StyledPaper>
         </Grid>
 
@@ -241,7 +296,7 @@ const InstructorSchedule = () => {
                 onChange={handleDateChange}
                 value={selectedDate}
                 tileContent={({ date }) => {
-                  const memberSchedule = mockSchedules.find(s => s.userId === selectedMember.id);
+                  const memberSchedule = mockSchedules.find(s => s.userId === selectedMember._id);
                   const sessions = memberSchedule?.sessions.filter(
                     session => session.date.toDateString() === date.toDateString()
                   );
