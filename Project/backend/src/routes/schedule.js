@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Schedule = require('../models/Schedule');
 const User = require('../models/User');
+const scheduleController = require('../controllers/scheduleController');
 
 /**
  * @swagger
@@ -98,60 +99,34 @@ router.get('/:id', auth, async (req, res) => {
  *           schema:
  *             type: object
  *             required:
- *               - member
- *               - date
- *               - time
- *               - duration
+ *               - userId
+ *               - membershipType
+ *               - scheduleType
+ *               - sessions
  *             properties:
- *               member:
+ *               userId:
  *                 type: string
- *                 description: Member ID
- *               date:
+ *               membershipType:
  *                 type: string
- *                 format: date
- *               time:
+ *               scheduleType:
  *                 type: string
- *                 format: time
- *               duration:
- *                 type: number
- *                 description: Duration in minutes
- *               notes:
- *                 type: string
+ *               sessions:
+ *                 type: array
+ *                 items:
+ *                   type: object
  *     responses:
  *       201:
  *         description: Schedule created successfully
  *       400:
  *         description: Invalid input
- *       401:
- *         description: Unauthorized
  *       500:
  *         description: Server error
  */
-router.post('/', auth, async (req, res) => {
-  try {
-    const { member, date, time, duration, notes } = req.body;
-
-    // Check if user is trainer or admin
-    const user = await User.findById(req.user.userId);
-    if (!['trainer', 'admin'].includes(user.role)) {
-      return res.status(403).json({ message: 'Not authorized to create schedules' });
-    }
-
-    const schedule = new Schedule({
-      trainer: req.user.userId,
-      member,
-      date,
-      time,
-      duration,
-      notes
-    });
-
-    await schedule.save();
-    res.status(201).json(schedule);
-  } catch (error) {
-    console.error('Create schedule error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
+router.post('/', auth, (req, res, next) => {
+  console.log('POST /api/schedules/ route hit');
+  console.log('Request body:', req.body);
+  console.log('User from auth:', req.user);
+  scheduleController.createSchedule(req, res, next);
 });
 
 /**

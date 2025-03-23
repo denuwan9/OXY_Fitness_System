@@ -296,4 +296,59 @@ exports.generatePDFReport = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+};
+
+// Create a new schedule
+exports.createSchedule = async (req, res) => {
+  try {
+    console.log('=== Create Schedule Controller ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User from request:', req.user);
+    
+    const { userId, membershipType, scheduleType, sessions } = req.body;
+    
+    console.log('Extracted data:', {
+      userId,
+      membershipType,
+      scheduleType,
+      sessionsCount: sessions?.length
+    });
+
+    // Validate required fields
+    if (!userId || !membershipType || !scheduleType || !sessions || !sessions.length) {
+      console.log('Missing required fields');
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['userId', 'membershipType', 'scheduleType', 'sessions']
+      });
+    }
+
+    // Create new schedule
+    const schedule = new Schedule({
+      userId,
+      coachId: req.user._id,
+      membershipType,
+      scheduleType,
+      sessions: sessions.map(session => ({
+        ...session,
+        date: new Date(session.date)
+      }))
+    });
+
+    console.log('Created schedule object:', JSON.stringify(schedule, null, 2));
+
+    await schedule.save();
+    console.log('Schedule saved successfully to database');
+    
+    res.status(201).json(schedule);
+  } catch (error) {
+    console.error('=== Create Schedule Error ===');
+    console.error('Error details:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Error creating schedule', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 }; 

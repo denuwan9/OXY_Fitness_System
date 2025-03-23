@@ -56,6 +56,7 @@ import { styled } from '@mui/material/styles';
 import { mockSchedules, mockWorkoutTypes } from '../mockData/scheduleData';
 import coachAvailabilityService from '../services/coachAvailabilityService';
 import userService from '../services/userService';
+import scheduleService from '../services/scheduleService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -163,10 +164,49 @@ const InstructorSchedule = () => {
     }
   };
 
-  const handleScheduleSubmit = () => {
-    // Here you would typically make an API call to save the schedule
-    console.log('Saving schedule:', scheduleData);
-    setOpenScheduleDialog(false);
+  const handleScheduleSubmit = async () => {
+    try {
+      if (!selectedMember || !scheduleData.time || !scheduleData.workoutType || !scheduleData.duration) {
+        setError('Please fill in all required fields');
+        return;
+      }
+
+      // Get the member's actual membership type
+      const member = members.find(m => m._id === selectedMember._id);
+      if (!member) {
+        setError('Member not found');
+        return;
+      }
+
+      // Validate membership type
+      const validMembershipTypes = ['Platinum', 'Gold', 'Silver'];
+      const membershipType = validMembershipTypes.includes(member.membershipType) 
+        ? member.membershipType 
+        : 'Silver';
+
+      const schedulePayload = {
+        userId: selectedMember._id,
+        coachId: user._id,
+        membershipType,
+        scheduleType: 'weekday',
+        sessions: [{
+          date: selectedDate,
+          time: scheduleData.time,
+          duration: scheduleData.duration,
+          workoutType: parseInt(scheduleData.workoutType),
+          notes: scheduleData.notes || '',
+          status: 'scheduled'
+        }]
+      };
+
+      console.log('Submitting schedule:', schedulePayload);
+      await scheduleService.saveSchedule(schedulePayload);
+      setOpenScheduleDialog(false);
+      loadAssignedMembers(); // Refresh the list after saving
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      setError('Failed to save schedule. Please try again.');
+    }
   };
 
   const handleMealPlanSubmit = () => {

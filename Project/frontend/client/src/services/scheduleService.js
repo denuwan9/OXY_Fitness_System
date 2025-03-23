@@ -31,6 +31,25 @@ const scheduleService = {
     return response.data;
   },
 
+  saveSchedule: async (data) => {
+    // Ensure required fields are present and correct
+    const scheduleData = {
+      ...data,
+      coachId: data.coachId, // Explicitly include coachId
+      membershipType: data.membershipType || 'Silver', // Default to Silver if not set
+    };
+
+    // Validate membership type
+    const validMembershipTypes = ['Platinum', 'Gold', 'Silver'];
+    if (!validMembershipTypes.includes(scheduleData.membershipType)) {
+      scheduleData.membershipType = 'Silver'; // Default to Silver if invalid
+    }
+
+    console.log('Sending schedule data:', scheduleData);
+    const response = await axiosInstance.post('/', scheduleData);
+    return response.data;
+  },
+
   getUserSchedule: async (userId) => {
     const response = await axiosInstance.get(`/user/${userId}`);
     return response.data;
