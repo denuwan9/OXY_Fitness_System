@@ -71,8 +71,8 @@ exports.assignMember = async (req, res) => {
     const member = await User.findById(memberId);
     console.log('Found member:', member);
     
-    if (!member || member.role !== 'member') {
-      console.log('Member not found or not a member');
+    if (!member || member.role !== 'user') {
+      console.log('Member not found or not a user');
       return res.status(404).json({ message: 'Member not found' });
     }
     

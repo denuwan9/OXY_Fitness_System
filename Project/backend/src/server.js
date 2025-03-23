@@ -25,16 +25,18 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 // Routes
 const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
+const userRoutes = require('./routes/userRoutes');
 const classRoutes = require('./routes/classes');
 const trainerRoutes = require('./routes/trainers');
 const scheduleRoutes = require('./routes/schedules');
+const coachAvailabilityRoutes = require('./routes/coachAvailability');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/classes', classRoutes);
 app.use('/api/trainers', trainerRoutes);
 app.use('/api/schedules', scheduleRoutes);
+app.use('/api/coach-availability', coachAvailabilityRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
@@ -51,7 +53,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 7004;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 }); 
