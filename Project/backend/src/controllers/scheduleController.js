@@ -254,6 +254,7 @@ exports.generatePDFReport = async (req, res) => {
   try {
     const schedule = await Schedule.findOne({ userId: req.params.userId })
       .populate('coachId', 'name email')
+      .populate('userId', 'name email') // Populate member details
       .populate('mealPlan');
 
     if (!schedule) {
@@ -265,36 +266,73 @@ exports.generatePDFReport = async (req, res) => {
     res.setHeader('Content-Disposition', 'attachment; filename=schedule-report.pdf');
     doc.pipe(res);
 
-    // Add content to PDF
-    doc.fontSize(20).text('Oxy Fitness Schedule Report', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Member ID: ${schedule.userId}`);
-    doc.text(`Coach: ${schedule.coachId.name}`);
-    doc.text(`Membership Type: ${schedule.membershipType}`);
-    doc.moveDown();
+    // Add header with logo and title
+    doc.fontSize(24)
+       .text('OXY FITNESS', { align: 'center' })
+       .moveDown();
+    
+    doc.fontSize(20)
+       .text('Schedule Report', { align: 'center' })
+       .moveDown();
+
+    // Add member information
+    doc.fontSize(16)
+       .text('Member Information', { underline: true })
+       .moveDown();
+    
+    doc.fontSize(12)
+       .text(`Name: ${schedule.userId.name}`)
+       .text(`Email: ${schedule.userId.email}`)
+       .text(`Membership Type: ${schedule.membershipType}`)
+       .text(`Coach: ${schedule.coachId.name}`)
+       .moveDown();
 
     // Add schedule details
-    doc.fontSize(16).text('Training Schedule');
-    doc.moveDown();
+    doc.fontSize(16)
+       .text('Training Schedule', { underline: true })
+       .moveDown();
+    
     schedule.sessions.forEach(session => {
-      doc.fontSize(12).text(`Date: ${session.date.toLocaleDateString()}`);
-      doc.text(`Time: ${session.time}`);
-      doc.text(`Workout Type: ${session.workoutType}`);
-      doc.text(`Status: ${session.status}`);
-      doc.moveDown();
+      doc.fontSize(12)
+         .text(`Date: ${new Date(session.date).toLocaleDateString()}`)
+         .text(`Time: ${session.time}`)
+         .text(`Workout Type: ${session.workoutType === 1 ? 'Cardio' : 
+                                session.workoutType === 2 ? 'Strength Training' : 
+                                session.workoutType === 3 ? 'Flexibility' : 'HIIT'}`)
+         .text(`Duration: ${session.duration}`)
+         .text(`Status: ${session.status}`)
+         .text(`Notes: ${session.notes || 'No notes'}`)
+         .moveDown();
     });
 
     // Add meal plan if exists
     if (schedule.mealPlan) {
-      doc.fontSize(16).text('Meal Plan');
-      doc.moveDown();
+      doc.fontSize(16)
+         .text('Meal Plan', { underline: true })
+         .moveDown();
+      
       schedule.mealPlan.meals.forEach(meal => {
-        doc.fontSize(12).text(`Day: ${meal.day}`);
-        doc.text(`Breakfast: ${meal.breakfast}`);
-        doc.text(`Lunch: ${meal.lunch}`);
-        doc.text(`Dinner: ${meal.dinner}`);
-        doc.text('Snacks:');
-        meal.snacks.forEach(snack => doc.text(`- ${snack}`));
+        doc.fontSize(14)
+           .text(meal.day, { underline: true })
+           .moveDown();
+        
+        doc.fontSize(12)
+           .text('Breakfast:', { underline: true })
+           .text(meal.breakfast)
+           .moveDown()
+           .text('Lunch:', { underline: true })
+           .text(meal.lunch)
+           .moveDown()
+           .text('Dinner:', { underline: true })
+           .text(meal.dinner)
+           .moveDown();
+        
+        if (meal.snacks && meal.snacks.length > 0) {
+          doc.text('Snacks:', { underline: true });
+          meal.snacks.forEach(snack => doc.text(`• ${snack}`));
+          doc.moveDown();
+        }
+        
         doc.moveDown();
       });
     }
@@ -302,23 +340,40 @@ exports.generatePDFReport = async (req, res) => {
     // Add exercise plans
     const exercisePlans = await ExercisePlan.find({ scheduleId: schedule._id });
     if (exercisePlans.length > 0) {
-      doc.fontSize(16).text('Exercise Plans');
-      doc.moveDown();
+      doc.fontSize(16)
+         .text('Exercise Plans', { underline: true })
+         .moveDown();
+      
       exercisePlans.forEach(plan => {
-        doc.fontSize(12).text(`Day: ${plan.day}`);
+        doc.fontSize(14)
+           .text(plan.day, { underline: true })
+           .moveDown();
+        
         plan.exercises.forEach(exercise => {
-          doc.text(`Exercise: ${exercise.name}`);
-          doc.text(`Sets: ${exercise.sets}, Reps: ${exercise.reps}`);
+          doc.fontSize(12)
+             .text(`Exercise: ${exercise.name}`)
+             .text(`Sets: ${exercise.sets}`)
+             .text(`Reps: ${exercise.reps}`);
+          
           if (exercise.weight) doc.text(`Weight: ${exercise.weight} kg`);
           if (exercise.duration) doc.text(`Duration: ${exercise.duration} minutes`);
           if (exercise.notes) doc.text(`Notes: ${exercise.notes}`);
+          
+          doc.moveDown();
         });
+        
         doc.moveDown();
       });
     }
 
+    // Add footer
+    doc.moveDown()
+       .fontSize(10)
+       .text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
+
     doc.end();
   } catch (error) {
+    console.error('Error generating PDF report:', error);
     res.status(500).json({ message: error.message });
   }
 };

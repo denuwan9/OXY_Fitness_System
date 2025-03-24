@@ -410,9 +410,17 @@ const InstructorSchedule = () => {
     }
   };
 
-  const handleDownloadReport = () => {
-    // Implement PDF report generation
-    console.log('Downloading report for member:', selectedMember?._id);
+  const handleDownloadReport = async () => {
+    try {
+      if (!selectedMember) {
+        setError('Please select a member first');
+        return;
+      }
+      await scheduleService.downloadScheduleReport(selectedMember._id);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      setError('Failed to download report. Please try again.');
+    }
   };
 
   const getWorkoutTypeName = (workoutType) => {
@@ -458,13 +466,7 @@ const InstructorSchedule = () => {
                 <TableCell>{schedule.sessions[0].time}</TableCell>
                 <TableCell>{schedule.sessions[0].duration}</TableCell>
                 <TableCell>
-                  {schedule.sessions[0].workoutType === 1
-                    ? "Cardio"
-                    : schedule.sessions[0].workoutType === 2
-                    ? "Strength Training"
-                    : schedule.sessions[0].workoutType === 3
-                    ? "Flexibility"
-                    : "HIIT"}
+                  {getWorkoutTypeName(schedule.sessions[0].workoutType)}
                 </TableCell>
                 <TableCell>{schedule.sessions[0].status}</TableCell>
                 <TableCell>
