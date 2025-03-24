@@ -1,42 +1,63 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { MenuItem } from '@mui/material';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import './Navbar.css';
 
 const Navbar = () => {
   const { user } = useAuth();
+  const location = useLocation();
+
+  if (!user) return null;
+
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
 
   return (
-    <div>
-      {/* Inside the navigation menu items */}
-      {user && (
-        <>
-          {/* Schedule Management Links */}
+    <nav className="navbar">
+      <div className="navbar-container">
+        <div className="navbar-links">
           {user.role === 'member' && (
-            <MenuItem component={Link} to="/schedule">
-              My Schedule
-            </MenuItem>
+            <Link 
+              to="/schedule" 
+              className={`navbar-link ${isActive('/schedule') ? 'active' : ''}`}
+            >
+              <span className="link-icon">📅</span>
+              <span className="link-text">My Schedule</span>
+            </Link>
           )}
           
           {(user.role === 'instructor' || user.role === 'coach') && (
             <>
-              <MenuItem component={Link} to="/schedule/availability">
-                Manage Availability
-              </MenuItem>
-              <MenuItem component={Link} to="/schedule/instructor">
-                Manage Member Schedules
-              </MenuItem>
+              <Link 
+                to="/schedule/availability" 
+                className={`navbar-link ${isActive('/schedule/availability') ? 'active' : ''}`}
+              >
+                <span className="link-icon">⏰</span>
+                <span className="link-text">Manage Availability</span>
+              </Link>
+              <Link 
+                to="/schedule/instructor" 
+                className={`navbar-link ${isActive('/schedule/instructor') ? 'active' : ''}`}
+              >
+                <span className="link-icon">👥</span>
+                <span className="link-text">Manage Member Schedules</span>
+              </Link>
             </>
           )}
           
           {user.role === 'operation_manager' && (
-            <MenuItem component={Link} to="/schedule/manager">
-              Schedule Requests
-            </MenuItem>
+            <Link 
+              to="/schedule/manager" 
+              className={`navbar-link ${isActive('/schedule/manager') ? 'active' : ''}`}
+            >
+              <span className="link-icon">📋</span>
+              <span className="link-text">Schedule Requests</span>
+            </Link>
           )}
-        </>
-      )}
-    </div>
+        </div>
+      </div>
+    </nav>
   );
 };
 

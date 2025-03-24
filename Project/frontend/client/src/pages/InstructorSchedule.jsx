@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import Layout from '../components/layout/Layout';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import {
@@ -60,29 +61,84 @@ import userService from '../services/userService';
 import scheduleService from '../services/scheduleService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
+  padding: theme.spacing(4),
   marginBottom: theme.spacing(3),
   backgroundColor: theme.palette.background.paper,
-  borderRadius: theme.spacing(2),
-  boxShadow: theme.shadows[3],
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+  transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+    boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+  },
 }));
 
 const StyledCalendar = styled(Calendar)(({ theme }) => ({
   width: "100%",
-  maxWidth: "600px",
+  maxWidth: "800px",
   margin: "0 auto",
   backgroundColor: theme.palette.background.paper,
-  borderRadius: theme.spacing(2),
-  padding: theme.spacing(2),
+  borderRadius: theme.spacing(3),
+  padding: theme.spacing(3),
+  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
   "& .react-calendar__tile": {
     color: theme.palette.text.primary,
+    padding: theme.spacing(2),
+    borderRadius: theme.spacing(1),
     "&:hover": {
-      backgroundColor: theme.palette.action.hover,
+      backgroundColor: theme.palette.primary.light,
+      color: theme.palette.primary.contrastText,
     },
   },
   "& .react-calendar__tile--active": {
     backgroundColor: theme.palette.primary.main,
     color: theme.palette.primary.contrastText,
+    fontWeight: 'bold',
+  },
+  "& .react-calendar__month-view__days__day--weekend": {
+    color: theme.palette.error.main,
+  },
+  "& .react-calendar__tile--now": {
+    backgroundColor: theme.palette.secondary.light,
+    color: theme.palette.secondary.contrastText,
+  },
+}));
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+  transition: 'transform 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+  },
+}));
+
+const StyledButton = styled(Button)(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  textTransform: 'none',
+  fontWeight: 600,
+  padding: theme.spacing(1.5, 3),
+  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  '&:hover': {
+    boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+  },
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  padding: theme.spacing(2),
+  fontWeight: 500,
+  '&.MuiTableCell-head': {
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText,
+  },
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:nth-of-type(odd)': {
+    backgroundColor: theme.palette.action.hover,
+  },
+  '&:hover': {
+    backgroundColor: theme.palette.action.selected,
   },
 }));
 
@@ -445,45 +501,101 @@ const InstructorSchedule = () => {
     }
 
     return (
-      <TableContainer component={Paper}>
+      <TableContainer 
+        component={Paper} 
+        sx={{ 
+          borderRadius: 3,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+          overflow: 'hidden',
+        }}
+      >
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Time</TableCell>
-              <TableCell>Duration</TableCell>
-              <TableCell>Workout Type</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+              <StyledTableCell>Date</StyledTableCell>
+              <StyledTableCell>Time</StyledTableCell>
+              <StyledTableCell>Duration</StyledTableCell>
+              <StyledTableCell>Workout Type</StyledTableCell>
+              <StyledTableCell>Status</StyledTableCell>
+              <StyledTableCell>Actions</StyledTableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {schedules.map((schedule) => (
-              <TableRow key={schedule._id}>
+              <StyledTableRow key={schedule._id}>
                 <TableCell>
-                  {new Date(schedule.sessions[0].date).toLocaleDateString()}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Event sx={{ color: 'primary.main' }} />
+                    {new Date(schedule.sessions[0].date).toLocaleDateString()}
+                  </Box>
                 </TableCell>
-                <TableCell>{schedule.sessions[0].time}</TableCell>
-                <TableCell>{schedule.sessions[0].duration}</TableCell>
                 <TableCell>
-                  {getWorkoutTypeName(schedule.sessions[0].workoutType)}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AccessTime sx={{ color: 'primary.main' }} />
+                    {schedule.sessions[0].time}
+                  </Box>
                 </TableCell>
-                <TableCell>{schedule.sessions[0].status}</TableCell>
                 <TableCell>
-                  <IconButton
+                  <Chip 
+                    label={`${schedule.sessions[0].duration} min`}
                     size="small"
-                    onClick={() => handleEditSchedule(schedule)}
-                  >
-                    <Edit />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDeleteSchedule(schedule._id)}
-                  >
-                    <Delete />
-                  </IconButton>
+                    color="primary"
+                    variant="outlined"
+                  />
                 </TableCell>
-              </TableRow>
+                <TableCell>
+                  <Chip 
+                    label={getWorkoutTypeName(schedule.sessions[0].workoutType)}
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={schedule.sessions[0].status}
+                    size="small"
+                    color={schedule.sessions[0].status === 'scheduled' ? 'success' : 
+                           schedule.sessions[0].status === 'completed' ? 'primary' : 'error'}
+                    icon={schedule.sessions[0].status === 'scheduled' ? <Schedule /> :
+                          schedule.sessions[0].status === 'completed' ? <CheckCircle /> : <Cancel />}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Edit Schedule">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditSchedule(schedule)}
+                        sx={{
+                          color: 'primary.main',
+                          '&:hover': {
+                            backgroundColor: 'primary.light',
+                            color: 'primary.contrastText',
+                          },
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Schedule">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteSchedule(schedule._id)}
+                        sx={{
+                          color: 'error.main',
+                          '&:hover': {
+                            backgroundColor: 'error.light',
+                            color: 'error.contrastText',
+                          },
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </TableCell>
+              </StyledTableRow>
             ))}
           </TableBody>
         </Table>
@@ -500,71 +612,187 @@ const InstructorSchedule = () => {
 
     return (
       <StyledPaper>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3 
+        }}>
+          <Typography variant="h5" sx={{ 
+            fontWeight: 600,
+            color: 'secondary.main',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}>
+            <Restaurant sx={{ fontSize: 28 }} />
             Meal Plan for {selectedMember.name}
           </Typography>
-          <Button
+          <StyledButton
             variant="contained"
             color="secondary"
             startIcon={<Restaurant />}
             onClick={handleOpenMealPlanDialog}
           >
             Edit Meal Plan
-          </Button>
+          </StyledButton>
         </Box>
         {schedule?.mealPlan?.meals ? (
-          <Grid container spacing={2}>
+          <Grid container spacing={3}>
             {schedule.mealPlan.meals.map((meal, index) => (
               <Grid item xs={12} key={meal._id || index}>
-                <Card>
+                <StyledCard>
                   <CardContent>
-                    <Typography variant="h6" gutterBottom>
-                      {meal.day}
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12}>
-                        <Typography variant="subtitle1" color="primary">
-                          Breakfast
-                        </Typography>
-                        <Typography variant="body1">
-                          {meal.breakfast}
-                        </Typography>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 1, 
+                      mb: 3,
+                      color: 'secondary.main',
+                    }}>
+                      <Event sx={{ fontSize: 24 }} />
+                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                        {meal.day}
+                      </Typography>
+                    </Box>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'background.default',
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}>
+                          <Typography variant="subtitle1" sx={{ 
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}>
+                            <Restaurant sx={{ fontSize: 20 }} />
+                            Breakfast
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                            {meal.breakfast || 'No breakfast planned'}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={12} md={6}>
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'background.default',
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}>
+                          <Typography variant="subtitle1" sx={{ 
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}>
+                            <Restaurant sx={{ fontSize: 20 }} />
+                            Lunch
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                            {meal.lunch || 'No lunch planned'}
+                          </Typography>
+                        </Box>
                       </Grid>
                       <Grid item xs={12}>
-                        <Typography variant="subtitle1" color="primary">
-                          Lunch
-                        </Typography>
-                        <Typography variant="body1">
-                          {meal.lunch}
-                        </Typography>
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'background.default',
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}>
+                          <Typography variant="subtitle1" sx={{ 
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}>
+                            <Restaurant sx={{ fontSize: 20 }} />
+                            Dinner
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                            {meal.dinner || 'No dinner planned'}
+                          </Typography>
+                        </Box>
                       </Grid>
                       <Grid item xs={12}>
-                        <Typography variant="subtitle1" color="primary">
-                          Dinner
-                        </Typography>
-                        <Typography variant="body1">
-                          {meal.dinner}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Typography variant="subtitle1" color="primary">
-                          Snacks
-                        </Typography>
-                        <Typography variant="body1">
-                          {Array.isArray(meal.snacks) ? meal.snacks.join(', ') : ''}
-                        </Typography>
+                        <Box sx={{ 
+                          p: 2, 
+                          bgcolor: 'background.default',
+                          borderRadius: 2,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}>
+                          <Typography variant="subtitle1" sx={{ 
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            mb: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}>
+                            <Restaurant sx={{ fontSize: 20 }} />
+                            Snacks
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {Array.isArray(meal.snacks) && meal.snacks.length > 0 ? (
+                              meal.snacks.map((snack, idx) => (
+                                <Chip
+                                  key={idx}
+                                  label={snack}
+                                  size="small"
+                                  color="secondary"
+                                  variant="outlined"
+                                />
+                              ))
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">
+                                No snacks planned
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
                       </Grid>
                     </Grid>
                   </CardContent>
-                </Card>
+                </StyledCard>
               </Grid>
             ))}
           </Grid>
         ) : (
-          <Typography variant="body1" color="text.secondary" align="center">
-            No meal plan assigned for this date
-          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 4,
+            textAlign: 'center',
+            bgcolor: 'background.default',
+            borderRadius: 2,
+            border: '1px dashed',
+            borderColor: 'divider',
+          }}>
+            <Restaurant sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No meal plan assigned for this date
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Click the "Edit Meal Plan" button to create one
+            </Typography>
+          </Box>
         )}
       </StyledPaper>
     );
@@ -572,308 +800,482 @@ const InstructorSchedule = () => {
 
   if (!user || (user.role !== 'instructor' && user.role !== 'coach')) {
     return (
-      <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography variant="h5" color="error">
-          Access Denied. This page is for instructors and coaches only.
-        </Typography>
-      </Box>
+      <Layout>
+        <Box sx={{ p: 3, textAlign: "center" }}>
+          <Typography variant="h5" color="error">
+            Access Denied. This page is for instructors and coaches only.
+          </Typography>
+        </Box>
+      </Layout>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Grid container spacing={3}>
-        {/* Header Section */}
-        <Grid item xs={12}>
-          <StyledPaper>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Instructor Schedule Management
-            </Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              Manage member schedules and meal plans
-            </Typography>
-          </StyledPaper>
-        </Grid>
-
-        {/* Members List Section */}
-        <Grid item xs={12} md={4}>
-          <StyledPaper>
-            <Typography variant="h6" gutterBottom>
-              Assigned Members
-            </Typography>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
-              </Box>
-            ) : error ? (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {error}
-              </Alert>
-            ) : members.length === 0 ? (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                No members assigned to you yet.
-              </Alert>
-            ) : (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Name</TableCell>
-                      <TableCell>Membership</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {members.map((member) => (
-                      <TableRow key={member._id}>
-                        <TableCell>{member.name}</TableCell>
-                        <TableCell>{member.membershipType}</TableCell>
-                        <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleMemberSelect(member)}
-                            color={selectedMember?._id === member._id ? "primary" : "default"}
-                          >
-                            <Person />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </StyledPaper>
-        </Grid>
-
-        {/* Schedule Management Section */}
-        <Grid item xs={12} md={8}>
-          {selectedMember ? (
-            <>
-              <StyledPaper>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">
-                    Schedule for {selectedMember.name}
+    <Layout>
+      <Box sx={{ 
+        p: 4, 
+        bgcolor: 'background.default', 
+        minHeight: '100vh',
+        mt: 2 // Add margin top to prevent header overlap
+      }}>
+        <Grid container spacing={4}>
+          {/* Header Section */}
+          <Grid item xs={12}>
+            <StyledPaper>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h3" component="h1" gutterBottom sx={{ 
+                    fontWeight: 700,
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}>
+                    Instructor Schedule Management
                   </Typography>
-                  <Box>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      startIcon={<Schedule />}
-                      onClick={() => setOpenScheduleDialog(true)}
-                      sx={{ mr: 1 }}
-                    >
-                      Edit Schedule
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Download />}
-                      onClick={handleDownloadReport}
-                    >
-                      Download Report
-                    </Button>
-                  </Box>
+                  <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+                    Manage member schedules and meal plans efficiently
+                  </Typography>
                 </Box>
-                <StyledCalendar
-                  onChange={handleDateChange}
-                  value={selectedDate}
-                  tileContent={({ date }) => {
-                    const memberSchedule = memberSchedules[selectedMember._id];
-                    if (!memberSchedule) return null;
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <StyledButton
+                    variant="contained"
+                    color="primary"
+                    startIcon={<Schedule />}
+                    onClick={() => setOpenScheduleDialog(true)}
+                  >
+                    New Schedule
+                  </StyledButton>
+                  <StyledButton
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<Download />}
+                    onClick={handleDownloadReport}
+                  >
+                    Download Report
+                  </StyledButton>
+                </Box>
+              </Box>
+            </StyledPaper>
+          </Grid>
 
-                    // Combine all sessions from all schedules
-                    const allSessions = memberSchedule.reduce((acc, schedule) => {
-                      if (schedule.sessions && Array.isArray(schedule.sessions)) {
-                        return [...acc, ...schedule.sessions];
-                      }
-                      return acc;
-                    }, []);
+          {/* Members List Section */}
+          <Grid item xs={12} md={4}>
+            <StyledPaper>
+              <Typography variant="h5" gutterBottom sx={{ 
+                fontWeight: 600,
+                color: 'primary.main',
+                mb: 3,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+              }}>
+                <Person sx={{ fontSize: 28 }} />
+                Assigned Members
+              </Typography>
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                  <CircularProgress size={40} />
+                </Box>
+              ) : error ? (
+                <Alert severity="error" sx={{ mt: 2 }}>
+                  {error}
+                </Alert>
+              ) : members.length === 0 ? (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  No members assigned to you yet.
+                </Alert>
+              ) : (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <StyledTableCell>Name</StyledTableCell>
+                        <StyledTableCell>Membership</StyledTableCell>
+                        <StyledTableCell>Actions</StyledTableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {members.map((member) => (
+                        <StyledTableRow key={member._id}>
+                          <TableCell>{member.name}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={member.membershipType} 
+                              size="small" 
+                              color={member.membershipType === 'Platinum' ? 'primary' : 
+                                     member.membershipType === 'Gold' ? 'secondary' : 'default'}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleMemberSelect(member)}
+                              color={selectedMember?._id === member._id ? "primary" : "default"}
+                              sx={{
+                                '&:hover': {
+                                  backgroundColor: 'primary.light',
+                                  color: 'primary.contrastText',
+                                },
+                              }}
+                            >
+                              <Person />
+                            </IconButton>
+                          </TableCell>
+                        </StyledTableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </StyledPaper>
+          </Grid>
 
-                    // Filter sessions for the current date
-                    const sessions = allSessions.filter(
-                      session => new Date(session.date).toDateString() === date.toDateString()
-                    );
+          {/* Schedule Management Section */}
+          <Grid item xs={12} md={8}>
+            {selectedMember ? (
+              <>
+                <StyledPaper>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h5" sx={{ 
+                      fontWeight: 600,
+                      color: 'primary.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}>
+                      <Schedule sx={{ fontSize: 28 }} />
+                      Schedule for {selectedMember.name}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <StyledButton
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Schedule />}
+                        onClick={() => setOpenScheduleDialog(true)}
+                      >
+                        Edit Schedule
+                      </StyledButton>
+                      <StyledButton
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<Restaurant />}
+                        onClick={handleOpenMealPlanDialog}
+                      >
+                        Meal Plan
+                      </StyledButton>
+                    </Box>
+                  </Box>
+                  <StyledCalendar
+                    onChange={handleDateChange}
+                    value={selectedDate}
+                    tileContent={({ date }) => {
+                      const memberSchedule = memberSchedules[selectedMember._id];
+                      if (!memberSchedule) return null;
 
-                    return sessions?.length > 0 ? (
-                      <Box sx={{ position: "relative", height: "100%" }}>
-                        <Typography variant="caption" sx={{ position: "absolute", bottom: 2, left: 2 }}>
-                          {sessions.length} session(s)
-                        </Typography>
-                      </Box>
-                    ) : null;
-                  }}
-                />
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" gutterBottom>
-                    Existing Schedules
+                      const allSessions = memberSchedule.reduce((acc, schedule) => {
+                        if (schedule.sessions && Array.isArray(schedule.sessions)) {
+                          return [...acc, ...schedule.sessions];
+                        }
+                        return acc;
+                      }, []);
+
+                      const sessions = allSessions.filter(
+                        session => new Date(session.date).toDateString() === date.toDateString()
+                      );
+
+                      return sessions?.length > 0 ? (
+                        <Box sx={{ 
+                          position: "relative", 
+                          height: "100%",
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 0.5,
+                        }}>
+                          <Typography variant="caption" sx={{ 
+                            fontWeight: 600,
+                            color: 'primary.main',
+                            backgroundColor: 'primary.light',
+                            padding: '2px 6px',
+                            borderRadius: '12px',
+                          }}>
+                            {sessions.length} session(s)
+                          </Typography>
+                        </Box>
+                      ) : null;
+                    }}
+                  />
+                  <Box sx={{ mt: 4 }}>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      fontWeight: 600,
+                      color: 'primary.main',
+                      mb: 2,
+                    }}>
+                      Existing Schedules
+                    </Typography>
+                    {renderScheduleTable()}
+                  </Box>
+                </StyledPaper>
+                {renderMealPlanSection()}
+              </>
+            ) : (
+              <StyledPaper>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  p: 6,
+                  textAlign: 'center',
+                }}>
+                  <Schedule sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+                  <Typography variant="h6" color="text.secondary">
+                    Select a member to view and manage their schedule
                   </Typography>
-                  {renderScheduleTable()}
                 </Box>
               </StyledPaper>
-              {renderMealPlanSection()}
-            </>
-          ) : (
-            <StyledPaper>
-              <Typography variant="h6" color="text.secondary" align="center">
-                Select a member to view and manage their schedule
-              </Typography>
-            </StyledPaper>
-          )}
+            )}
+          </Grid>
         </Grid>
-      </Grid>
 
-      {/* Schedule Dialog */}
-      <Dialog open={openScheduleDialog} onClose={handleCloseScheduleDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Date"
-                type="date"
-                value={selectedDate.toISOString().split('T')[0]}
-                onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                InputLabelProps={{ shrink: true }}
-              />
+        {/* Schedule Dialog */}
+        <Dialog 
+          open={openScheduleDialog} 
+          onClose={handleCloseScheduleDialog} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            fontWeight: 600,
+          }}>
+            {editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}
+          </DialogTitle>
+          <DialogContent sx={{ p: 4 }}>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Date"
+                  type="date"
+                  value={selectedDate.toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Time"
+                  type="time"
+                  value={scheduleData.time}
+                  onChange={(e) => setScheduleData({ ...scheduleData, time: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Workout Type</InputLabel>
+                  <Select
+                    value={scheduleData.workoutType}
+                    label="Workout Type"
+                    onChange={(e) => setScheduleData({ ...scheduleData, workoutType: e.target.value })}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    {mockWorkoutTypes.map((type) => (
+                      <MenuItem key={type.id} value={type.id}>
+                        {type.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Duration"
+                  value={scheduleData.duration}
+                  onChange={(e) => setScheduleData({ ...scheduleData, duration: e.target.value })}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Notes"
+                  multiline
+                  rows={4}
+                  value={scheduleData.notes}
+                  onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Time"
-                type="time"
-                value={scheduleData.time}
-                onChange={(e) => setScheduleData({ ...scheduleData, time: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Workout Type</InputLabel>
-                <Select
-                  value={scheduleData.workoutType}
-                  label="Workout Type"
-                  onChange={(e) => setScheduleData({ ...scheduleData, workoutType: e.target.value })}
-                >
-                  {mockWorkoutTypes.map((type) => (
-                    <MenuItem key={type.id} value={type.id}>
-                      {type.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Duration"
-                value={scheduleData.duration}
-                onChange={(e) => setScheduleData({ ...scheduleData, duration: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Notes"
-                multiline
-                rows={4}
-                value={scheduleData.notes}
-                onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseScheduleDialog}>Cancel</Button>
-          <Button onClick={handleScheduleSubmit} variant="contained" color="primary">
-            {editingSchedule ? 'Update Schedule' : 'Save Schedule'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
+            <Button 
+              onClick={handleCloseScheduleDialog}
+              sx={{ 
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleScheduleSubmit} 
+              variant="contained" 
+              color="primary"
+              sx={{ 
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}
+            >
+              {editingSchedule ? 'Update Schedule' : 'Save Schedule'}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-      {/* Meal Plan Dialog */}
-      <Dialog open={openMealPlanDialog} onClose={() => setOpenMealPlanDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Meal Plan</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            {mealPlanData.meals.map((meal, index) => (
-              <React.Fragment key={index}>
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom>
-                    {meal.day}
-                  </Typography>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Breakfast"
-                    multiline
-                    rows={2}
-                    value={meal.breakfast}
-                    onChange={(e) => {
-                      const newMeals = [...mealPlanData.meals];
-                      newMeals[index] = { ...newMeals[index], breakfast: e.target.value };
-                      setMealPlanData({ ...mealPlanData, meals: newMeals });
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Lunch"
-                    multiline
-                    rows={2}
-                    value={meal.lunch}
-                    onChange={(e) => {
-                      const newMeals = [...mealPlanData.meals];
-                      newMeals[index] = { ...newMeals[index], lunch: e.target.value };
-                      setMealPlanData({ ...mealPlanData, meals: newMeals });
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Dinner"
-                    multiline
-                    rows={2}
-                    value={meal.dinner}
-                    onChange={(e) => {
-                      const newMeals = [...mealPlanData.meals];
-                      newMeals[index] = { ...newMeals[index], dinner: e.target.value };
-                      setMealPlanData({ ...mealPlanData, meals: newMeals });
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Snacks (comma-separated)"
-                    multiline
-                    rows={2}
-                    value={meal.snacks.join(', ')}
-                    onChange={(e) => {
-                      const newMeals = [...mealPlanData.meals];
-                      newMeals[index] = { 
-                        ...newMeals[index], 
-                        snacks: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                      };
-                      setMealPlanData({ ...mealPlanData, meals: newMeals });
-                    }}
-                  />
-                </Grid>
-              </React.Fragment>
-            ))}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenMealPlanDialog(false)}>Cancel</Button>
-          <Button onClick={handleMealPlanSubmit} variant="contained" color="primary">
-            Save Meal Plan
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        {/* Meal Plan Dialog */}
+        <Dialog 
+          open={openMealPlanDialog} 
+          onClose={() => setOpenMealPlanDialog(false)} 
+          maxWidth="sm" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+            }
+          }}
+        >
+          <DialogTitle sx={{ 
+            bgcolor: 'secondary.main',
+            color: 'secondary.contrastText',
+            fontWeight: 600,
+          }}>
+            Edit Meal Plan
+          </DialogTitle>
+          <DialogContent sx={{ p: 4 }}>
+            <Grid container spacing={3}>
+              {mealPlanData.meals.map((meal, index) => (
+                <React.Fragment key={index}>
+                  <Grid item xs={12}>
+                    <Typography variant="h6" gutterBottom sx={{ 
+                      fontWeight: 600,
+                      color: 'secondary.main',
+                    }}>
+                      {meal.day}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Breakfast"
+                      multiline
+                      rows={2}
+                      value={meal.breakfast}
+                      onChange={(e) => {
+                        const newMeals = [...mealPlanData.meals];
+                        newMeals[index] = { ...newMeals[index], breakfast: e.target.value };
+                        setMealPlanData({ ...mealPlanData, meals: newMeals });
+                      }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Lunch"
+                      multiline
+                      rows={2}
+                      value={meal.lunch}
+                      onChange={(e) => {
+                        const newMeals = [...mealPlanData.meals];
+                        newMeals[index] = { ...newMeals[index], lunch: e.target.value };
+                        setMealPlanData({ ...mealPlanData, meals: newMeals });
+                      }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Dinner"
+                      multiline
+                      rows={2}
+                      value={meal.dinner}
+                      onChange={(e) => {
+                        const newMeals = [...mealPlanData.meals];
+                        newMeals[index] = { ...newMeals[index], dinner: e.target.value };
+                        setMealPlanData({ ...mealPlanData, meals: newMeals });
+                      }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Snacks (comma-separated)"
+                      multiline
+                      rows={2}
+                      value={meal.snacks.join(', ')}
+                      onChange={(e) => {
+                        const newMeals = [...mealPlanData.meals];
+                        newMeals[index] = { 
+                          ...newMeals[index], 
+                          snacks: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                        };
+                        setMealPlanData({ ...mealPlanData, meals: newMeals });
+                      }}
+                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    />
+                  </Grid>
+                </React.Fragment>
+              ))}
+            </Grid>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
+            <Button 
+              onClick={() => setOpenMealPlanDialog(false)}
+              sx={{ 
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleMealPlanSubmit} 
+              variant="contained" 
+              color="secondary"
+              sx={{ 
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}
+            >
+              Save Meal Plan
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
+    </Layout>
   );
 };
 

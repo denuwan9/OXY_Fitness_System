@@ -1,0 +1,124 @@
+.navbar {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+  position: fixed;
+  top: 70px;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.navbar-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.navbar-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  padding: 12px 0;
+}
+
+.navbar-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  text-decoration: none;
+  color: #4a4a4a;
+  font-weight: 500;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.navbar-link::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #2196F3, #21CBF3);
+  transition: all 0.3s ease;
+  transform: translateX(-50%);
+}
+
+.navbar-link:hover {
+  color: #2196F3;
+  background: rgba(33, 150, 243, 0.05);
+  transform: translateY(-1px);
+}
+
+.navbar-link:hover::before {
+  width: 80%;
+}
+
+.navbar-link.active {
+  color: #2196F3;
+  background: rgba(33, 150, 243, 0.1);
+}
+
+.navbar-link.active::before {
+  width: 80%;
+}
+
+.link-icon {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+}
+
+.navbar-link:hover .link-icon {
+  transform: scale(1.1);
+}
+
+.link-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .navbar-links {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px 0;
+  }
+
+  .navbar-link {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 20px;
+  }
+
+  .navbar-link::before {
+    display: none;
+  }
+
+  .navbar-link:hover {
+    background: rgba(33, 150, 243, 0.1);
+  }
+}
+
+/* Animation for active link */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+  }
+}
+
+.navbar-link.active {
+  animation: pulse 2s infinite;
+} 
