@@ -249,12 +249,32 @@ exports.getMealPlan = async (req, res) => {
   }
 };
 
+// Helper function to get workout type name
+const getWorkoutTypeName = (type) => {
+  switch (type) {
+    case 1:
+      return "Personal Training";
+    case 2:
+      return "Group Class";
+    case 3:
+      return "Cardio Session";
+    case 4:
+      return "Strength Training";
+    case 5:
+      return "HIIT Training";
+    case 6:
+      return "Yoga Session";
+    default:
+      return type?.toString() || "Unknown"; // Handle undefined/null cases
+  }
+};
+
 // Generate PDF report
 exports.generatePDFReport = async (req, res) => {
   try {
     const schedule = await Schedule.findOne({ userId: req.params.userId })
       .populate('coachId', 'name email')
-      .populate('userId', 'name email') // Populate member details
+      .populate('userId', 'name email')
       .populate('mealPlan');
 
     if (!schedule) {
@@ -296,73 +316,30 @@ exports.generatePDFReport = async (req, res) => {
       doc.fontSize(12)
          .text(`Date: ${new Date(session.date).toLocaleDateString()}`)
          .text(`Time: ${session.time}`)
-         .text(`Workout Type: ${session.workoutType === 1 ? 'Cardio' : 
-                                session.workoutType === 2 ? 'Strength Training' : 
-                                session.workoutType === 3 ? 'Flexibility' : 'HIIT'}`)
+         .text(`Workout Type: ${getWorkoutTypeName(session.workoutType)}`)
          .text(`Duration: ${session.duration}`)
-         .text(`Status: ${session.status}`)
+         .text(`Location: ${session.location || 'Main Gym'}`)
+         .text(`Status: ${session.status.charAt(0).toUpperCase() + session.status.slice(1)}`)
          .text(`Notes: ${session.notes || 'No notes'}`)
          .moveDown();
     });
 
-    // Add meal plan if exists
+    // Add meal plan if available
     if (schedule.mealPlan) {
       doc.fontSize(16)
          .text('Meal Plan', { underline: true })
          .moveDown();
-      
+
       schedule.mealPlan.meals.forEach(meal => {
         doc.fontSize(14)
            .text(meal.day, { underline: true })
-           .moveDown();
-        
-        doc.fontSize(12)
-           .text('Breakfast:', { underline: true })
-           .text(meal.breakfast)
            .moveDown()
-           .text('Lunch:', { underline: true })
-           .text(meal.lunch)
-           .moveDown()
-           .text('Dinner:', { underline: true })
-           .text(meal.dinner)
+           .fontSize(12)
+           .text(`Breakfast: ${meal.breakfast}`)
+           .text(`Lunch: ${meal.lunch}`)
+           .text(`Dinner: ${meal.dinner}`)
+           .text(`Snacks: ${meal.snacks.join(', ')}`)
            .moveDown();
-        
-        if (meal.snacks && meal.snacks.length > 0) {
-          doc.text('Snacks:', { underline: true });
-          meal.snacks.forEach(snack => doc.text(`• ${snack}`));
-          doc.moveDown();
-        }
-        
-        doc.moveDown();
-      });
-    }
-
-    // Add exercise plans
-    const exercisePlans = await ExercisePlan.find({ scheduleId: schedule._id });
-    if (exercisePlans.length > 0) {
-      doc.fontSize(16)
-         .text('Exercise Plans', { underline: true })
-         .moveDown();
-      
-      exercisePlans.forEach(plan => {
-        doc.fontSize(14)
-           .text(plan.day, { underline: true })
-           .moveDown();
-        
-        plan.exercises.forEach(exercise => {
-          doc.fontSize(12)
-             .text(`Exercise: ${exercise.name}`)
-             .text(`Sets: ${exercise.sets}`)
-             .text(`Reps: ${exercise.reps}`);
-          
-          if (exercise.weight) doc.text(`Weight: ${exercise.weight} kg`);
-          if (exercise.duration) doc.text(`Duration: ${exercise.duration} minutes`);
-          if (exercise.notes) doc.text(`Notes: ${exercise.notes}`);
-          
-          doc.moveDown();
-        });
-        
-        doc.moveDown();
       });
     }
 

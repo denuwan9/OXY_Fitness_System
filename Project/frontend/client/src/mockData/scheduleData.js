@@ -32,25 +32,43 @@ export const mockWorkoutTypes = [
   {
     id: 1,
     name: "Personal Training",
+    type: "personal_training",
     description: "One-on-one training session with a personal trainer",
     duration: "60 minutes"
   },
   {
     id: 2,
     name: "Group Class",
+    type: "group_class",
     description: "Group workout session with multiple participants",
     duration: "45 minutes"
   },
   {
     id: 3,
     name: "Cardio Session",
+    type: "cardio",
     description: "Cardiovascular training session",
     duration: "30 minutes"
   },
   {
     id: 4,
     name: "Strength Training",
+    type: "strength",
     description: "Weight training and strength building session",
+    duration: "60 minutes"
+  },
+  {
+    id: 5,
+    name: "HIIT Training",
+    type: "hiit",
+    description: "High-intensity interval training",
+    duration: "30 minutes"
+  },
+  {
+    id: 6,
+    name: "Yoga Session",
+    type: "yoga",
+    description: "Yoga and flexibility training",
     duration: "60 minutes"
   }
 ];
@@ -80,8 +98,9 @@ export const mockSchedules = [
         id: 1,
         date: new Date(2024, 2, 20),
         time: "09:00",
-        type: 1,
+        workoutType: "personal_training",
         duration: "60 minutes",
+        location: "Main Gym Area",
         notes: "Focus on upper body strength",
         status: "scheduled"
       },
@@ -89,8 +108,9 @@ export const mockSchedules = [
         id: 2,
         date: new Date(2024, 2, 22),
         time: "10:00",
-        type: 2,
+        workoutType: "group_class",
         duration: "45 minutes",
+        location: "Studio Room 1",
         notes: "Group cardio session",
         status: "scheduled"
       }
@@ -111,8 +131,9 @@ export const mockSchedules = [
         id: 3,
         date: new Date(2024, 2, 21),
         time: "14:00",
-        type: 3,
+        workoutType: "hiit",
         duration: "30 minutes",
+        location: "HIIT Zone",
         notes: "HIIT cardio session",
         status: "scheduled"
       }
@@ -133,8 +154,9 @@ export const mockSchedules = [
         id: 4,
         date: new Date(2024, 2, 23),
         time: "16:00",
-        type: 4,
+        workoutType: "strength",
         duration: "60 minutes",
+        location: "Weight Room",
         notes: "Full body strength training",
         status: "scheduled"
       }

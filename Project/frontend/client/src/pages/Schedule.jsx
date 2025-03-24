@@ -25,7 +25,10 @@ import {
   ListItemIcon,
   Divider,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
+  Avatar,
+  CardHeader,
+  CardMedia
 } from '@mui/material';
 import {
   FitnessCenter,
@@ -37,10 +40,14 @@ import {
   Download,
   CheckCircle,
   Cancel,
-  Schedule
+  Schedule,
+  Person,
+  Email,
+  Phone,
+  Star
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { mockSchedules, mockUsers, mockGymLocations, mockWorkoutTypes } from '../mockData/scheduleData';
+import axios from 'axios';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -78,9 +85,18 @@ const SessionCard = styled(Card)(({ theme }) => ({
   },
 }));
 
+const CoachCard = styled(Card)(({ theme }) => ({
+  backgroundColor: theme.palette.background.paper,
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+}));
+
 const MealPlanCard = styled(Card)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
   height: "100%",
+  display: "flex",
+  flexDirection: "column",
 }));
 
 const SchedulePage = () => {
@@ -94,17 +110,69 @@ const SchedulePage = () => {
   const [newDate, setNewDate] = useState(null);
   const [newTime, setNewTime] = useState("");
   const [reason, setReason] = useState("");
+  const [coachInfo, setCoachInfo] = useState(null);
+  const [mealPlan, setMealPlan] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (user) {
-      // Find the user's schedule from mock data
-      const userSchedule = mockSchedules.find(s => s.userId === user.id);
-      setSchedule(userSchedule);
-    }
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+        if (!user?.id) return;
+
+        // Fetch user's schedule
+        const scheduleResponse = await axios.get(`/api/schedules/user/${user.id}`);
+        setSchedule(scheduleResponse.data);
+
+        // Fetch coach information
+        if (scheduleResponse.data?.coachId) {
+          const coachResponse = await axios.get(`/api/coaches/${scheduleResponse.data.coachId}`);
+          setCoachInfo(coachResponse.data);
+        }
+
+        // Fetch meal plan
+        if (scheduleResponse.data?.mealPlanId) {
+          const mealPlanResponse = await axios.get(`/api/mealplans/${scheduleResponse.data.mealPlanId}`);
+          setMealPlan(mealPlanResponse.data);
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
   }, [user]);
 
-  const handleDateChange = (date) => {
-    setSelectedDate(date);
+  const handleDownloadReport = async () => {
+    try {
+      const userId = user?.id;
+      if (!userId) {
+        alert("Please log in to download your report");
+        return;
+      }
+
+      const response = await axios.get(`/api/schedules/${userId}/report`, {
+        responseType: 'blob'
+      });
+
+      const file = new Blob([response.data], { type: 'application/pdf' });
+      const fileURL = URL.createObjectURL(file);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = fileURL;
+      downloadLink.download = `schedule-report-${userId}.pdf`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      console.error('Error downloading report:', error);
+      alert('Failed to download report. Please try again.');
+    }
   };
 
   const handleSessionClick = (session) => {
@@ -112,30 +180,33 @@ const SchedulePage = () => {
     setOpenDialog(true);
   };
 
-  const handleSubmitChange = () => {
-    // Mock the schedule change request
-    const updatedSchedule = {
-      ...schedule,
-      sessions: schedule.sessions.map((session) =>
-        session.id === selectedSession.id
-          ? { ...session, status: "rescheduled" }
-          : session
-      ),
-    };
-    setSchedule(updatedSchedule);
-    setOpenDialog(false);
-  };
+  const handleSubmitChange = async () => {
+    try {
+      const changeRequest = {
+        sessionId: selectedSession.id,
+        newDate: newDate,
+        newTime: newTime,
+        reason: reason
+      };
 
-  const handleDownloadReport = () => {
-    // Mock the report download
-    alert("Downloading schedule report...");
+      await axios.post('/api/schedules/change-request', changeRequest);
+      
+      // Refresh schedule data
+      const updatedSchedule = await axios.get(`/api/schedules/user/${user.id}`);
+      setSchedule(updatedSchedule.data);
+      
+      setOpenDialog(false);
+      alert('Change request submitted successfully');
+    } catch (error) {
+      console.error('Error submitting change request:', error);
+      alert('Failed to submit change request. Please try again.');
+    }
   };
 
   const getSessionsForDate = (date) => {
-    if (!schedule) return [];
+    if (!schedule?.sessions) return [];
     return schedule.sessions.filter(
-      (session) =>
-        session.date.toDateString() === date.toDateString()
+      (session) => new Date(session.date).toDateString() === date.toDateString()
     );
   };
 
@@ -163,12 +234,18 @@ const SchedulePage = () => {
     }
   };
 
-  if (!user) {
+  if (loading) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography variant="h5" color="error">
-          Please log in to view your schedule
-        </Typography>
+        <Typography variant="h5">Loading your schedule...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 3, textAlign: "center" }}>
+        <Typography variant="h5" color="error">Error loading schedule: {error}</Typography>
       </Box>
     );
   }
@@ -176,7 +253,7 @@ const SchedulePage = () => {
   if (!schedule) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography variant="h5">Loading schedule...</Typography>
+        <Typography variant="h5">No schedule found</Typography>
       </Box>
     );
   }
@@ -196,12 +273,13 @@ const SchedulePage = () => {
                 color="primary"
                 startIcon={<Download />}
                 onClick={handleDownloadReport}
+                disabled={!user}
               >
                 Download Report
               </Button>
             </Box>
             <Typography variant="subtitle1" color="text.secondary">
-              {mockUsers.find(u => u.id === user.id)?.name} - {schedule.membershipType} Member
+              {user?.name} - {schedule?.membershipType} Member
             </Typography>
           </StyledPaper>
         </Grid>
@@ -213,7 +291,7 @@ const SchedulePage = () => {
               Calendar View
             </Typography>
             <StyledCalendar
-              onChange={handleDateChange}
+              onChange={setSelectedDate}
               value={selectedDate}
               tileContent={({ date }) => {
                 const sessions = getSessionsForDate(date);
@@ -229,10 +307,98 @@ const SchedulePage = () => {
           </StyledPaper>
         </Grid>
 
-        {/* Sessions and Meal Plan Section */}
+        {/* Coach Information Section */}
+        {coachInfo && (
+          <Grid item xs={12} md={4}>
+            <CoachCard>
+              <CardHeader
+                avatar={
+                  <Avatar
+                    src={coachInfo.profileImage || "https://via.placeholder.com/150"}
+                    sx={{ width: 80, height: 80 }}
+                  />
+                }
+                title={coachInfo.name}
+                subheader={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Star sx={{ color: 'gold' }} />
+                    <Typography variant="body2">{coachInfo.rating}</Typography>
+                  </Box>
+                }
+              />
+              <CardContent>
+                <Typography variant="subtitle1" gutterBottom>
+                  {coachInfo.specialization}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Experience: {coachInfo.experience}
+                </Typography>
+                <Divider sx={{ my: 2 }} />
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Email fontSize="small" />
+                    <Typography variant="body2">{coachInfo.email}</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Phone fontSize="small" />
+                    <Typography variant="body2">{coachInfo.phone}</Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+            </CoachCard>
+          </Grid>
+        )}
+
+        {/* Meal Plan Section */}
+        {mealPlan && (
+          <Grid item xs={12}>
+            <StyledPaper>
+              <Typography variant="h6" gutterBottom>
+                Your Meal Plan
+              </Typography>
+              <Grid container spacing={2}>
+                {mealPlan.meals.map((meal, index) => (
+                  <Grid item xs={12} sm={6} md={3} key={index}>
+                    <MealPlanCard>
+                      <CardContent>
+                        <Typography variant="h6" gutterBottom>
+                          {meal.day}
+                        </Typography>
+                        <List>
+                          <ListItem>
+                            <ListItemIcon><Restaurant fontSize="small" /></ListItemIcon>
+                            <ListItemText primary="Breakfast" secondary={meal.breakfast} />
+                          </ListItem>
+                          <ListItem>
+                            <ListItemIcon><Restaurant fontSize="small" /></ListItemIcon>
+                            <ListItemText primary="Lunch" secondary={meal.lunch} />
+                          </ListItem>
+                          <ListItem>
+                            <ListItemIcon><Restaurant fontSize="small" /></ListItemIcon>
+                            <ListItemText primary="Dinner" secondary={meal.dinner} />
+                          </ListItem>
+                          {meal.snacks && (
+                            <ListItem>
+                              <ListItemIcon><Restaurant fontSize="small" /></ListItemIcon>
+                              <ListItemText 
+                                primary="Snacks" 
+                                secondary={Array.isArray(meal.snacks) ? meal.snacks.join(', ') : meal.snacks} 
+                              />
+                            </ListItem>
+                          )}
+                        </List>
+                      </CardContent>
+                    </MealPlanCard>
+                  </Grid>
+                ))}
+              </Grid>
+            </StyledPaper>
+          </Grid>
+        )}
+
+        {/* Sessions Section */}
         <Grid item xs={12} md={4}>
           <Grid container spacing={2}>
-            {/* Sessions for Selected Date */}
             <Grid item xs={12}>
               <StyledPaper>
                 <Typography variant="h6" gutterBottom>
@@ -244,12 +410,12 @@ const SchedulePage = () => {
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <Box>
                           <Typography variant="h6" gutterBottom>
-                            {mockWorkoutTypes.find(wt => wt.name.toLowerCase().includes(session.type))?.name}
+                            {session.workoutType}
                           </Typography>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
                             <AccessTime fontSize="small" />
                             <Typography variant="body2">
-                              {session.date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              {new Date(session.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </Typography>
                           </Box>
                           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
@@ -288,60 +454,6 @@ const SchedulePage = () => {
                 )}
               </StyledPaper>
             </Grid>
-
-            {/* Meal Plan */}
-            <Grid item xs={12}>
-              <StyledPaper>
-                <Typography variant="h6" gutterBottom>
-                  Meal Plan
-                </Typography>
-                <MealPlanCard>
-                  <CardContent>
-                    <List>
-                      <ListItem>
-                        <ListItemIcon>
-                          <Restaurant />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Breakfast"
-                          secondary={schedule.mealPlan.breakfast}
-                        />
-                      </ListItem>
-                      <Divider />
-                      <ListItem>
-                        <ListItemIcon>
-                          <Restaurant />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Lunch"
-                          secondary={schedule.mealPlan.lunch}
-                        />
-                      </ListItem>
-                      <Divider />
-                      <ListItem>
-                        <ListItemIcon>
-                          <Restaurant />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Dinner"
-                          secondary={schedule.mealPlan.dinner}
-                        />
-                      </ListItem>
-                      <Divider />
-                      <ListItem>
-                        <ListItemIcon>
-                          <Restaurant />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary="Snacks"
-                          secondary={schedule.mealPlan.snacks.join(", ")}
-                        />
-                      </ListItem>
-                    </List>
-                  </CardContent>
-                </MealPlanCard>
-              </StyledPaper>
-            </Grid>
           </Grid>
         </Grid>
       </Grid>
@@ -355,13 +467,13 @@ const SchedulePage = () => {
               Current Session:
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {selectedSession?.type} - {selectedSession?.date.toLocaleString()}
+              {selectedSession?.workoutType} - {selectedSession?.date && new Date(selectedSession.date).toLocaleString()}
             </Typography>
             <TextField
               label="New Date"
               type="date"
               value={newDate || ""}
-              onChange={(e) => setNewDate(new Date(e.target.value))}
+              onChange={(e) => setNewDate(e.target.value)}
               fullWidth
               sx={{ mt: 2 }}
               InputLabelProps={{ shrink: true }}

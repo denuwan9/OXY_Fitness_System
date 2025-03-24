@@ -36,8 +36,8 @@ const userSchema = new mongoose.Schema({
   },
   membershipType: {
     type: String,
-    enum: ['basic', 'premium', 'vip'],
-    default: 'basic'
+    enum: ['Platinum', 'Gold', 'Silver'],
+    default: 'Silver'
   },
   membershipStartDate: {
     type: Date
