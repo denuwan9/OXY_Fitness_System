@@ -187,25 +187,50 @@ exports.getExercisePlan = async (req, res) => {
 exports.assignMealPlan = async (req, res) => {
   try {
     const { scheduleId, meals, membershipType } = req.body;
-    const schedule = await Schedule.findById(scheduleId);
+    console.log('Assigning meal plan:', { scheduleId, meals, membershipType });
 
+    // Find the schedule
+    const schedule = await Schedule.findById(scheduleId);
     if (!schedule) {
+      console.log('Schedule not found:', scheduleId);
       return res.status(404).json({ message: 'Schedule not found' });
     }
 
-    const mealPlan = new MealPlan({
-      membershipType,
-      meals
-    });
+    // Create or update meal plan
+    let mealPlan;
+    if (schedule.mealPlan) {
+      // Update existing meal plan
+      mealPlan = await MealPlan.findById(schedule.mealPlan);
+      if (mealPlan) {
+        mealPlan.meals = meals;
+        mealPlan.membershipType = membershipType;
+        await mealPlan.save();
+      }
+    } else {
+      // Create new meal plan
+      mealPlan = new MealPlan({
+        membershipType,
+        meals
+      });
+      await mealPlan.save();
+    }
 
-    await mealPlan.save();
-
+    // Update schedule with meal plan reference
     schedule.mealPlan = mealPlan._id;
     await schedule.save();
 
-    res.json({ schedule, mealPlan });
+    console.log('Meal plan assigned successfully:', mealPlan);
+    res.json({ 
+      message: 'Meal plan assigned successfully',
+      schedule,
+      mealPlan 
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error assigning meal plan:', error);
+    res.status(500).json({ 
+      message: 'Error assigning meal plan',
+      error: error.message 
+    });
   }
 };
 
@@ -351,5 +376,38 @@ exports.createSchedule = async (req, res) => {
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
+  }
+};
+
+// Update schedule
+exports.updateSchedule = async (req, res) => {
+  try {
+    const schedule = await Schedule.findById(req.params.id);
+    
+    if (!schedule) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+
+    // Check if user is authorized to update
+    if (schedule.coachId.toString() !== req.user._id) {
+      return res.status(403).json({ message: 'Not authorized to update this schedule' });
+    }
+
+    // Update the schedule with the new data
+    Object.assign(schedule, req.body);
+    
+    // Ensure dates are properly formatted
+    if (schedule.sessions) {
+      schedule.sessions = schedule.sessions.map(session => ({
+        ...session,
+        date: new Date(session.date)
+      }));
+    }
+
+    await schedule.save();
+    res.json(schedule);
+  } catch (error) {
+    console.error('Update schedule error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 }; 

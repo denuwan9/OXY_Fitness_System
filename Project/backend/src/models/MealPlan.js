@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const mealPlanSchema = new mongoose.Schema({
   membershipType: {
     type: String,
-    enum: ['Platinum', 'Gold', 'Silver'],
+    enum: ['basic', 'premium', 'vip'],
     required: true
   },
   meals: [{

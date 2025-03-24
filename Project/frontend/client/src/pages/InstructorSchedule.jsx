@@ -50,7 +50,8 @@ import {
   CheckCircle,
   Cancel,
   Schedule,
-  Person
+  Person,
+  Delete
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { mockSchedules, mockWorkoutTypes } from '../mockData/scheduleData';
@@ -101,14 +102,18 @@ const InstructorSchedule = () => {
     notes: ''
   });
   const [mealPlanData, setMealPlanData] = useState({
-    breakfast: '',
-    lunch: '',
-    dinner: '',
-    snacks: ''
+    meals: [{
+      day: 'Monday',
+      breakfast: '',
+      lunch: '',
+      dinner: '',
+      snacks: []
+    }]
   });
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingSchedule, setEditingSchedule] = useState(null);
 
   useEffect(() => {
     loadAssignedMembers();
@@ -157,14 +162,17 @@ const InstructorSchedule = () => {
       const memberSchedules = await scheduleService.getUserSchedule(member._id);
       console.log('Received schedules:', memberSchedules);
       
+      // Ensure memberSchedules is an array
+      const schedulesArray = Array.isArray(memberSchedules) ? memberSchedules : [memberSchedules];
+      
       // Store all schedules for this member
       setMemberSchedules(prev => ({
         ...prev,
-        [member._id]: memberSchedules
+        [member._id]: schedulesArray
       }));
       
       // Combine all sessions from all schedules
-      const allSessions = memberSchedules.reduce((acc, schedule) => {
+      const allSessions = schedulesArray.reduce((acc, schedule) => {
         if (schedule.sessions && Array.isArray(schedule.sessions)) {
           return [...acc, ...schedule.sessions];
         }
@@ -203,15 +211,36 @@ const InstructorSchedule = () => {
     }
   };
 
-  const handleEditSchedule = (session) => {
-    setSelectedDate(new Date(session.date));
+  const handleEditSchedule = (schedule) => {
+    setEditingSchedule(schedule);
+    setSelectedDate(new Date(schedule.sessions[0].date));
     setScheduleData({
-      time: session.time || '',
-      workoutType: session.workoutType || '',
-      duration: session.duration || '',
-      notes: session.notes || ''
+      time: schedule.sessions[0].time || '',
+      workoutType: schedule.sessions[0].workoutType || '',
+      duration: schedule.sessions[0].duration || '',
+      notes: schedule.sessions[0].notes || ''
     });
     setOpenScheduleDialog(true);
+  };
+
+  const handleDeleteSchedule = async (scheduleId) => {
+    if (!scheduleId) {
+      setError('Invalid schedule ID');
+      return;
+    }
+
+    try {
+      await scheduleService.deleteSchedule(scheduleId);
+      
+      // Update local state to remove the deleted schedule
+      setMemberSchedules(prev => ({
+        ...prev,
+        [selectedMember._id]: prev[selectedMember._id].filter(s => s._id !== scheduleId)
+      }));
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      setError('Failed to delete schedule. Please try again.');
+    }
   };
 
   const handleScheduleSubmit = async () => {
@@ -237,18 +266,10 @@ const InstructorSchedule = () => {
       // Format the date to ISO string
       const formattedDate = selectedDate.toISOString().split('T')[0];
 
-      // Find existing schedule for this date
-      const existingSchedules = memberSchedules[selectedMember._id] || [];
-      const existingSchedule = existingSchedules.find(schedule => 
-        schedule.sessions.some(session => 
-          new Date(session.date).toISOString().split('T')[0] === formattedDate
-        )
-      );
-
       let schedulePayload;
-      if (existingSchedule) {
+      if (editingSchedule) {
         // Update existing schedule
-        const updatedSessions = existingSchedule.sessions.map(session => {
+        const updatedSessions = editingSchedule.sessions.map(session => {
           if (new Date(session.date).toISOString().split('T')[0] === formattedDate) {
             return {
               ...session,
@@ -263,7 +284,7 @@ const InstructorSchedule = () => {
         });
 
         schedulePayload = {
-          _id: existingSchedule._id, // Include the schedule ID for updates
+          _id: editingSchedule._id,
           userId: selectedMember._id,
           coachId: user._id,
           membershipType,
@@ -289,19 +310,104 @@ const InstructorSchedule = () => {
       }
 
       console.log('Submitting schedule:', schedulePayload);
-      await scheduleService.saveSchedule(schedulePayload);
+      const response = await scheduleService.saveSchedule(schedulePayload);
+      
+      // Update local state with the response
+      setMemberSchedules(prev => ({
+        ...prev,
+        [selectedMember._id]: prev[selectedMember._id].map(s => 
+          s._id === response._id ? response : s
+        )
+      }));
+
       setOpenScheduleDialog(false);
-      loadAssignedMembers(); // Refresh the list after saving
+      setEditingSchedule(null);
+      setError(null);
     } catch (error) {
       console.error('Error saving schedule:', error);
       setError('Failed to save schedule. Please try again.');
     }
   };
 
-  const handleMealPlanSubmit = () => {
-    // Here you would typically make an API call to save the meal plan
-    console.log('Saving meal plan:', mealPlanData);
-    setOpenMealPlanDialog(false);
+  const handleCloseScheduleDialog = () => {
+    setOpenScheduleDialog(false);
+    setEditingSchedule(null);
+    setScheduleData({
+      time: '',
+      workoutType: '',
+      duration: '',
+      notes: ''
+    });
+  };
+
+  const handleOpenMealPlanDialog = () => {
+    const schedule = memberSchedules[selectedMember._id]?.find(s => 
+      new Date(s.sessions[0].date).toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0]
+    );
+
+    if (schedule?.mealPlan) {
+      setMealPlanData({
+        meals: schedule.mealPlan.meals
+      });
+    } else {
+      // Initialize with default meal plan structure
+      setMealPlanData({
+        meals: [{
+          day: 'Monday',
+          breakfast: '',
+          lunch: '',
+          dinner: '',
+          snacks: []
+        }]
+      });
+    }
+    setOpenMealPlanDialog(true);
+  };
+
+  const handleMealPlanSubmit = async () => {
+    try {
+      if (!selectedMember) {
+        setError('Please select a member first');
+        return;
+      }
+
+      const schedule = memberSchedules[selectedMember._id]?.find(s => 
+        new Date(s.sessions[0].date).toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0]
+      );
+
+      if (!schedule) {
+        setError('Please create a schedule first before adding a meal plan');
+        return;
+      }
+
+      const mealPlanPayload = {
+        scheduleId: schedule._id,
+        membershipType: selectedMember.membershipType,
+        meals: mealPlanData.meals
+      };
+
+      const response = await scheduleService.assignMealPlan(mealPlanPayload);
+      
+      // Update the local state with the new meal plan
+      setMemberSchedules(prev => ({
+        ...prev,
+        [selectedMember._id]: prev[selectedMember._id].map(s => {
+          if (s._id === schedule._id) {
+            return {
+              ...s,
+              mealPlan: response
+            };
+          }
+          return s;
+        })
+      }));
+
+      setOpenMealPlanDialog(false);
+      setError(null); // Clear any previous errors
+    } catch (error) {
+      console.error('Error saving meal plan:', error);
+      setError('Failed to save meal plan. Please try again.');
+    }
   };
 
   const handleDownloadReport = () => {
@@ -324,18 +430,14 @@ const InstructorSchedule = () => {
       return null;
     }
 
-    const allSessions = memberSchedules[selectedMember._id].reduce((acc, schedule) => {
-      if (schedule.sessions && Array.isArray(schedule.sessions)) {
-        return [...acc, ...schedule.sessions];
-      }
-      return acc;
-    }, []);
-
-    // Sort sessions by date
-    allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const schedules = memberSchedules[selectedMember._id];
+    if (!Array.isArray(schedules)) {
+      console.error('Schedules is not an array:', schedules);
+      return null;
+    }
 
     return (
-      <TableContainer component={Paper} sx={{ mt: 2 }}>
+      <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -348,31 +450,35 @@ const InstructorSchedule = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {allSessions.map((session, index) => (
-              <TableRow key={`${session.date}-${session.time}-${index}`}>
-                <TableCell>{new Date(session.date).toLocaleDateString()}</TableCell>
-                <TableCell>{session.time}</TableCell>
-                <TableCell>{session.duration}</TableCell>
-                <TableCell>{getWorkoutTypeName(session.workoutType)}</TableCell>
+            {schedules.map((schedule) => (
+              <TableRow key={schedule._id}>
                 <TableCell>
-                  <Chip 
-                    label={session.status} 
-                    color={
-                      session.status === 'scheduled' ? 'primary' :
-                      session.status === 'completed' ? 'success' :
-                      session.status === 'cancelled' ? 'error' :
-                      'warning'
-                    }
-                    size="small"
-                  />
+                  {new Date(schedule.sessions[0].date).toLocaleDateString()}
                 </TableCell>
+                <TableCell>{schedule.sessions[0].time}</TableCell>
+                <TableCell>{schedule.sessions[0].duration}</TableCell>
                 <TableCell>
-                  <IconButton 
-                    size="small" 
-                    onClick={() => handleEditSchedule(session)}
-                    color="primary"
+                  {schedule.sessions[0].workoutType === 1
+                    ? "Cardio"
+                    : schedule.sessions[0].workoutType === 2
+                    ? "Strength Training"
+                    : schedule.sessions[0].workoutType === 3
+                    ? "Flexibility"
+                    : "HIIT"}
+                </TableCell>
+                <TableCell>{schedule.sessions[0].status}</TableCell>
+                <TableCell>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleEditSchedule(schedule)}
                   >
                     <Edit />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteSchedule(schedule._id)}
+                  >
+                    <Delete />
                   </IconButton>
                 </TableCell>
               </TableRow>
@@ -380,6 +486,85 @@ const InstructorSchedule = () => {
           </TableBody>
         </Table>
       </TableContainer>
+    );
+  };
+
+  const renderMealPlanSection = () => {
+    if (!selectedMember) return null;
+
+    const schedule = memberSchedules[selectedMember._id]?.find(s => 
+      new Date(s.sessions[0].date).toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0]
+    );
+
+    return (
+      <StyledPaper>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">
+            Meal Plan for {selectedMember.name}
+          </Typography>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<Restaurant />}
+            onClick={handleOpenMealPlanDialog}
+          >
+            Edit Meal Plan
+          </Button>
+        </Box>
+        {schedule?.mealPlan?.meals ? (
+          <Grid container spacing={2}>
+            {schedule.mealPlan.meals.map((meal, index) => (
+              <Grid item xs={12} key={meal._id || index}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      {meal.day}
+                    </Typography>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" color="primary">
+                          Breakfast
+                        </Typography>
+                        <Typography variant="body1">
+                          {meal.breakfast}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" color="primary">
+                          Lunch
+                        </Typography>
+                        <Typography variant="body1">
+                          {meal.lunch}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" color="primary">
+                          Dinner
+                        </Typography>
+                        <Typography variant="body1">
+                          {meal.dinner}
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" color="primary">
+                          Snacks
+                        </Typography>
+                        <Typography variant="body1">
+                          {Array.isArray(meal.snacks) ? meal.snacks.join(', ') : ''}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Typography variant="body1" color="text.secondary" align="center">
+            No meal plan assigned for this date
+          </Typography>
+        )}
+      </StyledPaper>
     );
   };
 
@@ -462,75 +647,69 @@ const InstructorSchedule = () => {
         {/* Schedule Management Section */}
         <Grid item xs={12} md={8}>
           {selectedMember ? (
-            <StyledPaper>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6">
-                  Schedule for {selectedMember.name}
-                </Typography>
-                <Box>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<Schedule />}
-                    onClick={() => setOpenScheduleDialog(true)}
-                    sx={{ mr: 1 }}
-                  >
-                    Edit Schedule
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    startIcon={<Restaurant />}
-                    onClick={() => setOpenMealPlanDialog(true)}
-                    sx={{ mr: 1 }}
-                  >
-                    Meal Plan
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<Download />}
-                    onClick={handleDownloadReport}
-                  >
-                    Download Report
-                  </Button>
+            <>
+              <StyledPaper>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6">
+                    Schedule for {selectedMember.name}
+                  </Typography>
+                  <Box>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      startIcon={<Schedule />}
+                      onClick={() => setOpenScheduleDialog(true)}
+                      sx={{ mr: 1 }}
+                    >
+                      Edit Schedule
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Download />}
+                      onClick={handleDownloadReport}
+                    >
+                      Download Report
+                    </Button>
+                  </Box>
                 </Box>
-              </Box>
-              <StyledCalendar
-                onChange={handleDateChange}
-                value={selectedDate}
-                tileContent={({ date }) => {
-                  const memberSchedule = memberSchedules[selectedMember._id];
-                  if (!memberSchedule) return null;
+                <StyledCalendar
+                  onChange={handleDateChange}
+                  value={selectedDate}
+                  tileContent={({ date }) => {
+                    const memberSchedule = memberSchedules[selectedMember._id];
+                    if (!memberSchedule) return null;
 
-                  // Combine all sessions from all schedules
-                  const allSessions = memberSchedule.reduce((acc, schedule) => {
-                    if (schedule.sessions && Array.isArray(schedule.sessions)) {
-                      return [...acc, ...schedule.sessions];
-                    }
-                    return acc;
-                  }, []);
+                    // Combine all sessions from all schedules
+                    const allSessions = memberSchedule.reduce((acc, schedule) => {
+                      if (schedule.sessions && Array.isArray(schedule.sessions)) {
+                        return [...acc, ...schedule.sessions];
+                      }
+                      return acc;
+                    }, []);
 
-                  // Filter sessions for the current date
-                  const sessions = allSessions.filter(
-                    session => new Date(session.date).toDateString() === date.toDateString()
-                  );
+                    // Filter sessions for the current date
+                    const sessions = allSessions.filter(
+                      session => new Date(session.date).toDateString() === date.toDateString()
+                    );
 
-                  return sessions?.length > 0 ? (
-                    <Box sx={{ position: "relative", height: "100%" }}>
-                      <Typography variant="caption" sx={{ position: "absolute", bottom: 2, left: 2 }}>
-                        {sessions.length} session(s)
-                      </Typography>
-                    </Box>
-                  ) : null;
-                }}
-              />
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Existing Schedules
-                </Typography>
-                {renderScheduleTable()}
-              </Box>
-            </StyledPaper>
+                    return sessions?.length > 0 ? (
+                      <Box sx={{ position: "relative", height: "100%" }}>
+                        <Typography variant="caption" sx={{ position: "absolute", bottom: 2, left: 2 }}>
+                          {sessions.length} session(s)
+                        </Typography>
+                      </Box>
+                    ) : null;
+                  }}
+                />
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Existing Schedules
+                  </Typography>
+                  {renderScheduleTable()}
+                </Box>
+              </StyledPaper>
+              {renderMealPlanSection()}
+            </>
           ) : (
             <StyledPaper>
               <Typography variant="h6" color="text.secondary" align="center">
@@ -542,8 +721,8 @@ const InstructorSchedule = () => {
       </Grid>
 
       {/* Schedule Dialog */}
-      <Dialog open={openScheduleDialog} onClose={() => setOpenScheduleDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Edit Schedule</DialogTitle>
+      <Dialog open={openScheduleDialog} onClose={handleCloseScheduleDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
@@ -603,9 +782,9 @@ const InstructorSchedule = () => {
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenScheduleDialog(false)}>Cancel</Button>
+          <Button onClick={handleCloseScheduleDialog}>Cancel</Button>
           <Button onClick={handleScheduleSubmit} variant="contained" color="primary">
-            Save Schedule
+            {editingSchedule ? 'Update Schedule' : 'Save Schedule'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -615,46 +794,74 @@ const InstructorSchedule = () => {
         <DialogTitle>Edit Meal Plan</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Breakfast"
-                multiline
-                rows={2}
-                value={mealPlanData.breakfast}
-                onChange={(e) => setMealPlanData({ ...mealPlanData, breakfast: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Lunch"
-                multiline
-                rows={2}
-                value={mealPlanData.lunch}
-                onChange={(e) => setMealPlanData({ ...mealPlanData, lunch: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Dinner"
-                multiline
-                rows={2}
-                value={mealPlanData.dinner}
-                onChange={(e) => setMealPlanData({ ...mealPlanData, dinner: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Snacks"
-                multiline
-                rows={2}
-                value={mealPlanData.snacks}
-                onChange={(e) => setMealPlanData({ ...mealPlanData, snacks: e.target.value })}
-              />
-            </Grid>
+            {mealPlanData.meals.map((meal, index) => (
+              <React.Fragment key={index}>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    {meal.day}
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Breakfast"
+                    multiline
+                    rows={2}
+                    value={meal.breakfast}
+                    onChange={(e) => {
+                      const newMeals = [...mealPlanData.meals];
+                      newMeals[index] = { ...newMeals[index], breakfast: e.target.value };
+                      setMealPlanData({ ...mealPlanData, meals: newMeals });
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Lunch"
+                    multiline
+                    rows={2}
+                    value={meal.lunch}
+                    onChange={(e) => {
+                      const newMeals = [...mealPlanData.meals];
+                      newMeals[index] = { ...newMeals[index], lunch: e.target.value };
+                      setMealPlanData({ ...mealPlanData, meals: newMeals });
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Dinner"
+                    multiline
+                    rows={2}
+                    value={meal.dinner}
+                    onChange={(e) => {
+                      const newMeals = [...mealPlanData.meals];
+                      newMeals[index] = { ...newMeals[index], dinner: e.target.value };
+                      setMealPlanData({ ...mealPlanData, meals: newMeals });
+                    }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Snacks (comma-separated)"
+                    multiline
+                    rows={2}
+                    value={meal.snacks.join(', ')}
+                    onChange={(e) => {
+                      const newMeals = [...mealPlanData.meals];
+                      newMeals[index] = { 
+                        ...newMeals[index], 
+                        snacks: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                      };
+                      setMealPlanData({ ...mealPlanData, meals: newMeals });
+                    }}
+                  />
+                </Grid>
+              </React.Fragment>
+            ))}
           </Grid>
         </DialogContent>
         <DialogActions>

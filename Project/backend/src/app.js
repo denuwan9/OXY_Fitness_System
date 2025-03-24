@@ -4,7 +4,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpecs = require('./config/swagger');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
-const scheduleRoutes = require('./routes/schedule');
+const scheduleRoutes = require('./routes/schedules');
 const coachAvailabilityRoutes = require('./routes/coachAvailability');
 const userRoutes = require('./routes/userRoutes');
 require('dotenv').config();
@@ -31,18 +31,18 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/schedules', scheduleRoutes);
+app.use('/api/coach-availability', coachAvailabilityRoutes);
+
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   explorer: true,
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "OXY Fitness API Documentation"
 }));
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/schedules', scheduleRoutes);
-app.use('/api/coach-availability', coachAvailabilityRoutes);
-app.use('/api/users', userRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
