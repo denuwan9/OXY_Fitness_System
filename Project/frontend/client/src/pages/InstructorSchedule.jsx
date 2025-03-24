@@ -154,13 +154,28 @@ const InstructorSchedule = () => {
   const handleMemberSelect = async (member) => {
     setSelectedMember(member);
     try {
-      const memberSchedule = await scheduleService.getUserSchedule(member._id);
+      const memberSchedules = await scheduleService.getUserSchedule(member._id);
+      console.log('Received schedules:', memberSchedules);
+      
+      // Store all schedules for this member
       setMemberSchedules(prev => ({
         ...prev,
-        [member._id]: memberSchedule
+        [member._id]: memberSchedules
       }));
-      if (memberSchedule && memberSchedule.sessions && memberSchedule.sessions.length > 0) {
-        const nextSession = memberSchedule.sessions[0];
+      
+      // Combine all sessions from all schedules
+      const allSessions = memberSchedules.reduce((acc, schedule) => {
+        if (schedule.sessions && Array.isArray(schedule.sessions)) {
+          return [...acc, ...schedule.sessions];
+        }
+        return acc;
+      }, []);
+
+      if (allSessions.length > 0) {
+        // Sort sessions by date
+        allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+        const nextSession = allSessions[0];
+        setSelectedDate(new Date(nextSession.date));
         setScheduleData({
           time: nextSession.time || '',
           workoutType: nextSession.workoutType || '',
@@ -168,6 +183,7 @@ const InstructorSchedule = () => {
           notes: nextSession.notes || ''
         });
       } else {
+        setSelectedDate(new Date());
         setScheduleData({
           time: '',
           workoutType: '',
@@ -177,6 +193,7 @@ const InstructorSchedule = () => {
       }
     } catch (error) {
       console.error('Error fetching member schedule:', error);
+      setSelectedDate(new Date());
       setScheduleData({
         time: '',
         workoutType: '',
@@ -206,13 +223,16 @@ const InstructorSchedule = () => {
         ? member.membershipType 
         : 'Silver';
 
+      // Format the date to ISO string
+      const formattedDate = selectedDate.toISOString().split('T')[0];
+
       const schedulePayload = {
         userId: selectedMember._id,
         coachId: user._id,
         membershipType,
         scheduleType: 'weekday',
         sessions: [{
-          date: selectedDate,
+          date: formattedDate,
           time: scheduleData.time,
           duration: scheduleData.duration,
           workoutType: parseInt(scheduleData.workoutType),
@@ -240,6 +260,59 @@ const InstructorSchedule = () => {
   const handleDownloadReport = () => {
     // Implement PDF report generation
     console.log('Downloading report for member:', selectedMember?._id);
+  };
+
+  const renderScheduleTable = () => {
+    if (!selectedMember || !memberSchedules[selectedMember._id]) {
+      return null;
+    }
+
+    const allSessions = memberSchedules[selectedMember._id].reduce((acc, schedule) => {
+      if (schedule.sessions && Array.isArray(schedule.sessions)) {
+        return [...acc, ...schedule.sessions];
+      }
+      return acc;
+    }, []);
+
+    // Sort sessions by date
+    allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    return (
+      <TableContainer component={Paper} sx={{ mt: 2 }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Date</TableCell>
+              <TableCell>Time</TableCell>
+              <TableCell>Duration</TableCell>
+              <TableCell>Workout Type</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {allSessions.map((session, index) => (
+              <TableRow key={`${session.date}-${session.time}-${index}`}>
+                <TableCell>{new Date(session.date).toLocaleDateString()}</TableCell>
+                <TableCell>{session.time}</TableCell>
+                <TableCell>{session.duration}</TableCell>
+                <TableCell>{session.workoutType}</TableCell>
+                <TableCell>{session.status}</TableCell>
+                <TableCell>
+                  <IconButton 
+                    size="small" 
+                    onClick={() => handleEditSchedule(session)}
+                    color="primary"
+                  >
+                    <Edit />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
   };
 
   if (!user || (user.role !== 'instructor' && user.role !== 'coach')) {
@@ -359,9 +432,21 @@ const InstructorSchedule = () => {
                 value={selectedDate}
                 tileContent={({ date }) => {
                   const memberSchedule = memberSchedules[selectedMember._id];
-                  const sessions = memberSchedule?.sessions.filter(
+                  if (!memberSchedule) return null;
+
+                  // Combine all sessions from all schedules
+                  const allSessions = memberSchedule.reduce((acc, schedule) => {
+                    if (schedule.sessions && Array.isArray(schedule.sessions)) {
+                      return [...acc, ...schedule.sessions];
+                    }
+                    return acc;
+                  }, []);
+
+                  // Filter sessions for the current date
+                  const sessions = allSessions.filter(
                     session => new Date(session.date).toDateString() === date.toDateString()
                   );
+
                   return sessions?.length > 0 ? (
                     <Box sx={{ position: "relative", height: "100%" }}>
                       <Typography variant="caption" sx={{ position: "absolute", bottom: 2, left: 2 }}>
@@ -375,49 +460,7 @@ const InstructorSchedule = () => {
                 <Typography variant="h6" gutterBottom>
                   Existing Schedules
                 </Typography>
-                {memberSchedules[selectedMember._id]?.sessions?.length > 0 ? (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Date</TableCell>
-                          <TableCell>Time</TableCell>
-                          <TableCell>Duration</TableCell>
-                          <TableCell>Workout Type</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Notes</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {memberSchedules[selectedMember._id].sessions.map((session, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{new Date(session.date).toLocaleDateString()}</TableCell>
-                            <TableCell>{session.time}</TableCell>
-                            <TableCell>{session.duration}</TableCell>
-                            <TableCell>{session.workoutType}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={session.status} 
-                                color={
-                                  session.status === 'scheduled' ? 'primary' :
-                                  session.status === 'completed' ? 'success' :
-                                  session.status === 'cancelled' ? 'error' :
-                                  'warning'
-                                }
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>{session.notes}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Typography color="text.secondary">
-                    No existing schedules found for this member.
-                  </Typography>
-                )}
+                {renderScheduleTable()}
               </Box>
             </StyledPaper>
           ) : (
@@ -435,6 +478,16 @@ const InstructorSchedule = () => {
         <DialogTitle>Edit Schedule</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Date"
+                type="date"
+                value={selectedDate.toISOString().split('T')[0]}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth

@@ -39,6 +39,11 @@ const scheduleSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    duration: {
+      type: String,
+      required: true,
+      default: '60 minutes'
+    },
     notes: String
   }],
   mealPlan: {

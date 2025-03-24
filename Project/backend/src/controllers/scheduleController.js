@@ -331,7 +331,8 @@ exports.createSchedule = async (req, res) => {
       scheduleType,
       sessions: sessions.map(session => ({
         ...session,
-        date: new Date(session.date)
+        date: new Date(session.date),
+        duration: session.duration || '60 minutes' // Default to 60 minutes if not provided
       }))
     });
 

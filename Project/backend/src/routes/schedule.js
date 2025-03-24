@@ -247,15 +247,16 @@ router.delete('/:id', auth, async (req, res) => {
 // Get user's schedule
 router.get('/user/:userId', auth, async (req, res) => {
   try {
-    const schedule = await Schedule.findOne({ userId: req.params.userId })
+    const schedules = await Schedule.find({ userId: req.params.userId })
       .populate('coachId', 'name email')
-      .populate('mealPlan');
+      .populate('mealPlan')
+      .sort({ 'sessions.date': 1 }); // Sort by session date
     
-    if (!schedule) {
-      return res.status(404).json({ message: 'Schedule not found' });
+    if (!schedules || schedules.length === 0) {
+      return res.status(404).json({ message: 'No schedules found for this user' });
     }
     
-    res.json(schedule);
+    res.json(schedules);
   } catch (error) {
     console.error('Get user schedule error:', error);
     res.status(500).json({ message: 'Server error' });

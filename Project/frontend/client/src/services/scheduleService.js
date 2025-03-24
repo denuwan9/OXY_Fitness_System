@@ -51,8 +51,14 @@ const scheduleService = {
   },
 
   getUserSchedule: async (userId) => {
-    const response = await axiosInstance.get(`/user/${userId}`);
-    return response.data;
+    try {
+      const response = await axiosInstance.get(`/user/${userId}`);
+      console.log('User schedule response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching user schedule:', error);
+      throw error;
+    }
   },
 
   requestScheduleChange: async (userId, data) => {
