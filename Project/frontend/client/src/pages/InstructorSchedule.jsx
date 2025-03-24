@@ -203,6 +203,17 @@ const InstructorSchedule = () => {
     }
   };
 
+  const handleEditSchedule = (session) => {
+    setSelectedDate(new Date(session.date));
+    setScheduleData({
+      time: session.time || '',
+      workoutType: session.workoutType || '',
+      duration: session.duration || '',
+      notes: session.notes || ''
+    });
+    setOpenScheduleDialog(true);
+  };
+
   const handleScheduleSubmit = async () => {
     try {
       if (!selectedMember || !scheduleData.time || !scheduleData.workoutType || !scheduleData.duration) {
@@ -226,20 +237,56 @@ const InstructorSchedule = () => {
       // Format the date to ISO string
       const formattedDate = selectedDate.toISOString().split('T')[0];
 
-      const schedulePayload = {
-        userId: selectedMember._id,
-        coachId: user._id,
-        membershipType,
-        scheduleType: 'weekday',
-        sessions: [{
-          date: formattedDate,
-          time: scheduleData.time,
-          duration: scheduleData.duration,
-          workoutType: parseInt(scheduleData.workoutType),
-          notes: scheduleData.notes || '',
-          status: 'scheduled'
-        }]
-      };
+      // Find existing schedule for this date
+      const existingSchedules = memberSchedules[selectedMember._id] || [];
+      const existingSchedule = existingSchedules.find(schedule => 
+        schedule.sessions.some(session => 
+          new Date(session.date).toISOString().split('T')[0] === formattedDate
+        )
+      );
+
+      let schedulePayload;
+      if (existingSchedule) {
+        // Update existing schedule
+        const updatedSessions = existingSchedule.sessions.map(session => {
+          if (new Date(session.date).toISOString().split('T')[0] === formattedDate) {
+            return {
+              ...session,
+              time: scheduleData.time,
+              duration: scheduleData.duration,
+              workoutType: parseInt(scheduleData.workoutType),
+              notes: scheduleData.notes || '',
+              status: session.status // Preserve existing status
+            };
+          }
+          return session;
+        });
+
+        schedulePayload = {
+          _id: existingSchedule._id, // Include the schedule ID for updates
+          userId: selectedMember._id,
+          coachId: user._id,
+          membershipType,
+          scheduleType: 'weekday',
+          sessions: updatedSessions
+        };
+      } else {
+        // Create new schedule
+        schedulePayload = {
+          userId: selectedMember._id,
+          coachId: user._id,
+          membershipType,
+          scheduleType: 'weekday',
+          sessions: [{
+            date: formattedDate,
+            time: scheduleData.time,
+            duration: scheduleData.duration,
+            workoutType: parseInt(scheduleData.workoutType),
+            notes: scheduleData.notes || '',
+            status: 'scheduled'
+          }]
+        };
+      }
 
       console.log('Submitting schedule:', schedulePayload);
       await scheduleService.saveSchedule(schedulePayload);
@@ -260,6 +307,16 @@ const InstructorSchedule = () => {
   const handleDownloadReport = () => {
     // Implement PDF report generation
     console.log('Downloading report for member:', selectedMember?._id);
+  };
+
+  const getWorkoutTypeName = (workoutType) => {
+    const workoutTypes = {
+      1: "Personal Training",
+      2: "Group Class",
+      3: "Cardio Session",
+      4: "Strength Training"
+    };
+    return workoutTypes[workoutType] || 'Unknown';
   };
 
   const renderScheduleTable = () => {
@@ -296,8 +353,19 @@ const InstructorSchedule = () => {
                 <TableCell>{new Date(session.date).toLocaleDateString()}</TableCell>
                 <TableCell>{session.time}</TableCell>
                 <TableCell>{session.duration}</TableCell>
-                <TableCell>{session.workoutType}</TableCell>
-                <TableCell>{session.status}</TableCell>
+                <TableCell>{getWorkoutTypeName(session.workoutType)}</TableCell>
+                <TableCell>
+                  <Chip 
+                    label={session.status} 
+                    color={
+                      session.status === 'scheduled' ? 'primary' :
+                      session.status === 'completed' ? 'success' :
+                      session.status === 'cancelled' ? 'error' :
+                      'warning'
+                    }
+                    size="small"
+                  />
+                </TableCell>
                 <TableCell>
                   <IconButton 
                     size="small" 

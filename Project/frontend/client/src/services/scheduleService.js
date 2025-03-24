@@ -31,23 +31,21 @@ const scheduleService = {
     return response.data;
   },
 
-  saveSchedule: async (data) => {
-    // Ensure required fields are present and correct
-    const scheduleData = {
-      ...data,
-      coachId: data.coachId, // Explicitly include coachId
-      membershipType: data.membershipType || 'Silver', // Default to Silver if not set
-    };
-
-    // Validate membership type
-    const validMembershipTypes = ['Platinum', 'Gold', 'Silver'];
-    if (!validMembershipTypes.includes(scheduleData.membershipType)) {
-      scheduleData.membershipType = 'Silver'; // Default to Silver if invalid
+  saveSchedule: async (scheduleData) => {
+    try {
+      // If scheduleData has an _id, it's an update
+      if (scheduleData._id) {
+        const response = await axiosInstance.put(`/${scheduleData._id}`, scheduleData);
+        return response.data;
+      } else {
+        // If no _id, it's a new schedule
+        const response = await axiosInstance.post('/', scheduleData);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      throw error;
     }
-
-    console.log('Sending schedule data:', scheduleData);
-    const response = await axiosInstance.post('/', scheduleData);
-    return response.data;
   },
 
   getUserSchedule: async (userId) => {

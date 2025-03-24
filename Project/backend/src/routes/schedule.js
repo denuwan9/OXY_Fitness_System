@@ -179,22 +179,31 @@ router.put('/:id', auth, async (req, res) => {
     }
 
     // Check if user is authorized to update
-    const user = await User.findById(req.user.userId);
-    if (!['trainer', 'admin'].includes(user.role) && schedule.trainer.toString() !== req.user.userId) {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!['trainer', 'admin'].includes(user.role) && schedule.coachId.toString() !== req.user._id) {
       return res.status(403).json({ message: 'Not authorized to update this schedule' });
     }
 
-    const { date, time, duration, notes } = req.body;
-    schedule.date = date || schedule.date;
-    schedule.time = time || schedule.time;
-    schedule.duration = duration || schedule.duration;
-    schedule.notes = notes || schedule.notes;
+    // Update the schedule with the new data
+    Object.assign(schedule, req.body);
+    
+    // Ensure dates are properly formatted
+    if (schedule.sessions) {
+      schedule.sessions = schedule.sessions.map(session => ({
+        ...session,
+        date: new Date(session.date)
+      }));
+    }
 
     await schedule.save();
     res.json(schedule);
   } catch (error) {
     console.error('Update schedule error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
