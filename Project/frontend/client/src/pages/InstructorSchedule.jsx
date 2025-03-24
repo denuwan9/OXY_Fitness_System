@@ -93,6 +93,7 @@ const InstructorSchedule = () => {
   const [selectedMember, setSelectedMember] = useState(null);
   const [openScheduleDialog, setOpenScheduleDialog] = useState(false);
   const [openMealPlanDialog, setOpenMealPlanDialog] = useState(false);
+  const [memberSchedules, setMemberSchedules] = useState({});
   const [scheduleData, setScheduleData] = useState({
     time: '',
     workoutType: '',
@@ -150,16 +151,37 @@ const InstructorSchedule = () => {
     setSelectedDate(date);
   };
 
-  const handleMemberSelect = (member) => {
+  const handleMemberSelect = async (member) => {
     setSelectedMember(member);
-    // Find member's schedule
-    const memberSchedule = mockSchedules.find(s => s.userId === member._id);
-    if (memberSchedule) {
+    try {
+      const memberSchedule = await scheduleService.getUserSchedule(member._id);
+      setMemberSchedules(prev => ({
+        ...prev,
+        [member._id]: memberSchedule
+      }));
+      if (memberSchedule && memberSchedule.sessions && memberSchedule.sessions.length > 0) {
+        const nextSession = memberSchedule.sessions[0];
+        setScheduleData({
+          time: nextSession.time || '',
+          workoutType: nextSession.workoutType || '',
+          duration: nextSession.duration || '',
+          notes: nextSession.notes || ''
+        });
+      } else {
+        setScheduleData({
+          time: '',
+          workoutType: '',
+          duration: '',
+          notes: ''
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching member schedule:', error);
       setScheduleData({
-        time: memberSchedule.sessions[0]?.time || '',
-        workoutType: memberSchedule.sessions[0]?.type || '',
-        duration: memberSchedule.sessions[0]?.duration || '',
-        notes: memberSchedule.sessions[0]?.notes || ''
+        time: '',
+        workoutType: '',
+        duration: '',
+        notes: ''
       });
     }
   };
@@ -336,9 +358,9 @@ const InstructorSchedule = () => {
                 onChange={handleDateChange}
                 value={selectedDate}
                 tileContent={({ date }) => {
-                  const memberSchedule = mockSchedules.find(s => s.userId === selectedMember._id);
+                  const memberSchedule = memberSchedules[selectedMember._id];
                   const sessions = memberSchedule?.sessions.filter(
-                    session => session.date.toDateString() === date.toDateString()
+                    session => new Date(session.date).toDateString() === date.toDateString()
                   );
                   return sessions?.length > 0 ? (
                     <Box sx={{ position: "relative", height: "100%" }}>
@@ -349,6 +371,54 @@ const InstructorSchedule = () => {
                   ) : null;
                 }}
               />
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Existing Schedules
+                </Typography>
+                {memberSchedules[selectedMember._id]?.sessions?.length > 0 ? (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Date</TableCell>
+                          <TableCell>Time</TableCell>
+                          <TableCell>Duration</TableCell>
+                          <TableCell>Workout Type</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell>Notes</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {memberSchedules[selectedMember._id].sessions.map((session, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{new Date(session.date).toLocaleDateString()}</TableCell>
+                            <TableCell>{session.time}</TableCell>
+                            <TableCell>{session.duration}</TableCell>
+                            <TableCell>{session.workoutType}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                label={session.status} 
+                                color={
+                                  session.status === 'scheduled' ? 'primary' :
+                                  session.status === 'completed' ? 'success' :
+                                  session.status === 'cancelled' ? 'error' :
+                                  'warning'
+                                }
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>{session.notes}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Typography color="text.secondary">
+                    No existing schedules found for this member.
+                  </Typography>
+                )}
+              </Box>
             </StyledPaper>
           ) : (
             <StyledPaper>

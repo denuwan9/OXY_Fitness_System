@@ -244,4 +244,22 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// Get user's schedule
+router.get('/user/:userId', auth, async (req, res) => {
+  try {
+    const schedule = await Schedule.findOne({ userId: req.params.userId })
+      .populate('coachId', 'name email')
+      .populate('mealPlan');
+    
+    if (!schedule) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+    
+    res.json(schedule);
+  } catch (error) {
+    console.error('Get user schedule error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router; 
