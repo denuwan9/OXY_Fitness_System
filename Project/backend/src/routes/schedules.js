@@ -4,6 +4,9 @@ const scheduleController = require('../controllers/scheduleController');
 const auth = require('../middleware/auth');
 const { checkRole } = require('../middleware/roleCheck');
 
+// Create a new schedule
+router.post('/', auth, checkRole(['coach', 'trainer']), scheduleController.createSchedule);
+
 // Generate schedule for a new member
 router.post('/generate', auth, scheduleController.generateSchedule);
 
@@ -18,6 +21,9 @@ router.put('/approve-change/:scheduleId/:sessionId', auth, checkRole(['manager']
 
 // Update schedule (Coach/Trainer only)
 router.put('/:id', auth, checkRole(['coach', 'trainer']), scheduleController.updateSchedule);
+
+// Delete schedule (Coach/Trainer only)
+router.delete('/:id', auth, checkRole(['coach', 'trainer']), scheduleController.deleteSchedule);
 
 // Exercise plan routes (Coach only)
 router.post('/exercise-plan', auth, checkRole(['coach', 'trainer']), scheduleController.updateExercisePlan);

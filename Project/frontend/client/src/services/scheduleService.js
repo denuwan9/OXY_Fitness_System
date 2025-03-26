@@ -48,6 +48,16 @@ const scheduleService = {
     }
   },
 
+  deleteSchedule: async (scheduleId) => {
+    try {
+      const response = await axiosInstance.delete(`/${scheduleId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting schedule:', error);
+      throw error;
+    }
+  },
+
   getUserSchedule: async (userId) => {
     try {
       const response = await axiosInstance.get(`/user/${userId}`);

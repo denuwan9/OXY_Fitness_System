@@ -4,6 +4,63 @@ const ExercisePlan = require('../models/ExercisePlan');
 const User = require('../models/User');
 const PDFDocument = require('pdfkit');
 
+// Create a new schedule
+exports.createSchedule = async (req, res) => {
+  try {
+    console.log('=== Create Schedule Controller ===');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('User from request:', req.user);
+    
+    const { userId, membershipType, scheduleType, sessions } = req.body;
+    
+    console.log('Extracted data:', {
+      userId,
+      membershipType,
+      scheduleType,
+      sessionsCount: sessions?.length
+    });
+
+    // Validate required fields
+    if (!userId || !membershipType || !scheduleType || !sessions || !sessions.length) {
+      console.log('Missing required fields');
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['userId', 'membershipType', 'scheduleType', 'sessions']
+      });
+    }
+
+    // Create new schedule
+    const schedule = new Schedule({
+      userId,
+      coachId: req.user._id,
+      membershipType,
+      scheduleType,
+      sessions: sessions.map(session => ({
+        ...session,
+        date: new Date(session.date),
+        duration: session.duration || '60 minutes', // Default to 60 minutes if not provided
+        workoutType: getWorkoutTypeName(session.workoutType) // Convert number to string name
+      }))
+    });
+
+    console.log('Created schedule object:', JSON.stringify(schedule, null, 2));
+
+    await schedule.save();
+    console.log('Schedule saved successfully to database');
+    
+    res.status(201).json(schedule);
+  } catch (error) {
+    console.error('=== Create Schedule Error ===');
+    console.error('Error details:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Error creating schedule', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 // Generate AI-powered default training schedule
 exports.generateSchedule = async (req, res) => {
   try {
@@ -67,17 +124,19 @@ exports.generateSchedule = async (req, res) => {
 // Get user's schedule
 exports.getUserSchedule = async (req, res) => {
   try {
-    const schedule = await Schedule.findOne({ userId: req.params.userId })
+    const schedules = await Schedule.find({ userId: req.params.userId })
       .populate('coachId', 'name email')
-      .populate('mealPlan');
+      .populate('mealPlan')
+      .sort({ 'sessions.date': 1 }); // Sort by session date
     
-    if (!schedule) {
-      return res.status(404).json({ message: 'Schedule not found' });
+    if (!schedules || schedules.length === 0) {
+      return res.status(404).json({ message: 'No schedules found for this user' });
     }
     
-    res.json(schedule);
+    res.json(schedules);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Get user schedule error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -251,22 +310,23 @@ exports.getMealPlan = async (req, res) => {
 
 // Helper function to get workout type name
 const getWorkoutTypeName = (type) => {
-  switch (type) {
-    case 1:
-      return "Personal Training";
-    case 2:
-      return "Group Class";
-    case 3:
-      return "Cardio Session";
-    case 4:
-      return "Strength Training";
-    case 5:
-      return "HIIT Training";
-    case 6:
-      return "Yoga Session";
-    default:
-      return type?.toString() || "Unknown"; // Handle undefined/null cases
+  const workoutTypes = {
+    1: "Personal Training",
+    2: "Group Class",
+    3: "Cardio Session",
+    4: "Strength Training",
+    5: "HIIT Training",
+    6: "Yoga Session"
+  };
+  
+  // If type is already a string, return it
+  if (typeof type === 'string') {
+    return type;
   }
+  
+  // If type is a number, convert it to string and look up the name
+  const typeStr = type?.toString();
+  return workoutTypes[typeStr] || "Unknown";
 };
 
 // Generate PDF report
@@ -355,62 +415,6 @@ exports.generatePDFReport = async (req, res) => {
   }
 };
 
-// Create a new schedule
-exports.createSchedule = async (req, res) => {
-  try {
-    console.log('=== Create Schedule Controller ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('User from request:', req.user);
-    
-    const { userId, membershipType, scheduleType, sessions } = req.body;
-    
-    console.log('Extracted data:', {
-      userId,
-      membershipType,
-      scheduleType,
-      sessionsCount: sessions?.length
-    });
-
-    // Validate required fields
-    if (!userId || !membershipType || !scheduleType || !sessions || !sessions.length) {
-      console.log('Missing required fields');
-      return res.status(400).json({ 
-        message: 'Missing required fields',
-        required: ['userId', 'membershipType', 'scheduleType', 'sessions']
-      });
-    }
-
-    // Create new schedule
-    const schedule = new Schedule({
-      userId,
-      coachId: req.user._id,
-      membershipType,
-      scheduleType,
-      sessions: sessions.map(session => ({
-        ...session,
-        date: new Date(session.date),
-        duration: session.duration || '60 minutes' // Default to 60 minutes if not provided
-      }))
-    });
-
-    console.log('Created schedule object:', JSON.stringify(schedule, null, 2));
-
-    await schedule.save();
-    console.log('Schedule saved successfully to database');
-    
-    res.status(201).json(schedule);
-  } catch (error) {
-    console.error('=== Create Schedule Error ===');
-    console.error('Error details:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ 
-      message: 'Error creating schedule', 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-};
-
 // Update schedule
 exports.updateSchedule = async (req, res) => {
   try {
@@ -440,6 +444,33 @@ exports.updateSchedule = async (req, res) => {
     res.json(schedule);
   } catch (error) {
     console.error('Update schedule error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Delete schedule
+exports.deleteSchedule = async (req, res) => {
+  try {
+    const schedule = await Schedule.findById(req.params.id);
+    
+    if (!schedule) {
+      return res.status(404).json({ message: 'Schedule not found' });
+    }
+
+    // Check if user is authorized to delete
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!['trainer', 'admin'].includes(user.role) && schedule.coachId.toString() !== req.user._id) {
+      return res.status(403).json({ message: 'Not authorized to delete this schedule' });
+    }
+
+    await schedule.deleteOne();
+    res.json({ message: 'Schedule deleted successfully' });
+  } catch (error) {
+    console.error('Delete schedule error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 }; 

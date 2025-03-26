@@ -240,16 +240,20 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     // Check if user is authorized to delete
-    const user = await User.findById(req.user.userId);
-    if (!['trainer', 'admin'].includes(user.role) && schedule.trainer.toString() !== req.user.userId) {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!['trainer', 'admin'].includes(user.role) && schedule.coachId.toString() !== req.user._id) {
       return res.status(403).json({ message: 'Not authorized to delete this schedule' });
     }
 
-    await schedule.remove();
+    await schedule.deleteOne();
     res.json({ message: 'Schedule deleted successfully' });
   } catch (error) {
     console.error('Delete schedule error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

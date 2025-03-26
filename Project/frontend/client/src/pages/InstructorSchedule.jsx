@@ -170,6 +170,7 @@ const InstructorSchedule = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [showMemberActions, setShowMemberActions] = useState(false);
 
   useEffect(() => {
     loadAssignedMembers();
@@ -214,6 +215,7 @@ const InstructorSchedule = () => {
 
   const handleMemberSelect = async (member) => {
     setSelectedMember(member);
+    setShowMemberActions(true);
     try {
       const memberSchedules = await scheduleService.getUserSchedule(member._id);
       console.log('Received schedules:', memberSchedules);
@@ -248,33 +250,26 @@ const InstructorSchedule = () => {
         });
       } else {
         setSelectedDate(new Date());
-        setScheduleData({
-          time: '',
-          workoutType: '',
-          duration: '',
-          notes: ''
-        });
       }
     } catch (error) {
-      console.error('Error fetching member schedule:', error);
-      setSelectedDate(new Date());
-      setScheduleData({
-        time: '',
-        workoutType: '',
-        duration: '',
-        notes: ''
-      });
+      console.error('Error loading member schedules:', error);
+      setError('Failed to load member schedules');
     }
   };
 
-  const handleEditSchedule = (schedule) => {
+  const handleCloseMemberActions = () => {
+    setShowMemberActions(false);
+    setSelectedMember(null);
+  };
+
+  const handleEditSchedule = (schedule, session) => {
     setEditingSchedule(schedule);
-    setSelectedDate(new Date(schedule.sessions[0].date));
+    setSelectedDate(new Date(session.date));
     setScheduleData({
-      time: schedule.sessions[0].time || '',
-      workoutType: schedule.sessions[0].workoutType || '',
-      duration: schedule.sessions[0].duration || '',
-      notes: schedule.sessions[0].notes || ''
+      time: session.time || '',
+      workoutType: session.workoutType || '',
+      duration: session.duration || '',
+      notes: session.notes || ''
     });
     setOpenScheduleDialog(true);
   };
@@ -286,6 +281,7 @@ const InstructorSchedule = () => {
     }
 
     try {
+      // Call the delete schedule service
       await scheduleService.deleteSchedule(scheduleId);
       
       // Update local state to remove the deleted schedule
@@ -293,6 +289,9 @@ const InstructorSchedule = () => {
         ...prev,
         [selectedMember._id]: prev[selectedMember._id].filter(s => s._id !== scheduleId)
       }));
+
+      // Show success message
+      setError(null);
     } catch (error) {
       console.error('Error deleting schedule:', error);
       setError('Failed to delete schedule. Please try again.');
@@ -322,16 +321,25 @@ const InstructorSchedule = () => {
       // Format the date to ISO string
       const formattedDate = selectedDate.toISOString().split('T')[0];
 
+      // Get the workout type name from mockWorkoutTypes
+      const selectedWorkoutType = mockWorkoutTypes.find(type => type.id === parseInt(scheduleData.workoutType));
+      if (!selectedWorkoutType) {
+        setError('Invalid workout type');
+        return;
+      }
+
       let schedulePayload;
       if (editingSchedule) {
         // Update existing schedule
         const updatedSessions = editingSchedule.sessions.map(session => {
-          if (new Date(session.date).toISOString().split('T')[0] === formattedDate) {
+          // Update the session that matches the original date
+          if (new Date(session.date).toISOString().split('T')[0] === new Date(editingSchedule.sessions[0].date).toISOString().split('T')[0]) {
             return {
               ...session,
+              date: formattedDate, // Update with new date
               time: scheduleData.time,
               duration: scheduleData.duration,
-              workoutType: parseInt(scheduleData.workoutType),
+              workoutType: selectedWorkoutType.name,
               notes: scheduleData.notes || '',
               status: session.status // Preserve existing status
             };
@@ -358,7 +366,7 @@ const InstructorSchedule = () => {
             date: formattedDate,
             time: scheduleData.time,
             duration: scheduleData.duration,
-            workoutType: parseInt(scheduleData.workoutType),
+            workoutType: selectedWorkoutType.name,
             notes: scheduleData.notes || '',
             status: 'scheduled'
           }]
@@ -480,13 +488,14 @@ const InstructorSchedule = () => {
   };
 
   const getWorkoutTypeName = (workoutType) => {
-    const workoutTypes = {
-      1: "Personal Training",
-      2: "Group Class",
-      3: "Cardio Session",
-      4: "Strength Training"
-    };
-    return workoutTypes[workoutType] || 'Unknown';
+    // If workoutType is already a string, return it
+    if (typeof workoutType === 'string') {
+      return workoutType;
+    }
+    
+    // If it's a number, find the corresponding workout type from mockWorkoutTypes
+    const type = mockWorkoutTypes.find(t => t.id === parseInt(workoutType));
+    return type ? type.name : 'Unknown';
   };
 
   const renderScheduleTable = () => {
@@ -499,6 +508,20 @@ const InstructorSchedule = () => {
       console.error('Schedules is not an array:', schedules);
       return null;
     }
+
+    // Combine all sessions from all schedules
+    const allSessions = schedules.reduce((acc, schedule) => {
+      if (schedule.sessions && Array.isArray(schedule.sessions)) {
+        return [...acc, ...schedule.sessions.map(session => ({
+          ...session,
+          scheduleId: schedule._id
+        }))];
+      }
+      return acc;
+    }, []);
+
+    // Sort sessions by date
+    allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     return (
       <TableContainer 
@@ -521,23 +544,23 @@ const InstructorSchedule = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {schedules.map((schedule) => (
-              <StyledTableRow key={schedule._id}>
+            {allSessions.map((session) => (
+              <StyledTableRow key={`${session.scheduleId}-${session.date}`}>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Event sx={{ color: 'primary.main' }} />
-                    {new Date(schedule.sessions[0].date).toLocaleDateString()}
+                    {new Date(session.date).toLocaleDateString()}
                   </Box>
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <AccessTime sx={{ color: 'primary.main' }} />
-                    {schedule.sessions[0].time}
+                    {session.time}
                   </Box>
                 </TableCell>
                 <TableCell>
                   <Chip 
-                    label={`${schedule.sessions[0].duration} min`}
+                    label={`${session.duration} min`}
                     size="small"
                     color="primary"
                     variant="outlined"
@@ -545,7 +568,7 @@ const InstructorSchedule = () => {
                 </TableCell>
                 <TableCell>
                   <Chip 
-                    label={getWorkoutTypeName(schedule.sessions[0].workoutType)}
+                    label={getWorkoutTypeName(session.workoutType)}
                     size="small"
                     color="secondary"
                     variant="outlined"
@@ -553,12 +576,12 @@ const InstructorSchedule = () => {
                 </TableCell>
                 <TableCell>
                   <Chip 
-                    label={schedule.sessions[0].status}
+                    label={session.status}
                     size="small"
-                    color={schedule.sessions[0].status === 'scheduled' ? 'success' : 
-                           schedule.sessions[0].status === 'completed' ? 'primary' : 'error'}
-                    icon={schedule.sessions[0].status === 'scheduled' ? <Schedule /> :
-                          schedule.sessions[0].status === 'completed' ? <CheckCircle /> : <Cancel />}
+                    color={session.status === 'scheduled' ? 'success' : 
+                           session.status === 'completed' ? 'primary' : 'error'}
+                    icon={session.status === 'scheduled' ? <Schedule /> :
+                          session.status === 'completed' ? <CheckCircle /> : <Cancel />}
                   />
                 </TableCell>
                 <TableCell>
@@ -566,7 +589,7 @@ const InstructorSchedule = () => {
                     <Tooltip title="Edit Schedule">
                       <IconButton
                         size="small"
-                        onClick={() => handleEditSchedule(schedule)}
+                        onClick={() => handleEditSchedule(schedules.find(s => s._id === session.scheduleId), session)}
                         sx={{
                           color: 'primary.main',
                           '&:hover': {
@@ -581,7 +604,7 @@ const InstructorSchedule = () => {
                     <Tooltip title="Delete Schedule">
                       <IconButton
                         size="small"
-                        onClick={() => handleDeleteSchedule(schedule._id)}
+                        onClick={() => handleDeleteSchedule(session.scheduleId)}
                         sx={{
                           color: 'error.main',
                           '&:hover': {
@@ -798,6 +821,22 @@ const InstructorSchedule = () => {
     );
   };
 
+  const handleOpenScheduleDialog = () => {
+    if (!selectedMember) {
+      setError('Please select a member first');
+      return;
+    }
+    setScheduleData({
+      time: '',
+      workoutType: '',
+      duration: '',
+      notes: ''
+    });
+    setSelectedDate(new Date());
+    setEditingSchedule(null);
+    setOpenScheduleDialog(true);
+  };
+
   if (!user || (user.role !== 'instructor' && user.role !== 'coach')) {
     return (
       <Layout>
@@ -837,14 +876,6 @@ const InstructorSchedule = () => {
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2 }}>
-                  <StyledButton
-                    variant="contained"
-                    color="primary"
-                    startIcon={<Schedule />}
-                    onClick={() => setOpenScheduleDialog(true)}
-                  >
-                    New Schedule
-                  </StyledButton>
                   <StyledButton
                     variant="outlined"
                     color="secondary"
@@ -932,8 +963,34 @@ const InstructorSchedule = () => {
 
           {/* Schedule Management Section */}
           <Grid item xs={12} md={8}>
-            {selectedMember ? (
+            {selectedMember && showMemberActions ? (
               <>
+                <Box sx={{ mb: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                  <StyledButton
+                    variant="contained"
+                    color="primary"
+                    startIcon={<Schedule />}
+                    onClick={handleOpenScheduleDialog}
+                  >
+                    Add Schedule
+                  </StyledButton>
+                  <StyledButton
+                    variant="contained"
+                    color="secondary"
+                    startIcon={<Restaurant />}
+                    onClick={handleOpenMealPlanDialog}
+                  >
+                    Add Meal Plan
+                  </StyledButton>
+                  <StyledButton
+                    variant="outlined"
+                    color="error"
+                    onClick={handleCloseMemberActions}
+                  >
+                    Close Actions
+                  </StyledButton>
+                </Box>
+
                 <StyledPaper>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                     <Typography variant="h5" sx={{ 
@@ -946,24 +1003,6 @@ const InstructorSchedule = () => {
                       <Schedule sx={{ fontSize: 28 }} />
                       Schedule for {selectedMember.name}
                     </Typography>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                      <StyledButton
-                        variant="contained"
-                        color="primary"
-                        startIcon={<Schedule />}
-                        onClick={() => setOpenScheduleDialog(true)}
-                      >
-                        Edit Schedule
-                      </StyledButton>
-                      <StyledButton
-                        variant="outlined"
-                        color="secondary"
-                        startIcon={<Restaurant />}
-                        onClick={handleOpenMealPlanDialog}
-                      >
-                        Meal Plan
-                      </StyledButton>
-                    </Box>
                   </Box>
                   <StyledCalendar
                     onChange={handleDateChange}
@@ -1021,19 +1060,12 @@ const InstructorSchedule = () => {
               </>
             ) : (
               <StyledPaper>
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  p: 6,
-                  textAlign: 'center',
-                }}>
-                  <Schedule sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-                  <Typography variant="h6" color="text.secondary">
-                    Select a member to view and manage their schedule
-                  </Typography>
-                </Box>
+                <Typography variant="h6" gutterBottom>
+                  Select a member to view and manage their schedule
+                </Typography>
+                <Typography color="text.secondary">
+                  Click on a member from the list to view their schedule and available actions.
+                </Typography>
               </StyledPaper>
             )}
           </Grid>
