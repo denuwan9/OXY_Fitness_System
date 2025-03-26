@@ -166,7 +166,16 @@ const CoachAvailability = () => {
           ),
           maxMembersPerSession: data.availability[0]?.maxMembersPerSession || 1
         });
-        setAssignedMembers(data.assignedMembers || []);
+
+        // Extract member data from assignedMembers array
+        const memberData = data.assignedMembers?.map(assignment => ({
+          _id: assignment.memberId._id,
+          name: assignment.memberId.name,
+          email: assignment.memberId.email,
+          membershipType: assignment.memberId.membershipType
+        })) || [];
+
+        setAssignedMembers(memberData);
         setIsFirstTime(false);
       } else {
         // If no data is found, show first-time setup
@@ -251,7 +260,7 @@ const CoachAvailability = () => {
   const handleRemoveMember = async (memberId) => {
     try {
       await coachAvailabilityService.removeMember(memberId);
-      setAssignedMembers(prev => prev.filter(member => member.memberId._id !== memberId));
+      setAssignedMembers(prev => prev.filter(member => member._id !== memberId));
       setSnackbar({
         open: true,
         message: 'Member removed successfully',
@@ -582,38 +591,36 @@ const CoachAvailability = () => {
                       </TableHead>
                       <TableBody>
                         {assignedMembers.map((member) => (
-                          <StyledTableRow key={member.memberId._id}>
+                          <StyledTableRow key={member._id}>
                             <TableCell>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <Person sx={{ color: 'primary.main' }} />
-                                {member.memberId.name}
+                                {member.name}
                               </Box>
                             </TableCell>
-                            <TableCell>{member.memberId.email}</TableCell>
+                            <TableCell>{member.email}</TableCell>
                             <TableCell>
                               <Chip 
-                                label={member.memberId.membershipType}
-                                color={member.memberId.membershipType === 'Platinum' ? 'primary' : 
-                                       member.memberId.membershipType === 'Gold' ? 'secondary' : 'default'}
+                                label={member.membershipType}
+                                color={member.membershipType === 'Platinum' ? 'primary' : 
+                                       member.membershipType === 'Gold' ? 'secondary' : 'default'}
                                 size="small"
                               />
                             </TableCell>
                             <TableCell>
-                              <Tooltip title="Remove Member">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleRemoveMember(member.memberId._id)}
-                                  sx={{
-                                    color: 'error.main',
-                                    '&:hover': {
-                                      backgroundColor: 'error.light',
-                                      color: 'error.contrastText',
-                                    },
-                                  }}
-                                >
-                                  <Delete />
-                                </IconButton>
-                              </Tooltip>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleRemoveMember(member._id)}
+                                sx={{
+                                  color: 'error.main',
+                                  '&:hover': {
+                                    backgroundColor: 'error.light',
+                                    color: 'error.contrastText',
+                                  },
+                                }}
+                              >
+                                <Delete />
+                              </IconButton>
                             </TableCell>
                           </StyledTableRow>
                         ))}

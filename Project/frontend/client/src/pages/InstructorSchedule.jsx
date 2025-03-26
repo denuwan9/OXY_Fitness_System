@@ -243,9 +243,13 @@ const InstructorSchedule = () => {
   };
 
   const handleMemberSelect = async (member) => {
-    setSelectedMember(member);
-    setShowMemberActions(true);
     try {
+      setLoading(true);
+      setError(null);
+      setSelectedMember(member);
+      setShowMemberActions(true);
+
+      // Get member schedules
       const memberSchedules = await scheduleService.getUserSchedule(member._id);
       console.log('Received schedules:', memberSchedules);
       
@@ -271,18 +275,23 @@ const InstructorSchedule = () => {
         allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
         const nextSession = allSessions[0];
         setSelectedDate(new Date(nextSession.date));
-        setScheduleData({
-          time: nextSession.time || '',
-          workoutType: nextSession.workoutType || '',
-          duration: nextSession.duration || '',
-          notes: nextSession.notes || ''
-        });
       } else {
         setSelectedDate(new Date());
       }
+
+      // Reset form data
+      setScheduleData({
+        time: '',
+        workoutType: '',
+        duration: '',
+        notes: ''
+      });
+
     } catch (error) {
       console.error('Error loading member schedules:', error);
       setError('Failed to load member schedules');
+    } finally {
+      setLoading(false);
     }
   };
 
