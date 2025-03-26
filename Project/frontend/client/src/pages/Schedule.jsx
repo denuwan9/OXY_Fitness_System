@@ -48,6 +48,7 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import axios from 'axios';
+import scheduleService from '../services/scheduleService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -121,19 +122,21 @@ const SchedulePage = () => {
         setLoading(true);
         if (!user?.id) return;
 
-        // Fetch user's schedule
+        // Fetch user's schedules
         const scheduleResponse = await axios.get(`/api/schedules/user/${user.id}`);
+        // Store all schedules
         setSchedule(scheduleResponse.data);
 
-        // Fetch coach information
-        if (scheduleResponse.data?.coachId) {
-          const coachResponse = await axios.get(`/api/coaches/${scheduleResponse.data.coachId}`);
+        // Fetch coach information from the first schedule
+        if (scheduleResponse.data?.[0]?.coachId) {
+          const coachResponse = await axios.get(`/api/coaches/${scheduleResponse.data[0].coachId}`);
           setCoachInfo(coachResponse.data);
         }
 
-        // Fetch meal plan
-        if (scheduleResponse.data?.mealPlanId) {
-          const mealPlanResponse = await axios.get(`/api/mealplans/${scheduleResponse.data.mealPlanId}`);
+        // Fetch meal plan from the first schedule that has one
+        const scheduleWithMealPlan = scheduleResponse.data.find(s => s.mealPlanId);
+        if (scheduleWithMealPlan?.mealPlanId) {
+          const mealPlanResponse = await axios.get(`/api/mealplans/${scheduleWithMealPlan.mealPlanId}`);
           setMealPlan(mealPlanResponse.data);
         }
 
@@ -155,20 +158,7 @@ const SchedulePage = () => {
         alert("Please log in to download your report");
         return;
       }
-
-      const response = await axios.get(`/api/schedules/${userId}/report`, {
-        responseType: 'blob'
-      });
-
-      const file = new Blob([response.data], { type: 'application/pdf' });
-      const fileURL = URL.createObjectURL(file);
-      const downloadLink = document.createElement('a');
-      downloadLink.href = fileURL;
-      downloadLink.download = `schedule-report-${userId}.pdf`;
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      URL.revokeObjectURL(fileURL);
+      await scheduleService.downloadScheduleReport(userId);
     } catch (error) {
       console.error('Error downloading report:', error);
       alert('Failed to download report. Please try again.');
@@ -204,8 +194,16 @@ const SchedulePage = () => {
   };
 
   const getSessionsForDate = (date) => {
-    if (!schedule?.sessions) return [];
-    return schedule.sessions.filter(
+    if (!schedule) return [];
+    // Combine sessions from all schedules
+    const allSessions = schedule.reduce((acc, s) => {
+      if (s.sessions) {
+        return [...acc, ...s.sessions];
+      }
+      return acc;
+    }, []);
+    
+    return allSessions.filter(
       (session) => new Date(session.date).toDateString() === date.toDateString()
     );
   };

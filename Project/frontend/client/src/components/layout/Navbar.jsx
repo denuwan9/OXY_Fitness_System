@@ -7,7 +7,9 @@ const Navbar = () => {
   const { user } = useAuth();
   const location = useLocation();
 
-  if (!user) return null;
+  // Only show navbar on specific pages
+  const allowedPaths = ['/schedule/instructor', '/schedule/availability', '/schedule/coach'];
+  if (!user || !allowedPaths.includes(location.pathname)) return null;
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -17,16 +19,6 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-links">
-          {user.role === 'member' && (
-            <Link 
-              to="/schedule" 
-              className={`navbar-link ${isActive('/schedule') ? 'active' : ''}`}
-            >
-              <span className="link-icon">📅</span>
-              <span className="link-text">My Schedule</span>
-            </Link>
-          )}
-          
           {(user.role === 'instructor' || user.role === 'coach') && (
             <>
               <Link 
@@ -44,16 +36,6 @@ const Navbar = () => {
                 <span className="link-text">Manage Member Schedules</span>
               </Link>
             </>
-          )}
-          
-          {user.role === 'operation_manager' && (
-            <Link 
-              to="/schedule/manager" 
-              className={`navbar-link ${isActive('/schedule/manager') ? 'active' : ''}`}
-            >
-              <span className="link-icon">📋</span>
-              <span className="link-text">Schedule Requests</span>
-            </Link>
           )}
         </div>
       </div>

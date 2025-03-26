@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import Layout from '../components/layout/Layout';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -38,7 +41,8 @@ import {
   TableHead,
   TableRow,
   CircularProgress,
-  Alert
+  Alert,
+  FormHelperText
 } from '@mui/material';
 import {
   FitnessCenter,
@@ -142,6 +146,14 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
   },
 }));
 
+// Validation schema
+const scheduleSchema = yup.object().shape({
+  time: yup.string().required('Time is required'),
+  workoutType: yup.string().required('Workout Type is required'),
+  duration: yup.string().required('Duration is required'),
+  notes: yup.string()
+});
+
 const InstructorSchedule = () => {
   const { user } = useAuth();
   const theme = useTheme();
@@ -171,6 +183,23 @@ const InstructorSchedule = () => {
   const [error, setError] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [showMemberActions, setShowMemberActions] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setValue,
+    watch
+  } = useForm({
+    resolver: yupResolver(scheduleSchema),
+    defaultValues: {
+      time: '',
+      workoutType: '',
+      duration: '',
+      notes: ''
+    }
+  });
 
   useEffect(() => {
     loadAssignedMembers();
@@ -263,18 +292,26 @@ const InstructorSchedule = () => {
   };
 
   const handleEditSchedule = (schedule, session) => {
-    setEditingSchedule(schedule);
+    // Find the complete schedule with meal plan from memberSchedules
+    const completeSchedule = memberSchedules[selectedMember._id]?.find(s => s._id === schedule._id);
+    
+    // Set the editing schedule with the complete data including meal plan
+    setEditingSchedule({
+      ...schedule,
+      mealPlan: completeSchedule?.mealPlan || null // Preserve the meal plan from the complete schedule
+    });
+    
     setSelectedDate(new Date(session.date));
     
     // Find the workout type ID from the name
     const workoutType = mockWorkoutTypes.find(type => type.name === session.workoutType);
     
-    setScheduleData({
-      time: session.time || '',
-      workoutType: workoutType ? workoutType.id.toString() : '', // Convert ID to string for the Select component
-      duration: session.duration || '',
-      notes: session.notes || ''
-    });
+    // Set form values for editing
+    setValue('time', session.time || '');
+    setValue('workoutType', workoutType ? workoutType.id.toString() : '');
+    setValue('duration', session.duration || '');
+    setValue('notes', session.notes || '');
+
     setOpenScheduleDialog(true);
   };
 
@@ -302,15 +339,10 @@ const InstructorSchedule = () => {
     }
   };
 
-  const handleScheduleSubmit = async () => {
+  const handleScheduleSubmit = async (data) => {
     try {
       if (!selectedMember) {
         setError('Please select a member first');
-        return;
-      }
-
-      if (!scheduleData.time || !scheduleData.workoutType || !scheduleData.duration) {
-        setError('Please fill in all required fields');
         return;
       }
 
@@ -331,7 +363,7 @@ const InstructorSchedule = () => {
       const formattedDate = selectedDate.toISOString().split('T')[0];
 
       // Get the workout type name from mockWorkoutTypes
-      const selectedWorkoutType = mockWorkoutTypes.find(type => type.id === parseInt(scheduleData.workoutType));
+      const selectedWorkoutType = mockWorkoutTypes.find(type => type.id === parseInt(data.workoutType));
       if (!selectedWorkoutType) {
         setError('Invalid workout type');
         return;
@@ -347,10 +379,10 @@ const InstructorSchedule = () => {
             return {
               ...session,
               date: formattedDate, // Update with new date
-              time: scheduleData.time,
-              duration: scheduleData.duration,
+              time: data.time,
+              duration: data.duration,
               workoutType: selectedWorkoutType.name,
-              notes: scheduleData.notes || '',
+              notes: data.notes || '',
               status: session.status // Preserve existing status
             };
           }
@@ -375,10 +407,10 @@ const InstructorSchedule = () => {
           scheduleType: 'weekday',
           sessions: [{
             date: formattedDate,
-            time: scheduleData.time,
-            duration: scheduleData.duration,
+            time: data.time,
+            duration: data.duration,
             workoutType: selectedWorkoutType.name,
-            notes: scheduleData.notes || '',
+            notes: data.notes || '',
             status: 'scheduled'
           }]
         };
@@ -400,7 +432,7 @@ const InstructorSchedule = () => {
           const existingSchedule = updatedSchedules[selectedMember._id][existingIndex];
           const updatedSchedule = {
             ...response,
-            mealPlan: response.mealPlan || existingSchedule.mealPlan // Use response meal plan if available, otherwise keep existing
+            mealPlan: existingSchedule.mealPlan // Always keep the existing meal plan
           };
           console.log('Updating schedule with meal plan:', updatedSchedule);
           updatedSchedules[selectedMember._id][existingIndex] = updatedSchedule;
@@ -423,12 +455,7 @@ const InstructorSchedule = () => {
   const handleCloseScheduleDialog = () => {
     setOpenScheduleDialog(false);
     setEditingSchedule(null);
-    setScheduleData({
-      time: '',
-      workoutType: '',
-      duration: '',
-      notes: ''
-    });
+    reset();
   };
 
   const handleOpenMealPlanDialog = () => {
@@ -1123,94 +1150,99 @@ const InstructorSchedule = () => {
           }}>
             {editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}
           </DialogTitle>
-          <DialogContent sx={{ p: 4 }}>
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Date"
-                  type="date"
-                  value={selectedDate.toISOString().split('T')[0]}
-                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                />
+          <form onSubmit={handleSubmit(handleScheduleSubmit)}>
+            <DialogContent sx={{ p: 4 }}>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Date"
+                    type="date"
+                    value={selectedDate.toISOString().split('T')[0]}
+                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Time"
+                    type="time"
+                    {...register('time')}
+                    error={!!errors.time}
+                    helperText={errors.time?.message}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <FormControl fullWidth error={!!errors.workoutType}>
+                    <InputLabel>Workout Type</InputLabel>
+                    <Select
+                      {...register('workoutType')}
+                      label="Workout Type"
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {mockWorkoutTypes.map((type) => (
+                        <MenuItem key={type.id} value={type.id}>
+                          {type.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <FormHelperText>{errors.workoutType?.message}</FormHelperText>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Duration"
+                    {...register('duration')}
+                    error={!!errors.duration}
+                    helperText={errors.duration?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Notes"
+                    multiline
+                    rows={4}
+                    {...register('notes')}
+                    error={!!errors.notes}
+                    helperText={errors.notes?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Time"
-                  type="time"
-                  value={scheduleData.time}
-                  onChange={(e) => setScheduleData({ ...scheduleData, time: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Workout Type</InputLabel>
-                  <Select
-                    value={scheduleData.workoutType}
-                    label="Workout Type"
-                    onChange={(e) => setScheduleData({ ...scheduleData, workoutType: e.target.value })}
-                    sx={{ borderRadius: 2 }}
-                  >
-                    {mockWorkoutTypes.map((type) => (
-                      <MenuItem key={type.id} value={type.id}>
-                        {type.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Duration"
-                  value={scheduleData.duration}
-                  onChange={(e) => setScheduleData({ ...scheduleData, duration: e.target.value })}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Notes"
-                  multiline
-                  rows={4}
-                  value={scheduleData.notes}
-                  onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
-                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
-            <Button 
-              onClick={handleCloseScheduleDialog}
-              sx={{ 
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleScheduleSubmit} 
-              variant="contained" 
-              color="primary"
-              sx={{ 
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              }}
-            >
-              {editingSchedule ? 'Update Schedule' : 'Save Schedule'}
-            </Button>
-          </DialogActions>
+            </DialogContent>
+            <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
+              <Button 
+                onClick={handleCloseScheduleDialog}
+                sx={{ 
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                variant="contained" 
+                color="primary"
+                sx={{ 
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                }}
+              >
+                {editingSchedule ? 'Update' : 'Add'} Schedule
+              </Button>
+            </DialogActions>
+          </form>
         </Dialog>
 
         {/* Meal Plan Dialog */}

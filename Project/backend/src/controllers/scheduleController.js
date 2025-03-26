@@ -332,13 +332,15 @@ const getWorkoutTypeName = (type) => {
 // Generate PDF report
 exports.generatePDFReport = async (req, res) => {
   try {
-    const schedule = await Schedule.findOne({ userId: req.params.userId })
+    // Fetch all schedules and sort them by the first session date
+    const schedules = await Schedule.find({ userId: req.params.userId })
       .populate('coachId', 'name email')
       .populate('userId', 'name email')
-      .populate('mealPlan');
+      .populate('mealPlan')
+      .sort({ 'sessions.date': 1 }); // Sort by the first session date
 
-    if (!schedule) {
-      return res.status(404).json({ message: 'Schedule not found' });
+    if (!schedules || schedules.length === 0) {
+      return res.status(404).json({ message: 'No schedules found for this user' });
     }
 
     const doc = new PDFDocument();
@@ -361,47 +363,77 @@ exports.generatePDFReport = async (req, res) => {
        .moveDown();
     
     doc.fontSize(12)
-       .text(`Name: ${schedule.userId.name}`)
-       .text(`Email: ${schedule.userId.email}`)
-       .text(`Membership Type: ${schedule.membershipType}`)
-       .text(`Coach: ${schedule.coachId.name}`)
+       .text(`Name: ${schedules[0].userId.name}`)
+       .text(`Email: ${schedules[0].userId.email}`)
+       .text(`Membership Type: ${schedules[0].membershipType}`)
+       .text(`Coach: ${schedules[0].coachId.name}`)
        .moveDown();
 
-    // Add schedule details
+    // Add summary section
     doc.fontSize(16)
-       .text('Training Schedule', { underline: true })
+       .text('Summary', { underline: true })
        .moveDown();
     
-    schedule.sessions.forEach(session => {
-      doc.fontSize(12)
-         .text(`Date: ${new Date(session.date).toLocaleDateString()}`)
-         .text(`Time: ${session.time}`)
-         .text(`Workout Type: ${getWorkoutTypeName(session.workoutType)}`)
-         .text(`Duration: ${session.duration}`)
-         .text(`Location: ${session.location || 'Main Gym'}`)
-         .text(`Status: ${session.status.charAt(0).toUpperCase() + session.status.slice(1)}`)
-         .text(`Notes: ${session.notes || 'No notes'}`)
-         .moveDown();
-    });
+    doc.fontSize(12)
+       .text(`Total Schedules: ${schedules.length}`)
+       .text(`Total Sessions: ${schedules.reduce((acc, schedule) => acc + schedule.sessions.length, 0)}`)
+       .text(`Schedule Types: ${[...new Set(schedules.map(s => s.scheduleType))].join(', ')}`)
+       .moveDown();
 
-    // Add meal plan if available
-    if (schedule.mealPlan) {
+    // Add all schedules
+    schedules.forEach((schedule, index) => {
+      // Add schedule section header with more details
       doc.fontSize(16)
-         .text('Meal Plan', { underline: true })
+         .text(`Schedule ${index + 1}`, { underline: true })
+         .moveDown();
+      
+      doc.fontSize(12)
+         .text(`Schedule Type: ${schedule.scheduleType}`)
+         .text(`Start Date: ${new Date(schedule.sessions[0].date).toLocaleDateString()}`)
+         .text(`End Date: ${new Date(schedule.sessions[schedule.sessions.length - 1].date).toLocaleDateString()}`)
+         .text(`Total Sessions: ${schedule.sessions.length}`)
          .moveDown();
 
-      schedule.mealPlan.meals.forEach(meal => {
-        doc.fontSize(14)
-           .text(meal.day, { underline: true })
-           .moveDown()
-           .fontSize(12)
-           .text(`Breakfast: ${meal.breakfast}`)
-           .text(`Lunch: ${meal.lunch}`)
-           .text(`Dinner: ${meal.dinner}`)
-           .text(`Snacks: ${meal.snacks.join(', ')}`)
+      // Add schedule details
+      doc.fontSize(14)
+         .text('Training Sessions', { underline: true })
+         .moveDown();
+      
+      schedule.sessions.forEach(session => {
+        doc.fontSize(12)
+           .text(`Date: ${new Date(session.date).toLocaleDateString()}`)
+           .text(`Time: ${session.time}`)
+           .text(`Workout Type: ${getWorkoutTypeName(session.workoutType)}`)
+           .text(`Duration: ${session.duration}`)
+           .text(`Location: ${session.location || 'Main Gym'}`)
+           .text(`Status: ${session.status.charAt(0).toUpperCase() + session.status.slice(1)}`)
+           .text(`Notes: ${session.notes || 'No notes'}`)
            .moveDown();
       });
-    }
+
+      // Add meal plan if available
+      if (schedule.mealPlan) {
+        doc.fontSize(14)
+           .text('Meal Plan', { underline: true })
+           .moveDown();
+
+        schedule.mealPlan.meals.forEach(meal => {
+          doc.fontSize(12)
+             .text(meal.day, { underline: true })
+             .moveDown()
+             .text(`Breakfast: ${meal.breakfast}`)
+             .text(`Lunch: ${meal.lunch}`)
+             .text(`Dinner: ${meal.dinner}`)
+             .text(`Snacks: ${meal.snacks.join(', ')}`)
+             .moveDown();
+        });
+      }
+
+      // Add a page break between schedules if not the last one
+      if (index < schedules.length - 1) {
+        doc.addPage();
+      }
+    });
 
     // Add footer
     doc.moveDown()

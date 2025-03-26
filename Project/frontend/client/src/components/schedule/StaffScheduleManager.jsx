@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 import {
   Box,
   Typography,
@@ -22,7 +25,8 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  LinearProgress
+  LinearProgress,
+  FormHelperText
 } from '@mui/material';
 import {
   Add,
@@ -34,6 +38,20 @@ import {
   Work
 } from '@mui/icons-material';
 
+// Validation schema
+const schema = yup.object().shape({
+  staffId: yup.string().required('Staff ID is required'),
+  staffName: yup.string().required('Staff Name is required'),
+  role: yup.string().required('Role is required'),
+  day: yup.string().required('Day is required'),
+  startTime: yup.string().required('Start Time is required'),
+  endTime: yup.string().required('End Time is required'),
+  shift: yup.string().required('Shift is required'),
+  status: yup.string().required('Status is required'),
+  department: yup.string().required('Department is required'),
+  notes: yup.string()
+});
+
 const StaffScheduleManager = ({ 
   staffSchedules, 
   onAddSchedule, 
@@ -42,56 +60,16 @@ const StaffScheduleManager = ({
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
-  const [scheduleData, setScheduleData] = useState({
-    staffId: '',
-    staffName: '',
-    role: '',
-    day: '',
-    startTime: '',
-    endTime: '',
-    shift: '',
-    status: '',
-    notes: '',
-    department: ''
-  });
-
-  const handleOpenDialog = (schedule = null) => {
-    if (schedule) {
-      setEditingSchedule(schedule);
-      setScheduleData({
-        staffId: schedule.staffId,
-        staffName: schedule.staffName,
-        role: schedule.role,
-        day: schedule.day,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
-        shift: schedule.shift,
-        status: schedule.status,
-        notes: schedule.notes,
-        department: schedule.department
-      });
-    } else {
-      setEditingSchedule(null);
-      setScheduleData({
-        staffId: '',
-        staffName: '',
-        role: '',
-        day: '',
-        startTime: '',
-        endTime: '',
-        shift: '',
-        status: '',
-        notes: '',
-        department: ''
-      });
-    }
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setEditingSchedule(null);
-    setScheduleData({
+  
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+    setValue
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
       staffId: '',
       staffName: '',
       role: '',
@@ -102,14 +80,34 @@ const StaffScheduleManager = ({
       status: '',
       notes: '',
       department: ''
-    });
+    }
+  });
+
+  const handleOpenDialog = (schedule = null) => {
+    if (schedule) {
+      setEditingSchedule(schedule);
+      // Set form values for editing
+      Object.keys(schedule).forEach(key => {
+        setValue(key, schedule[key]);
+      });
+    } else {
+      setEditingSchedule(null);
+      reset(); // Reset form to default values
+    }
+    setOpenDialog(true);
   };
 
-  const handleSubmit = () => {
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setEditingSchedule(null);
+    reset();
+  };
+
+  const onSubmit = (data) => {
     if (editingSchedule) {
-      onUpdateSchedule(editingSchedule.id, scheduleData);
+      onUpdateSchedule(editingSchedule.id, data);
     } else {
-      onAddSchedule(scheduleData);
+      onAddSchedule(data);
     }
     handleCloseDialog();
   };
@@ -152,11 +150,13 @@ const StaffScheduleManager = ({
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Staff Member</TableCell>
+              <TableCell>Staff ID</TableCell>
+              <TableCell>Name</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Department</TableCell>
-              <TableCell>Schedule</TableCell>
+              <TableCell>Day</TableCell>
               <TableCell>Shift</TableCell>
+              <TableCell>Time</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Actions</TableCell>
             </TableRow>
@@ -164,34 +164,18 @@ const StaffScheduleManager = ({
           <TableBody>
             {staffSchedules.map((schedule) => (
               <TableRow key={schedule.id}>
+                <TableCell>{schedule.staffId}</TableCell>
+                <TableCell>{schedule.staffName}</TableCell>
+                <TableCell>{schedule.role}</TableCell>
+                <TableCell>{schedule.department}</TableCell>
+                <TableCell>{schedule.day}</TableCell>
+                <TableCell>{schedule.shift}</TableCell>
+                <TableCell>{`${schedule.startTime} - ${schedule.endTime}`}</TableCell>
                 <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Person />
-                    {schedule.staffName}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip label={schedule.role} size="small" />
-                </TableCell>
-                <TableCell>
-                  <Chip label={schedule.department} size="small" color="info" />
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Event />
-                    {schedule.day}
-                    <AccessTime />
-                    {schedule.startTime} - {schedule.endTime}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip label={schedule.shift} size="small" />
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={schedule.status} 
-                    size="small" 
+                  <Chip
+                    label={schedule.status}
                     color={getStatusColor(schedule.status)}
+                    size="small"
                   />
                 </TableCell>
                 <TableCell>
@@ -219,142 +203,149 @@ const StaffScheduleManager = ({
         <DialogTitle>
           {editingSchedule ? 'Edit Staff Schedule' : 'Add New Staff Schedule'}
         </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Staff ID"
-                value={scheduleData.staffId}
-                onChange={(e) => setScheduleData({ ...scheduleData, staffId: e.target.value })}
-              />
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogContent>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Staff ID"
+                  {...register('staffId')}
+                  error={!!errors.staffId}
+                  helperText={errors.staffId?.message}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Staff Name"
+                  {...register('staffName')}
+                  error={!!errors.staffName}
+                  helperText={errors.staffName?.message}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth error={!!errors.role}>
+                  <InputLabel>Role</InputLabel>
+                  <Select
+                    {...register('role')}
+                    label="Role"
+                  >
+                    <MenuItem value="Trainer">Trainer</MenuItem>
+                    <MenuItem value="Instructor">Instructor</MenuItem>
+                    <MenuItem value="Receptionist">Receptionist</MenuItem>
+                    <MenuItem value="Manager">Manager</MenuItem>
+                    <MenuItem value="Maintenance">Maintenance</MenuItem>
+                  </Select>
+                  <FormHelperText>{errors.role?.message}</FormHelperText>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth error={!!errors.department}>
+                  <InputLabel>Department</InputLabel>
+                  <Select
+                    {...register('department')}
+                    label="Department"
+                  >
+                    <MenuItem value="Fitness">Fitness</MenuItem>
+                    <MenuItem value="Administration">Administration</MenuItem>
+                    <MenuItem value="Maintenance">Maintenance</MenuItem>
+                    <MenuItem value="Customer Service">Customer Service</MenuItem>
+                  </Select>
+                  <FormHelperText>{errors.department?.message}</FormHelperText>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth error={!!errors.day}>
+                  <InputLabel>Day</InputLabel>
+                  <Select
+                    {...register('day')}
+                    label="Day"
+                  >
+                    <MenuItem value="Monday">Monday</MenuItem>
+                    <MenuItem value="Tuesday">Tuesday</MenuItem>
+                    <MenuItem value="Wednesday">Wednesday</MenuItem>
+                    <MenuItem value="Thursday">Thursday</MenuItem>
+                    <MenuItem value="Friday">Friday</MenuItem>
+                    <MenuItem value="Saturday">Saturday</MenuItem>
+                    <MenuItem value="Sunday">Sunday</MenuItem>
+                  </Select>
+                  <FormHelperText>{errors.day?.message}</FormHelperText>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth error={!!errors.shift}>
+                  <InputLabel>Shift</InputLabel>
+                  <Select
+                    {...register('shift')}
+                    label="Shift"
+                  >
+                    <MenuItem value="Morning">Morning</MenuItem>
+                    <MenuItem value="Afternoon">Afternoon</MenuItem>
+                    <MenuItem value="Evening">Evening</MenuItem>
+                    <MenuItem value="Night">Night</MenuItem>
+                  </Select>
+                  <FormHelperText>{errors.shift?.message}</FormHelperText>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Start Time"
+                  type="time"
+                  {...register('startTime')}
+                  error={!!errors.startTime}
+                  helperText={errors.startTime?.message}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="End Time"
+                  type="time"
+                  {...register('endTime')}
+                  error={!!errors.endTime}
+                  helperText={errors.endTime?.message}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth error={!!errors.status}>
+                  <InputLabel>Status</InputLabel>
+                  <Select
+                    {...register('status')}
+                    label="Status"
+                  >
+                    <MenuItem value="Scheduled">Scheduled</MenuItem>
+                    <MenuItem value="Working">Working</MenuItem>
+                    <MenuItem value="Off">Off</MenuItem>
+                    <MenuItem value="On Call">On Call</MenuItem>
+                  </Select>
+                  <FormHelperText>{errors.status?.message}</FormHelperText>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Notes"
+                  multiline
+                  rows={3}
+                  {...register('notes')}
+                  error={!!errors.notes}
+                  helperText={errors.notes?.message}
+                  placeholder="Additional notes or special arrangements"
+                />
+              </Grid>
             </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Staff Name"
-                value={scheduleData.staffName}
-                onChange={(e) => setScheduleData({ ...scheduleData, staffName: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Role</InputLabel>
-                <Select
-                  value={scheduleData.role}
-                  label="Role"
-                  onChange={(e) => setScheduleData({ ...scheduleData, role: e.target.value })}
-                >
-                  <MenuItem value="Trainer">Trainer</MenuItem>
-                  <MenuItem value="Instructor">Instructor</MenuItem>
-                  <MenuItem value="Receptionist">Receptionist</MenuItem>
-                  <MenuItem value="Manager">Manager</MenuItem>
-                  <MenuItem value="Maintenance">Maintenance</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Department</InputLabel>
-                <Select
-                  value={scheduleData.department}
-                  label="Department"
-                  onChange={(e) => setScheduleData({ ...scheduleData, department: e.target.value })}
-                >
-                  <MenuItem value="Fitness">Fitness</MenuItem>
-                  <MenuItem value="Administration">Administration</MenuItem>
-                  <MenuItem value="Maintenance">Maintenance</MenuItem>
-                  <MenuItem value="Customer Service">Customer Service</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Day</InputLabel>
-                <Select
-                  value={scheduleData.day}
-                  label="Day"
-                  onChange={(e) => setScheduleData({ ...scheduleData, day: e.target.value })}
-                >
-                  <MenuItem value="Monday">Monday</MenuItem>
-                  <MenuItem value="Tuesday">Tuesday</MenuItem>
-                  <MenuItem value="Wednesday">Wednesday</MenuItem>
-                  <MenuItem value="Thursday">Thursday</MenuItem>
-                  <MenuItem value="Friday">Friday</MenuItem>
-                  <MenuItem value="Saturday">Saturday</MenuItem>
-                  <MenuItem value="Sunday">Sunday</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Shift</InputLabel>
-                <Select
-                  value={scheduleData.shift}
-                  label="Shift"
-                  onChange={(e) => setScheduleData({ ...scheduleData, shift: e.target.value })}
-                >
-                  <MenuItem value="Morning">Morning</MenuItem>
-                  <MenuItem value="Afternoon">Afternoon</MenuItem>
-                  <MenuItem value="Evening">Evening</MenuItem>
-                  <MenuItem value="Night">Night</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Start Time"
-                type="time"
-                value={scheduleData.startTime}
-                onChange={(e) => setScheduleData({ ...scheduleData, startTime: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="End Time"
-                type="time"
-                value={scheduleData.endTime}
-                onChange={(e) => setScheduleData({ ...scheduleData, endTime: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={scheduleData.status}
-                  label="Status"
-                  onChange={(e) => setScheduleData({ ...scheduleData, status: e.target.value })}
-                >
-                  <MenuItem value="Scheduled">Scheduled</MenuItem>
-                  <MenuItem value="Working">Working</MenuItem>
-                  <MenuItem value="Off">Off</MenuItem>
-                  <MenuItem value="On Call">On Call</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Notes"
-                multiline
-                rows={3}
-                value={scheduleData.notes}
-                onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
-                placeholder="Additional notes or special arrangements"
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            {editingSchedule ? 'Update' : 'Add'} Schedule
-          </Button>
-        </DialogActions>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary">
+              {editingSchedule ? 'Update' : 'Add'} Schedule
+            </Button>
+          </DialogActions>
+        </form>
       </Dialog>
     </Box>
   );
