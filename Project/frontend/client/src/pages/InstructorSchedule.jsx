@@ -265,9 +265,13 @@ const InstructorSchedule = () => {
   const handleEditSchedule = (schedule, session) => {
     setEditingSchedule(schedule);
     setSelectedDate(new Date(session.date));
+    
+    // Find the workout type ID from the name
+    const workoutType = mockWorkoutTypes.find(type => type.name === session.workoutType);
+    
     setScheduleData({
       time: session.time || '',
-      workoutType: session.workoutType || '',
+      workoutType: workoutType ? workoutType.id.toString() : '', // Convert ID to string for the Select component
       duration: session.duration || '',
       notes: session.notes || ''
     });
@@ -359,7 +363,8 @@ const InstructorSchedule = () => {
           coachId: user._id,
           membershipType,
           scheduleType: 'weekday',
-          sessions: updatedSessions
+          sessions: updatedSessions,
+          mealPlan: editingSchedule.mealPlan // Preserve the meal plan
         };
       } else {
         // Create new schedule
@@ -391,7 +396,14 @@ const InstructorSchedule = () => {
         
         const existingIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === response._id);
         if (existingIndex >= 0) {
-          updatedSchedules[selectedMember._id][existingIndex] = response;
+          // Preserve the meal plan when updating
+          const existingSchedule = updatedSchedules[selectedMember._id][existingIndex];
+          const updatedSchedule = {
+            ...response,
+            mealPlan: response.mealPlan || existingSchedule.mealPlan // Use response meal plan if available, otherwise keep existing
+          };
+          console.log('Updating schedule with meal plan:', updatedSchedule);
+          updatedSchedules[selectedMember._id][existingIndex] = updatedSchedule;
         } else {
           updatedSchedules[selectedMember._id].push(response);
         }
@@ -476,9 +488,10 @@ const InstructorSchedule = () => {
         
         const scheduleIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === schedule._id);
         if (scheduleIndex >= 0) {
+          // Update the entire schedule object with the response
           updatedSchedules[selectedMember._id][scheduleIndex] = {
             ...updatedSchedules[selectedMember._id][scheduleIndex],
-            mealPlan: response
+            mealPlan: response.mealPlan // Use the mealPlan from the response
           };
         }
         
