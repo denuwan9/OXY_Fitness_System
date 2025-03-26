@@ -11,7 +11,7 @@ const register = async (req, res) => {
     if (existingUser) {
       return res.status(401).json({success:false, message: "User already exists" }) 
     }
-        const hasehPassword = await bcryptjs.hashSync(password, 10)
+    const hashedPassword = await bcryptjs.hashSync(password, 10)
     const newUser = new UserModel({
       fname,
       lname,
@@ -19,18 +19,16 @@ const register = async (req, res) => {
       city,
       number,
       email,
-      password:hasehPassword
+      password: hashedPassword
     })
       
-        await newUser.save()
-
-        res.status(200).json({message:"user register successfully",newUser}) 
+    await newUser.save()
+    res.status(200).json({message:"user register successfully", newUser}) 
   } catch (error) {
     res.status(500).json({success:false, message: "Internal server error" }) 
     console.log(error)
   }
 }
-
 
 const Login = async (req, res) => {         
   try{
@@ -70,4 +68,13 @@ const Logout = async (req, res) => {
   }
 }
 
-export {register,Login,Logout}
+
+
+const CheckUser=async(req,res)=>{
+  try{
+
+  }catch (error){
+
+  }
+}
+export { register, Login, Logout, CheckUser }

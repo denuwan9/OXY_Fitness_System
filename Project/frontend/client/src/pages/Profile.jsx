@@ -1,11 +1,21 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import "./Profile.css"; // Import the CSS file
+import { post } from '../services/ApiEndpoint'
+import { Logout } from "../redux/AuthSlice";
+
+
 
 const Profile = () => {
+  const user = useSelector((state) => state.Auth.user)
+  console.log(user)
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   // State for the profile picture
   const [avatar, setAvatar] = useState(
-    "https://via.placeholder.com/150" // Placeholder image
+    "https://placekitten.com/150/150" // Placeholder image
   );
 
   // State for editable profile information
@@ -37,11 +47,6 @@ const Profile = () => {
     email: "",
     phone: "",
   });
-
-  // Mock user role (replace with actual role from your authentication system)
-  const userRole = "admin"; // Can be "user", "manager", or "admin"
-
-  const navigate = useNavigate(); // Initialize useNavigate
 
   // Function to handle avatar upload
   const handleAvatarUpload = (e) => {
@@ -160,6 +165,26 @@ const Profile = () => {
     setIsEditing(!isEditing);
   };
 
+  // Admin button navigation
+  const goToAdmin = () => {
+    navigate("/admin");
+  };
+
+  // Logout button function
+  const handleLogout = async () => {
+    try {
+      const response = await post("/api/auth/logout");
+      if (response.status === 200) {
+        dispatch(Logout());
+        navigate("/login");
+      } else {
+        console.error("Logout failed:", response.statusText);
+      }
+    } catch (error) {
+      console.error("An error occurred during logout:", error);
+    }
+  };
+
   // Function to save changes
   const saveChanges = () => {
     if (validateForm()) {
@@ -195,7 +220,7 @@ const Profile = () => {
           <ul>
             {/* Home Button */}
             <li>
-              <Link to="/home" className="menu-button">
+              <Link to="/" className="menu-button">
                 <span className="button-icon">🏠</span>
                 <span className="button-text">Home</span>
               </Link>
@@ -217,15 +242,23 @@ const Profile = () => {
               </button>
             </li>
 
-            {/* Manage Profiles Button (Visible only to managers or admins) */}
-            {(userRole === "manager" || userRole === "admin") && (
-              <li>
-                <Link to="/usermanager" className="menu-button">
+            {/* Manage Profiles Button (Visible only for admins) */}
+            <li>
+              {user && user.role === "admin" ? (
+                <button className="menu-button" onClick={goToAdmin}>
                   <span className="button-icon">👥</span>
                   <span className="button-text">Manage Profiles</span>
-                </Link>
-              </li>
-            )}
+                </button>
+              ) : null}
+            </li>
+
+            {/* Logout Button */}
+            <li>
+              <button  onClick={handleLogout}>
+                <span className="button-icon">🚪</span>
+                <span className="button-text">Log out</span>
+              </button>
+            </li>
           </ul>
         </nav>
       </div>
@@ -250,6 +283,9 @@ const Profile = () => {
           <p className="avatar-instruction">
             Click the camera icon to update your avatar
           </p>
+        </div>
+        <div className="user-card" > 
+          <h2 >Welcome,  {user && user.fname}</h2>
         </div>
 
         {/* Personal Details Section */}

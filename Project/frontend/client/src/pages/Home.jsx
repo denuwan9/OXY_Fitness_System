@@ -6,6 +6,8 @@ import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
+
+  
   
 
   return (
@@ -43,14 +45,7 @@ const Home = () => {
         <div className="hero-content">
           <h1>Transform Your Fitness Journey</h1>
           <p>Your all-in-one solution for gym management and fitness tracking.</p>
-          <div className="hero-buttons">
-            <button className="cta-button" onClick={() => navigate('/login')}>
-              Sign In
-            </button>
-            <button className="cta-button secondary" onClick={() => navigate('/signup')}>
-              Sign Up
-            </button>
-          </div>
+          
         </div>
       </section>
 
