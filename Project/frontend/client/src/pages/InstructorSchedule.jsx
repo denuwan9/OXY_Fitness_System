@@ -300,7 +300,12 @@ const InstructorSchedule = () => {
 
   const handleScheduleSubmit = async () => {
     try {
-      if (!selectedMember || !scheduleData.time || !scheduleData.workoutType || !scheduleData.duration) {
+      if (!selectedMember) {
+        setError('Please select a member first');
+        return;
+      }
+
+      if (!scheduleData.time || !scheduleData.workoutType || !scheduleData.duration) {
         setError('Please fill in all required fields');
         return;
       }
@@ -329,6 +334,7 @@ const InstructorSchedule = () => {
       }
 
       let schedulePayload;
+
       if (editingSchedule) {
         // Update existing schedule
         const updatedSessions = editingSchedule.sessions.map(session => {
@@ -377,12 +383,21 @@ const InstructorSchedule = () => {
       const response = await scheduleService.saveSchedule(schedulePayload);
       
       // Update local state with the response
-      setMemberSchedules(prev => ({
-        ...prev,
-        [selectedMember._id]: prev[selectedMember._id].map(s => 
-          s._id === response._id ? response : s
-        )
-      }));
+      setMemberSchedules(prev => {
+        const updatedSchedules = { ...prev };
+        if (!updatedSchedules[selectedMember._id]) {
+          updatedSchedules[selectedMember._id] = [];
+        }
+        
+        const existingIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === response._id);
+        if (existingIndex >= 0) {
+          updatedSchedules[selectedMember._id][existingIndex] = response;
+        } else {
+          updatedSchedules[selectedMember._id].push(response);
+        }
+        
+        return updatedSchedules;
+      });
 
       setOpenScheduleDialog(false);
       setEditingSchedule(null);
@@ -453,18 +468,22 @@ const InstructorSchedule = () => {
       const response = await scheduleService.assignMealPlan(mealPlanPayload);
       
       // Update the local state with the new meal plan
-      setMemberSchedules(prev => ({
-        ...prev,
-        [selectedMember._id]: prev[selectedMember._id].map(s => {
-          if (s._id === schedule._id) {
-            return {
-              ...s,
-              mealPlan: response
-            };
-          }
-          return s;
-        })
-      }));
+      setMemberSchedules(prev => {
+        const updatedSchedules = { ...prev };
+        if (!updatedSchedules[selectedMember._id]) {
+          updatedSchedules[selectedMember._id] = [];
+        }
+        
+        const scheduleIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === schedule._id);
+        if (scheduleIndex >= 0) {
+          updatedSchedules[selectedMember._id][scheduleIndex] = {
+            ...updatedSchedules[selectedMember._id][scheduleIndex],
+            mealPlan: response
+          };
+        }
+        
+        return updatedSchedules;
+      });
 
       setOpenMealPlanDialog(false);
       setError(null); // Clear any previous errors
