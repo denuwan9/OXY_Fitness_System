@@ -100,6 +100,90 @@ const MealPlanCard = styled(Card)(({ theme }) => ({
   flexDirection: "column",
 }));
 
+const mockScheduleData = {
+  sessions: [
+    {
+      id: 1,
+      date: new Date(),
+      time: "09:00",
+      type: "personal_training",
+      status: "scheduled",
+      duration: 60,
+      notes: "Upper body workout",
+      location: "Main Gym",
+      workoutType: "Personal Training"
+    },
+    {
+      id: 2,
+      date: new Date(new Date().setDate(new Date().getDate() + 1)),
+      time: "14:00",
+      type: "group_class",
+      status: "scheduled",
+      duration: 45,
+      notes: "Yoga class",
+      location: "Yoga Studio",
+      workoutType: "Group Class"
+    },
+    {
+      id: 3,
+      date: new Date(new Date().setDate(new Date().getDate() + 2)),
+      time: "16:00",
+      type: "personal_training",
+      status: "scheduled",
+      duration: 60,
+      notes: "Lower body workout",
+      location: "Main Gym",
+      workoutType: "Personal Training"
+    }
+  ],
+  membershipType: "Premium"
+};
+
+const mockCoachData = {
+  id: 1,
+  name: "John Doe",
+  email: "john@example.com",
+  phone: "123-456-7890",
+  specialization: "Personal Training",
+  rating: 4.8,
+  experience: "5 years",
+  profileImage: "https://via.placeholder.com/150"
+};
+
+const mockMealPlanData = {
+  id: 1,
+  meals: [
+    {
+      day: "Monday",
+      breakfast: "Oatmeal with fruits",
+      lunch: "Grilled chicken salad",
+      dinner: "Salmon with vegetables",
+      snacks: ["Apple", "Greek yogurt"]
+    },
+    {
+      day: "Tuesday",
+      breakfast: "Protein smoothie bowl",
+      lunch: "Quinoa with vegetables",
+      dinner: "Lean beef with sweet potato",
+      snacks: ["Banana", "Mixed nuts"]
+    },
+    {
+      day: "Wednesday",
+      breakfast: "Eggs and toast",
+      lunch: "Tuna salad",
+      dinner: "Turkey stir-fry",
+      snacks: ["Orange", "Protein bar"]
+    },
+    {
+      day: "Thursday",
+      breakfast: "Greek yogurt parfait",
+      lunch: "Chicken wrap",
+      dinner: "Fish with rice",
+      snacks: ["Pear", "Almonds"]
+    }
+  ]
+};
+
 const SchedulePage = () => {
   const { user } = useAuth();
   const theme = useTheme();
@@ -122,27 +206,13 @@ const SchedulePage = () => {
         setLoading(true);
         if (!user?.id) return;
 
-        // Fetch user's schedules
-        const scheduleResponse = await axios.get(`/api/schedules/user/${user.id}`);
-        // Store all schedules
-        setSchedule(scheduleResponse.data);
-
-        // Fetch coach information from the first schedule
-        if (scheduleResponse.data?.[0]?.coachId) {
-          const coachResponse = await axios.get(`/api/coaches/${scheduleResponse.data[0].coachId}`);
-          setCoachInfo(coachResponse.data);
-        }
-
-        // Fetch meal plan from the first schedule that has one
-        const scheduleWithMealPlan = scheduleResponse.data.find(s => s.mealPlanId);
-        if (scheduleWithMealPlan?.mealPlanId) {
-          const mealPlanResponse = await axios.get(`/api/mealplans/${scheduleWithMealPlan.mealPlanId}`);
-          setMealPlan(mealPlanResponse.data);
-        }
-
+        // Directly use mock data without API calls
+        setSchedule([mockScheduleData]);
+        setCoachInfo(mockCoachData);
+        setMealPlan(mockMealPlanData);
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error in fetchUserData:', error);
         setError(error.message);
         setLoading(false);
       }
@@ -153,12 +223,7 @@ const SchedulePage = () => {
 
   const handleDownloadReport = async () => {
     try {
-      const userId = user?.id;
-      if (!userId) {
-        alert("Please log in to download your report");
-        return;
-      }
-      await scheduleService.downloadScheduleReport(userId);
+      alert('Report download feature is currently using mock data');
     } catch (error) {
       console.error('Error downloading report:', error);
       alert('Failed to download report. Please try again.');
@@ -172,21 +237,8 @@ const SchedulePage = () => {
 
   const handleSubmitChange = async () => {
     try {
-      const changeRequest = {
-        sessionId: selectedSession.id,
-        newDate: newDate,
-        newTime: newTime,
-        reason: reason
-      };
-
-      await axios.post('/api/schedules/change-request', changeRequest);
-      
-      // Refresh schedule data
-      const updatedSchedule = await axios.get(`/api/schedules/user/${user.id}`);
-      setSchedule(updatedSchedule.data);
-      
+      alert('Schedule change request submitted successfully (Mock Data)');
       setOpenDialog(false);
-      alert('Change request submitted successfully');
     } catch (error) {
       console.error('Error submitting change request:', error);
       alert('Failed to submit change request. Please try again.');
