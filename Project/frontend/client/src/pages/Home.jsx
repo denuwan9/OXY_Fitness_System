@@ -76,7 +76,7 @@ const Home = () => {
         <h2>Membership Plans</h2>
         <div className="plan-cards">
           <div className="plan-card">
-            <h3>Basic</h3>
+            <h3>Silver</h3>
             <p className="price">$29/month</p>
             <ul>
               <li>Access to all equipment</li>
@@ -85,7 +85,7 @@ const Home = () => {
             <button className="cta-button">Sign Up</button>
           </div>
           <div className="plan-card">
-            <h3>Premium</h3>
+            <h3>Gold</h3>
             <p className="price">$49/month</p>
             <ul>
               <li>All Basic features</li>

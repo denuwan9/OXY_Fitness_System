@@ -137,7 +137,15 @@ if (!formData.city) {
         <div className="left-column"></div>
 
         {/* Right Column (Form) */}
+
+       
+
+
+
         <div className="right-column">
+
+          
+
           <h2>Create an account</h2>
           <p>Let's get started</p>
           <form onSubmit={handleSubmit}>

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken"
 import bcryptjs from "bcryptjs"
 import AuthRoutes from "../routes/authRoutes.js"
 
+
 const register = async (req, res) => {
   try {
     const {fname,lname,address,city,number,email,password} = req.body
