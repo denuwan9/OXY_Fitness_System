@@ -125,7 +125,7 @@ if (!formData.email.trim()) {
 
             {/* Forgot Password Link */}
             <div className="forgot-password">
-              <a href="#forgot-password">Forgot Password?</a>
+            <Link to="/forgot-password">Forgot Password</Link>
             </div>
           </form>
 

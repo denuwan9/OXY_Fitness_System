@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom"; // Import useNavigate
 import "./Signup.css";
 import { post } from "../services/ApiEndpoint";
 import { toast } from "react-hot-toast"; 
+import { color } from "framer-motion";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -276,10 +277,7 @@ if (!formData.city) {
               <button type="submit">Create Account</button>
             </div>
 
-            {/* Forgot Password Link */}
-            <div className="forgot-password">
-              <a href="#forgot-password">Forgot Password?</a>
-            </div>
+            
 
             {/* Sign In Link */}
             <div className="signin-link">

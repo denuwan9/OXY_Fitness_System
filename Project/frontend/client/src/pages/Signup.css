@@ -129,15 +129,17 @@
 .form-group.checkbox {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 1px;
+  margin-right:20px ;
   margin-bottom: 10px; /* Reduced margin */
 }
 
 .form-group.checkbox label {
-  margin: 0;
+  margin: 1px;
   font-weight: normal;
   font-size: 0.8rem; /* Smaller font size */
 }
+
 
 .forgot-password {
   text-align: center;
@@ -176,3 +178,4 @@
   margin-top: 5px;
   display: block;
 }
+
