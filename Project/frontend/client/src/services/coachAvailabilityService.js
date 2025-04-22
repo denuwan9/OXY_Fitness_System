@@ -2,6 +2,25 @@ import axios from 'axios';
 
 const API_URL = `${import.meta.env.VITE_API_URL}/coach-availability`;
 
+// Get the authenticated user's ID from the token
+const getAuthUserId = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
+    const payload = JSON.parse(jsonPayload);
+    return payload.userId;
+  } catch (error) {
+    console.error('Error decoding token:', error);
+    return null;
+  }
+};
+
 const coachAvailabilityService = {
   // Get coach availability
   getCoachAvailability: async (coachId) => {
@@ -17,13 +36,23 @@ const coachAvailabilityService = {
   },
 
   // Update coach availability
-  updateAvailability: async (availability, maxMembersPerSession) => {
-    console.log('Updating coach availability:', { availability, maxMembersPerSession });
+  updateAvailability: async (availability) => {
+    console.log('Updating coach availability:', { availability });
     try {
+      // Format the availability data to match the schema
+      const formattedAvailability = availability.map(day => ({
+        day: day.day,
+        timeRanges: day.timeRanges.map(range => ({
+          startTime: range.startTime,
+          endTime: range.endTime,
+          capacity: range.capacity || 1
+        }))
+      }));
+
       const response = await axios.put(API_URL, {
-        availability,
-        maxMembersPerSession
+        availability: formattedAvailability
       });
+      
       console.log('Update availability response:', response.data);
       return response.data;
     } catch (error) {

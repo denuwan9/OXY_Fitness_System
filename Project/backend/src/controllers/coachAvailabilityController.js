@@ -25,34 +25,53 @@ exports.getCoachAvailability = async (req, res) => {
 // Create or update coach availability
 exports.updateCoachAvailability = async (req, res) => {
   try {
-    console.log('Updating coach availability for user:', req.user._id);
+    console.log('Updating coach availability for user:', req.user);
     console.log('Request body:', req.body);
     
-    const { availability, maxMembersPerSession } = req.body;
+    const { availability } = req.body;
+    const coachId = req.user.userId; // Changed from req.user._id to req.user.userId
     
-    let coachAvailability = await CoachAvailability.findOne({ coachId: req.user._id });
-    console.log('Existing availability:', coachAvailability);
+    if (!coachId) {
+      console.error('No coach ID found in request:', req.user);
+      return res.status(400).json({ message: 'Coach ID is required' });
+    }
+
+    // Validate availability data
+    if (!Array.isArray(availability)) {
+      return res.status(400).json({ message: 'Availability must be an array' });
+    }
+
+    // Find existing or create new
+    let coachAvailability = await CoachAvailability.findOne({ coachId });
     
     if (!coachAvailability) {
-      console.log('Creating new availability');
       coachAvailability = new CoachAvailability({
-        coachId: req.user._id,
-        availability: availability.map(day => ({
-          ...day,
-          maxMembersPerSession
-        }))
+        coachId,
+        availability: []
       });
-    } else {
-      console.log('Updating existing availability');
-      coachAvailability.availability = availability.map(day => ({
-        ...day,
-        maxMembersPerSession
-      }));
     }
-    
-    await coachAvailability.save();
-    console.log('Saved availability:', coachAvailability);
-    res.json(coachAvailability);
+
+    // Update availability with proper structure
+    coachAvailability.availability = availability.map(day => ({
+      day: day.day,
+      timeRanges: day.timeRanges.map(range => ({
+        startTime: range.startTime,
+        endTime: range.endTime,
+        capacity: range.capacity || 1
+      }))
+    }));
+
+    try {
+      const savedAvailability = await coachAvailability.save();
+      console.log('Saved availability:', savedAvailability);
+      res.json(savedAvailability);
+    } catch (validationError) {
+      console.error('Validation error:', validationError);
+      return res.status(400).json({ 
+        message: 'Validation error', 
+        details: validationError.message 
+      });
+    }
   } catch (error) {
     console.error('Error in updateCoachAvailability:', error);
     res.status(500).json({ message: error.message });
@@ -63,7 +82,7 @@ exports.updateCoachAvailability = async (req, res) => {
 exports.assignMember = async (req, res) => {
   try {
     console.log('Assigning member to coach');
-    console.log('Coach ID:', req.user._id);
+    console.log('Coach ID:', req.user.userId);
     console.log('Member ID:', req.body.memberId);
     
     const { memberId } = req.body;
@@ -76,13 +95,13 @@ exports.assignMember = async (req, res) => {
       return res.status(404).json({ message: 'Member not found' });
     }
     
-    let coachAvailability = await CoachAvailability.findOne({ coachId: req.user._id });
+    let coachAvailability = await CoachAvailability.findOne({ coachId: req.user.userId });
     console.log('Found coach availability:', coachAvailability);
     
     if (!coachAvailability) {
       console.log('Creating new coach availability');
       coachAvailability = new CoachAvailability({
-        coachId: req.user._id,
+        coachId: req.user.userId,
         availability: [],
         assignedMembers: []
       });
@@ -113,12 +132,12 @@ exports.assignMember = async (req, res) => {
 exports.removeMember = async (req, res) => {
   try {
     console.log('Removing member from coach');
-    console.log('Coach ID:', req.user._id);
+    console.log('Coach ID:', req.user.userId);
     console.log('Member ID:', req.params.memberId);
     
     const { memberId } = req.params;
     
-    const coachAvailability = await CoachAvailability.findOne({ coachId: req.user._id });
+    const coachAvailability = await CoachAvailability.findOne({ coachId: req.user.userId });
     console.log('Found coach availability:', coachAvailability);
     
     if (!coachAvailability) {
@@ -142,9 +161,9 @@ exports.removeMember = async (req, res) => {
 // Get all assigned members
 exports.getAssignedMembers = async (req, res) => {
   try {
-    console.log('Getting assigned members for coach:', req.user._id);
+    console.log('Getting assigned members for coach:', req.user.userId);
     
-    const coachAvailability = await CoachAvailability.findOne({ coachId: req.user._id })
+    const coachAvailability = await CoachAvailability.findOne({ coachId: req.user.userId })
       .populate('assignedMembers.memberId', 'name email membershipType');
     
     console.log('Found coach availability:', coachAvailability);

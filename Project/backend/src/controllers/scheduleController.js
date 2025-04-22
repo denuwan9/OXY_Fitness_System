@@ -32,7 +32,7 @@ exports.createSchedule = async (req, res) => {
     // Create new schedule
     const schedule = new Schedule({
       userId,
-      coachId: req.user._id,
+      coachId: req.user.userId,
       membershipType,
       scheduleType,
       sessions: sessions.map(session => ({

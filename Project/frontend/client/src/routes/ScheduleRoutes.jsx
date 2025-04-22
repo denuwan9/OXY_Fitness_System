@@ -28,7 +28,7 @@ const ScheduleRoutes = () => {
       <Route
         path="/"
         element={
-          <ProtectedRoute allowedRoles={['member']}>
+          <ProtectedRoute allowedRoles={['member', 'user']}>
             <MemberSchedule />
           </ProtectedRoute>
         }

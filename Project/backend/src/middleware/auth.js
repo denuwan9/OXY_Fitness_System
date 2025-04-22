@@ -21,7 +21,7 @@ module.exports = (req, res, next) => {
     
     // Map the decoded token data to match the expected user object structure
     req.user = {
-      _id: decoded.userId,
+      userId: decoded.userId,
       role: decoded.role
     };
     

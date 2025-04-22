@@ -29,7 +29,6 @@ function App() {
               
               {/* Schedule Routes */}
               <Route path="/schedule/*" element={<ScheduleRoutes />} />
-              <Route path="/schedule" element={<Schedule />} />
               <Route path="/coach/schedule-manager" element={<CoachScheduleManager />} />
               <Route path="/operation-manager/schedule-requests" element={<OperationManagerSchedule />} />
             </Routes>

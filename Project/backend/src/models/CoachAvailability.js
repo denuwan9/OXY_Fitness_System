@@ -1,5 +1,30 @@
 const mongoose = require('mongoose');
 
+const timeRangeSchema = new mongoose.Schema({
+  startTime: {
+    type: String,
+    required: true
+  },
+  endTime: {
+    type: String,
+    required: true
+  },
+  capacity: {
+    type: Number,
+    default: 1,
+    min: 1
+  }
+}, { _id: false });
+
+const availabilityDaySchema = new mongoose.Schema({
+  day: {
+    type: String,
+    enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+    required: true
+  },
+  timeRanges: [timeRangeSchema]
+}, { _id: false });
+
 const coachAvailabilitySchema = new mongoose.Schema({
   coachId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -7,27 +32,7 @@ const coachAvailabilitySchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  availability: [{
-    day: {
-      type: String,
-      enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-      required: true
-    },
-    timeRanges: [{
-      startTime: {
-        type: String,
-        required: true
-      },
-      endTime: {
-        type: String,
-        required: true
-      }
-    }],
-    maxMembersPerSession: {
-      type: Number,
-      default: 1
-    }
-  }],
+  availability: [availabilityDaySchema],
   assignedMembers: [{
     memberId: {
       type: mongoose.Schema.Types.ObjectId,

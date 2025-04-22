@@ -350,8 +350,21 @@ const InstructorSchedule = () => {
 
   const handleScheduleSubmit = async (data) => {
     try {
-      if (!selectedMember) {
-        setError('Please select a member first');
+      // Get the coach ID from the JWT token
+      const token = localStorage.getItem('token');
+      let coachId;
+      if (token) {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+          '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        ).join(''));
+        const payload = JSON.parse(jsonPayload);
+        coachId = payload.userId;
+      }
+
+      if (!coachId) {
+        setError('Coach ID not found. Please log in again.');
         return;
       }
 
@@ -378,86 +391,76 @@ const InstructorSchedule = () => {
         return;
       }
 
-      let schedulePayload;
+      const sessionData = {
+        date: formattedDate,
+        time: data.time,
+        duration: data.duration,
+        workoutType: selectedWorkoutType.name,
+        notes: data.notes || '',
+        status: 'scheduled'
+      };
 
+      let response;
+      
       if (editingSchedule) {
         // Update existing schedule
         const updatedSessions = editingSchedule.sessions.map(session => {
-          // Update the session that matches the original date
           if (new Date(session.date).toISOString().split('T')[0] === new Date(editingSchedule.sessions[0].date).toISOString().split('T')[0]) {
             return {
               ...session,
-              date: formattedDate, // Update with new date
-              time: data.time,
-              duration: data.duration,
-              workoutType: selectedWorkoutType.name,
-              notes: data.notes || '',
-              status: session.status // Preserve existing status
+              ...sessionData
             };
           }
           return session;
         });
 
-        schedulePayload = {
-          _id: editingSchedule._id,
+        const schedulePayload = {
           userId: selectedMember._id,
-          coachId: user._id,
+          coachId: coachId,
           membershipType,
           scheduleType: 'weekday',
           sessions: updatedSessions,
           mealPlan: editingSchedule.mealPlan // Preserve the meal plan
         };
+
+        console.log('Updating schedule:', schedulePayload);
+        response = await scheduleService.updateSchedule(editingSchedule._id, schedulePayload);
       } else {
         // Create new schedule
-        schedulePayload = {
+        const schedulePayload = {
           userId: selectedMember._id,
-          coachId: user._id,
+          coachId: coachId,
           membershipType,
           scheduleType: 'weekday',
-          sessions: [{
-            date: formattedDate,
-            time: data.time,
-            duration: data.duration,
-            workoutType: selectedWorkoutType.name,
-            notes: data.notes || '',
-            status: 'scheduled'
-          }]
+          sessions: [sessionData],
+          mealPlan: null
         };
+
+        console.log('Creating new schedule:', schedulePayload);
+        response = await scheduleService.createSchedule(schedulePayload);
       }
 
-      console.log('Submitting schedule:', schedulePayload);
-      const response = await scheduleService.saveSchedule(schedulePayload);
-      
-      // Update local state with the response
-      setMemberSchedules(prev => {
-        const updatedSchedules = { ...prev };
-        if (!updatedSchedules[selectedMember._id]) {
-          updatedSchedules[selectedMember._id] = [];
-        }
-        
-        const existingIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === response._id);
-        if (existingIndex >= 0) {
-          // Preserve the meal plan when updating
-          const existingSchedule = updatedSchedules[selectedMember._id][existingIndex];
-          const updatedSchedule = {
-            ...response,
-            mealPlan: existingSchedule.mealPlan // Always keep the existing meal plan
-          };
-          console.log('Updating schedule with meal plan:', updatedSchedule);
-          updatedSchedules[selectedMember._id][existingIndex] = updatedSchedule;
+      // Update local state
+      if (response) {
+        const updatedSchedules = { ...memberSchedules };
+        if (editingSchedule) {
+          updatedSchedules[selectedMember._id] = updatedSchedules[selectedMember._id].map(schedule => 
+            schedule._id === editingSchedule._id ? response : schedule
+          );
         } else {
+          if (!updatedSchedules[selectedMember._id]) {
+            updatedSchedules[selectedMember._id] = [];
+          }
           updatedSchedules[selectedMember._id].push(response);
         }
-        
-        return updatedSchedules;
-      });
-
-      setOpenScheduleDialog(false);
-      setEditingSchedule(null);
-      setError(null);
+        setMemberSchedules(updatedSchedules);
+        setOpenScheduleDialog(false);
+        reset();
+        setEditingSchedule(null);
+      }
     } catch (error) {
       console.error('Error saving schedule:', error);
-      setError('Failed to save schedule. Please try again.');
+      setError(error.message || 'Failed to save schedule');
     }
   };
 
@@ -707,21 +710,32 @@ const InstructorSchedule = () => {
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          mb: 3 
+          mb: 3,
+          borderBottom: '2px solid',
+          borderColor: 'secondary.light',
+          pb: 2
         }}>
           <Typography variant="h5" sx={{ 
             fontWeight: 600,
-            color: 'secondary.main',
+            background: 'linear-gradient(45deg, #FF6B6B 30%, #FF8E53 90%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
             display: 'flex',
             alignItems: 'center',
             gap: 1,
           }}>
-            <Restaurant sx={{ fontSize: 28 }} />
+            <Restaurant sx={{ fontSize: 28, color: '#FF6B6B' }} />
             Meal Plan for {selectedMember.name}
           </Typography>
           <StyledButton
             variant="contained"
-            color="secondary"
+            sx={{
+              background: 'linear-gradient(45deg, #FF6B6B 30%, #FF8E53 90%)',
+              color: 'white',
+              '&:hover': {
+                background: 'linear-gradient(45deg, #FF8E53 30%, #FF6B6B 90%)',
+              }
+            }}
             startIcon={<Restaurant />}
             onClick={handleOpenMealPlanDialog}
           >
@@ -732,134 +746,206 @@ const InstructorSchedule = () => {
           <Grid container spacing={3}>
             {schedule.mealPlan.meals.map((meal, index) => (
               <Grid item xs={12} key={meal._id || index}>
-                <StyledCard>
-                  <CardContent>
-                    <Box sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 1, 
-                      mb: 3,
-                      color: 'secondary.main',
-                    }}>
-                      <Event sx={{ fontSize: 24 }} />
-                      <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                        {meal.day}
-                      </Typography>
-                    </Box>
+                <Card sx={{
+                  borderRadius: 4,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  overflow: 'visible',
+                  position: 'relative',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    transition: 'transform 0.3s ease-in-out',
+                  }
+                }}>
+                  <Box sx={{
+                    position: 'absolute',
+                    top: -15,
+                    left: 20,
+                    bgcolor: 'secondary.main',
+                    color: 'white',
+                    px: 3,
+                    py: 1,
+                    borderRadius: '20px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 1
+                  }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                      {meal.day}
+                    </Typography>
+                  </Box>
+                  <CardContent sx={{ pt: 4, pb: 3 }}>
                     <Grid container spacing={3}>
                       <Grid item xs={12} md={6}>
-                        <Box sx={{ 
-                          p: 2, 
-                          bgcolor: 'background.default',
-                          borderRadius: 2,
+                        <Box sx={{
+                          p: 2.5,
+                          bgcolor: 'background.paper',
+                          borderRadius: 3,
                           border: '1px solid',
                           borderColor: 'divider',
+                          height: '100%',
+                          transition: 'all 0.3s ease-in-out',
+                          '&:hover': {
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                            borderColor: 'primary.main',
+                          }
                         }}>
-                          <Typography variant="subtitle1" sx={{ 
-                            fontWeight: 600,
-                            color: 'primary.main',
-                            mb: 1,
+                          <Box sx={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1,
+                            mb: 2,
+                            pb: 1,
+                            borderBottom: '2px solid',
+                            borderColor: 'primary.light'
                           }}>
-                            <Restaurant sx={{ fontSize: 20 }} />
-                            Breakfast
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                            <Restaurant sx={{ color: 'primary.main' }} />
+                            <Typography variant="h6" color="primary.main" sx={{ fontWeight: 600 }}>
+                              Breakfast
+                            </Typography>
+                          </Box>
+                          <Typography variant="body1" sx={{
+                            color: 'text.primary',
+                            fontSize: '1rem',
+                            lineHeight: 1.6
+                          }}>
                             {meal.breakfast || 'No breakfast planned'}
                           </Typography>
                         </Box>
                       </Grid>
                       <Grid item xs={12} md={6}>
-                        <Box sx={{ 
-                          p: 2, 
-                          bgcolor: 'background.default',
-                          borderRadius: 2,
+                        <Box sx={{
+                          p: 2.5,
+                          bgcolor: 'background.paper',
+                          borderRadius: 3,
                           border: '1px solid',
                           borderColor: 'divider',
+                          height: '100%',
+                          transition: 'all 0.3s ease-in-out',
+                          '&:hover': {
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                            borderColor: 'secondary.main',
+                          }
                         }}>
-                          <Typography variant="subtitle1" sx={{ 
-                            fontWeight: 600,
-                            color: 'primary.main',
-                            mb: 1,
+                          <Box sx={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1,
+                            mb: 2,
+                            pb: 1,
+                            borderBottom: '2px solid',
+                            borderColor: 'secondary.light'
                           }}>
-                            <Restaurant sx={{ fontSize: 20 }} />
-                            Lunch
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                            <Restaurant sx={{ color: 'secondary.main' }} />
+                            <Typography variant="h6" color="secondary.main" sx={{ fontWeight: 600 }}>
+                              Lunch
+                            </Typography>
+                          </Box>
+                          <Typography variant="body1" sx={{
+                            color: 'text.primary',
+                            fontSize: '1rem',
+                            lineHeight: 1.6
+                          }}>
                             {meal.lunch || 'No lunch planned'}
                           </Typography>
                         </Box>
                       </Grid>
                       <Grid item xs={12}>
-                        <Box sx={{ 
-                          p: 2, 
-                          bgcolor: 'background.default',
-                          borderRadius: 2,
+                        <Box sx={{
+                          p: 2.5,
+                          bgcolor: 'background.paper',
+                          borderRadius: 3,
                           border: '1px solid',
                           borderColor: 'divider',
+                          transition: 'all 0.3s ease-in-out',
+                          '&:hover': {
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                            borderColor: 'error.main',
+                          }
                         }}>
-                          <Typography variant="subtitle1" sx={{ 
-                            fontWeight: 600,
-                            color: 'primary.main',
-                            mb: 1,
+                          <Box sx={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1,
+                            mb: 2,
+                            pb: 1,
+                            borderBottom: '2px solid',
+                            borderColor: 'error.light'
                           }}>
-                            <Restaurant sx={{ fontSize: 20 }} />
-                            Dinner
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                            <Restaurant sx={{ color: 'error.main' }} />
+                            <Typography variant="h6" color="error.main" sx={{ fontWeight: 600 }}>
+                              Dinner
+                            </Typography>
+                          </Box>
+                          <Typography variant="body1" sx={{
+                            color: 'text.primary',
+                            fontSize: '1rem',
+                            lineHeight: 1.6
+                          }}>
                             {meal.dinner || 'No dinner planned'}
                           </Typography>
                         </Box>
                       </Grid>
                       <Grid item xs={12}>
-                        <Box sx={{ 
-                          p: 2, 
-                          bgcolor: 'background.default',
-                          borderRadius: 2,
+                        <Box sx={{
+                          p: 2.5,
+                          bgcolor: 'background.paper',
+                          borderRadius: 3,
                           border: '1px solid',
                           borderColor: 'divider',
+                          transition: 'all 0.3s ease-in-out',
+                          '&:hover': {
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                            borderColor: 'info.main',
+                          }
                         }}>
-                          <Typography variant="subtitle1" sx={{ 
-                            fontWeight: 600,
-                            color: 'primary.main',
-                            mb: 1,
+                          <Box sx={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1,
+                            mb: 2,
+                            pb: 1,
+                            borderBottom: '2px solid',
+                            borderColor: 'info.light'
                           }}>
-                            <Restaurant sx={{ fontSize: 20 }} />
-                            Snacks
-                          </Typography>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                            {Array.isArray(meal.snacks) && meal.snacks.length > 0 ? (
-                              meal.snacks.map((snack, idx) => (
+                            <Restaurant sx={{ color: 'info.main' }} />
+                            <Typography variant="h6" color="info.main" sx={{ fontWeight: 600 }}>
+                              Snacks
+                            </Typography>
+                          </Box>
+                          {Array.isArray(meal.snacks) && meal.snacks.length > 0 ? (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {meal.snacks.map((snack, idx) => (
                                 <Chip
                                   key={idx}
                                   label={snack}
-                                  size="small"
-                                  color="secondary"
-                                  variant="outlined"
+                                  sx={{
+                                    bgcolor: 'info.light',
+                                    color: 'info.dark',
+                                    fontWeight: 500,
+                                    borderRadius: '16px',
+                                    '&:hover': {
+                                      bgcolor: 'info.main',
+                                      color: 'white',
+                                      transform: 'translateY(-2px)',
+                                    },
+                                    transition: 'all 0.3s ease-in-out',
+                                  }}
                                 />
-                              ))
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                No snacks planned
-                              </Typography>
-                            )}
-                          </Box>
+                              ))}
+                            </Box>
+                          ) : (
+                            <Typography variant="body1" sx={{
+                              color: 'text.primary',
+                              fontSize: '1rem',
+                              lineHeight: 1.6
+                            }}>
+                              No snacks planned
+                            </Typography>
+                          )}
                         </Box>
                       </Grid>
                     </Grid>
                   </CardContent>
-                </StyledCard>
+                </Card>
               </Grid>
             ))}
           </Grid>
@@ -869,20 +955,49 @@ const InstructorSchedule = () => {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            p: 4,
+            p: 6,
             textAlign: 'center',
-            bgcolor: 'background.default',
-            borderRadius: 2,
-            border: '1px dashed',
-            borderColor: 'divider',
+            bgcolor: 'background.paper',
+            borderRadius: 4,
+            border: '2px dashed',
+            borderColor: 'secondary.light',
+            transition: 'all 0.3s ease-in-out',
+            '&:hover': {
+              borderColor: 'secondary.main',
+              transform: 'scale(1.02)',
+            }
           }}>
-            <Restaurant sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
-            <Typography variant="h6" color="text.secondary" gutterBottom>
+            <Restaurant sx={{ 
+              fontSize: 64, 
+              color: 'secondary.light',
+              mb: 2,
+              animation: 'pulse 2s infinite',
+              '@keyframes pulse': {
+                '0%': { transform: 'scale(1)' },
+                '50%': { transform: 'scale(1.1)' },
+                '100%': { transform: 'scale(1)' },
+              }
+            }} />
+            <Typography variant="h5" color="secondary.main" gutterBottom sx={{ fontWeight: 600 }}>
               No meal plan assigned for this date
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Click the "Edit Meal Plan" button to create one
+            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400, mb: 3 }}>
+              Create a personalized meal plan to help your client achieve their fitness goals
             </Typography>
+            <StyledButton
+              variant="contained"
+              color="secondary"
+              startIcon={<Restaurant />}
+              onClick={handleOpenMealPlanDialog}
+              sx={{
+                px: 4,
+                py: 1.5,
+                borderRadius: '28px',
+                fontSize: '1.1rem'
+              }}
+            >
+              Create Meal Plan
+            </StyledButton>
           </Box>
         )}
       </StyledPaper>
