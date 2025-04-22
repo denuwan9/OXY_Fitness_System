@@ -62,13 +62,11 @@ const coachAvailabilityService = {
   },
 
   // Assign member to coach
-  assignMember: async (memberId) => {
-    console.log('Assigning member:', memberId);
+  assignMember: async (data) => {
     try {
-      const response = await axios.post(`${API_URL}/assign-member`, {
-        memberId
-      });
-      console.log('Assign member response:', response.data);
+      console.log('Assigning member to coach:', data);
+      const response = await axios.post(`${API_URL}/assign-member`, data);
+      console.log('Member assigned successfully:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error assigning member:', error);

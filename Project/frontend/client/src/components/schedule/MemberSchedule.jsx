@@ -172,8 +172,23 @@ const MemberSchedule = () => {
         return;
       }
 
+      console.log('Selected session for reschedule:', selectedSession);
+      console.log('Schedule data:', schedule);
+      
+      // Find the parent schedule that contains this session
+      const parentSchedule = schedule.find(s => 
+        s.sessions.some(sess => sess._id === selectedSession._id)
+      );
+      
+      if (!parentSchedule) {
+        setError('Could not find the parent schedule for this session');
+        return;
+      }
+
+      console.log('Parent schedule found:', parentSchedule);
+
       await scheduleService.requestReschedule({
-        scheduleId: selectedSession._id,
+        scheduleId: parentSchedule._id, // Use the parent schedule's ID
         newDate,
         newTime,
         reason,

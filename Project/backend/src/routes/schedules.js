@@ -44,6 +44,9 @@ router.post('/change-request/:userId', auth, scheduleController.requestScheduleC
 // Approve schedule change (Operation Manager only)
 router.put('/approve-change/:scheduleId/:sessionId', auth, checkRole(['manager']), scheduleController.approveScheduleChange);
 
+// Reject schedule change (Operation Manager only)
+router.put('/reject-change/:scheduleId/:sessionId', auth, checkRole(['manager']), scheduleController.rejectScheduleChange);
+
 // Update schedule (Coach/Trainer only)
 router.put('/:id', auth, checkRole(['coach', 'trainer']), scheduleController.updateSchedule);
 
@@ -77,27 +80,39 @@ router.post('/reschedule', auth, async (req, res) => {
   try {
     const { scheduleId, newDate, newTime, reason } = req.body;
     
+    console.log('Reschedule request received:', {
+      scheduleId,
+      newDate,
+      newTime,
+      reason,
+      userId: req.user.userId
+    });
+    
     const schedule = await Schedule.findById(scheduleId);
+    console.log('Found schedule:', schedule);
+    
     if (!schedule) {
+      console.log('Schedule not found with ID:', scheduleId);
       return res.status(404).json({ message: 'Schedule not found' });
     }
     
     // Create reschedule request
     const rescheduleRequest = new RescheduleRequest({
       scheduleId,
-      userId: req.user._id,
+      userId: req.user.userId,
       newDate,
       newTime,
       reason,
       status: 'pending'
     });
     
+    console.log('Creating reschedule request:', rescheduleRequest);
     await rescheduleRequest.save();
     
     res.status(201).json({ message: 'Reschedule request submitted successfully' });
   } catch (error) {
     console.error('Reschedule request error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -158,6 +173,40 @@ router.get('/report/:userId', auth, async (req, res) => {
   } catch (error) {
     console.error('Generate report error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all change requests (Manager only)
+router.get('/change-requests', auth, checkRole(['manager']), async (req, res) => {
+  try {
+    console.log('Getting all change requests');
+    console.log('User making request:', req.user);
+
+    const requests = await RescheduleRequest.find()
+      .populate('userId', 'name email membershipType')
+      .populate('scheduleId')
+      .sort({ createdAt: -1 });
+    
+    console.log('Found requests count:', requests.length);
+    console.log('Request details:', requests.map(req => ({
+      id: req._id,
+      userId: req.userId?._id,
+      userName: req.userId?.name,
+      scheduleId: req.scheduleId?._id,
+      status: req.status,
+      newDate: req.newDate,
+      newTime: req.newTime
+    })));
+
+    res.json(requests);
+  } catch (error) {
+    console.error('Error getting change requests:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

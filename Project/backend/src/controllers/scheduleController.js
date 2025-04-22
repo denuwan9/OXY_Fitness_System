@@ -3,6 +3,7 @@ const MealPlan = require('../models/MealPlan');
 const ExercisePlan = require('../models/ExercisePlan');
 const User = require('../models/User');
 const PDFDocument = require('pdfkit');
+const RescheduleRequest = require('../models/RescheduleRequest');
 
 // Create a new schedule
 exports.createSchedule = async (req, res) => {
@@ -196,6 +197,28 @@ exports.approveScheduleChange = async (req, res) => {
     res.json(schedule);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Reject schedule change (Operation Manager only)
+exports.rejectScheduleChange = async (req, res) => {
+  try {
+    const { scheduleId, sessionId } = req.params;
+    
+    // Find the reschedule request
+    const request = await RescheduleRequest.findById(sessionId);
+    if (!request) {
+      return res.status(404).json({ message: 'Reschedule request not found' });
+    }
+
+    // Update the request status
+    request.status = 'rejected';
+    await request.save();
+
+    res.json({ message: 'Schedule change rejected successfully', request });
+  } catch (error) {
+    console.error('Reject schedule change error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

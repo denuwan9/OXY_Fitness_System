@@ -11,16 +11,16 @@ router.get('/assigned-members', auth, checkRole(['coach', 'instructor', 'trainer
   next();
 }, coachAvailabilityController.getAssignedMembers);
 
-// Assign member to coach (coach only)
-router.post('/assign-member', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
+// Assign member to coach (coach or manager only)
+router.post('/assign-member', auth, checkRole(['coach', 'instructor', 'trainer', 'manager']), (req, res, next) => {
   console.log('POST /coach-availability/assign-member - Request received');
   console.log('User:', req.user);
   console.log('Body:', req.body);
   next();
 }, coachAvailabilityController.assignMember);
 
-// Remove member from coach (coach only)
-router.delete('/remove-member/:memberId', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
+// Remove member from coach (coach or manager only)
+router.delete('/remove-member/:memberId', auth, checkRole(['coach', 'instructor', 'trainer', 'manager']), (req, res, next) => {
   console.log('DELETE /coach-availability/remove-member/:memberId - Request received');
   console.log('User:', req.user);
   console.log('Member ID:', req.params.memberId);

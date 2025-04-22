@@ -132,6 +132,18 @@ const scheduleService = {
     return response.data;
   },
 
+  rejectScheduleChange: async (scheduleId, sessionId) => {
+    try {
+      console.log('Rejecting schedule change:', { scheduleId, sessionId });
+      const response = await axiosInstance.put(`/schedules/reject-change/${scheduleId}/${sessionId}`);
+      console.log('Schedule change rejected successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error rejecting schedule change:', error);
+      throw error;
+    }
+  },
+
   // Exercise Plan Management
   updateExercisePlan: async (data) => {
     const response = await axiosInstance.post('/schedules/exercise-plan', data);
@@ -209,6 +221,40 @@ const scheduleService = {
       return response.data;
     } catch (error) {
       console.error('Error generating report:', error);
+      throw error;
+    }
+  },
+
+  // Get all change requests
+  getChangeRequests: async () => {
+    try {
+      console.log('Fetching change requests');
+      const token = localStorage.getItem('token');
+      console.log('Using auth token:', token ? 'Present' : 'Missing');
+
+      const response = await axiosInstance.get('/schedules/change-requests');
+      console.log('Change requests response:', {
+        status: response.status,
+        headers: response.headers,
+        data: response.data
+      });
+
+      // Ensure we always return an array
+      const requests = Array.isArray(response.data) ? response.data : [response.data].filter(Boolean);
+      console.log('Processed requests:', requests);
+      
+      return requests;
+    } catch (error) {
+      console.error('Error fetching change requests:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });
       throw error;
     }
   }

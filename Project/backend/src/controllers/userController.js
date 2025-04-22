@@ -99,17 +99,24 @@ const getUserById = async (req, res) => {
 // Get all members
 const getMembers = async (req, res) => {
   try {
-    const members = await User.find({ role: 'user' })
-      .select('-password')
-      .sort({ createdAt: -1 });
+    console.log('Fetching members...');
+    const members = await User.find({ 
+      role: 'user',
+      isActive: true 
+    }).select('name email phone membershipType profileImage role');
     
-    res.status(200).json({
+    console.log(`Found ${members.length} members`);
+    res.json({ 
       message: 'Members retrieved successfully',
-      members
+      members 
     });
   } catch (error) {
-    console.error('Get members error:', error);
-    res.status(500).json({ message: 'Error retrieving members', error: error.message });
+    console.error('Error fetching members:', error);
+    res.status(500).json({ 
+      message: 'Error retrieving members', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

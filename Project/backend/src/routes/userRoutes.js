@@ -3,6 +3,7 @@ const verifyToken = require("../middlewares/authMiddleware");
 const authorizeRoles = require("../middlewares/roleMiddleware");
 const router = express.Router();
 const { createUser, getUsers, getUserById, getMembers } = require('../controllers/userController');
+const User = require('../models/User');
 
 //Only admin can access this router
 router.get("/admin", verifyToken, authorizeRoles("admin"), (req, res) => {
@@ -82,12 +83,41 @@ router.get(
  *       500:
  *         description: Server error
  */
-// Get all members (accessible by coach, instructor, trainer)
+// Get all members (accessible by coach, instructor, trainer, and manager)
 router.get(
   '/members',
   verifyToken,
-  authorizeRoles('coach', 'instructor', 'trainer'),
+  authorizeRoles('coach', 'instructor', 'trainer', 'manager'),
   getMembers
+);
+
+// Get all coaches (accessible by manager)
+router.get(
+  '/coaches',
+  verifyToken,
+  authorizeRoles('manager'),
+  async (req, res) => {
+    try {
+      console.log('Fetching coaches...');
+      const coaches = await User.find({ 
+        role: { $in: ['coach', 'trainer'] },
+        isActive: true 
+      }).select('name email phone specialization profileImage role');
+      
+      console.log(`Found ${coaches.length} coaches`);
+      res.json({ 
+        message: 'Coaches retrieved successfully',
+        coaches 
+      });
+    } catch (error) {
+      console.error('Error fetching coaches:', error);
+      res.status(500).json({ 
+        message: 'Error retrieving coaches', 
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  }
 );
 
 // Get user by ID (accessible by admin, manager, and the user themselves)

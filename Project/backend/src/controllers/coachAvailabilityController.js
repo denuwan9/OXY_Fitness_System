@@ -82,10 +82,15 @@ exports.updateCoachAvailability = async (req, res) => {
 exports.assignMember = async (req, res) => {
   try {
     console.log('Assigning member to coach');
-    console.log('Coach ID:', req.user.userId);
-    console.log('Member ID:', req.body.memberId);
+    console.log('Request body:', req.body);
     
-    const { memberId } = req.body;
+    const { memberId, coachId } = req.body;
+    
+    // If coachId is provided (manager assigning), use it; otherwise use the logged-in user's ID
+    const targetCoachId = coachId || req.user.userId;
+    
+    console.log('Target coach ID:', targetCoachId);
+    console.log('Member ID:', memberId);
     
     const member = await User.findById(memberId);
     console.log('Found member:', member);
@@ -95,13 +100,13 @@ exports.assignMember = async (req, res) => {
       return res.status(404).json({ message: 'Member not found' });
     }
     
-    let coachAvailability = await CoachAvailability.findOne({ coachId: req.user.userId });
+    let coachAvailability = await CoachAvailability.findOne({ coachId: targetCoachId });
     console.log('Found coach availability:', coachAvailability);
     
     if (!coachAvailability) {
       console.log('Creating new coach availability');
       coachAvailability = new CoachAvailability({
-        coachId: req.user.userId,
+        coachId: targetCoachId,
         availability: [],
         assignedMembers: []
       });
@@ -121,10 +126,17 @@ exports.assignMember = async (req, res) => {
     await coachAvailability.save();
     console.log('Updated coach availability:', coachAvailability);
     
-    res.json(coachAvailability);
+    res.json({
+      message: 'Member assigned successfully',
+      coachAvailability
+    });
   } catch (error) {
     console.error('Error in assignMember:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: 'Error assigning member',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
@@ -132,29 +144,45 @@ exports.assignMember = async (req, res) => {
 exports.removeMember = async (req, res) => {
   try {
     console.log('Removing member from coach');
-    console.log('Coach ID:', req.user.userId);
     console.log('Member ID:', req.params.memberId);
     
     const { memberId } = req.params;
     
-    const coachAvailability = await CoachAvailability.findOne({ coachId: req.user.userId });
-    console.log('Found coach availability:', coachAvailability);
+    // Find all coach availabilities that have this member assigned
+    const coachAvailabilities = await CoachAvailability.find({
+      'assignedMembers.memberId': memberId
+    });
     
-    if (!coachAvailability) {
-      console.log('Coach availability not found');
-      return res.status(404).json({ message: 'Coach availability not found' });
+    console.log('Found coach availabilities:', coachAvailabilities.length);
+    
+    if (coachAvailabilities.length === 0) {
+      return res.status(404).json({ 
+        message: 'Member is not assigned to any coach',
+        memberId 
+      });
     }
     
-    coachAvailability.assignedMembers = coachAvailability.assignedMembers.filter(
-      assigned => assigned.memberId.toString() !== memberId
-    );
+    // Remove member from all coach availabilities
+    for (const availability of coachAvailabilities) {
+      availability.assignedMembers = availability.assignedMembers.filter(
+        assigned => assigned.memberId.toString() !== memberId
+      );
+      await availability.save();
+      console.log(`Removed member from coach ${availability.coachId}`);
+    }
     
-    await coachAvailability.save();
-    console.log('Updated coach availability:', coachAvailability);
-    res.json(coachAvailability);
+    res.json({ 
+      message: 'Member removed successfully from all coaches',
+      memberId,
+      affectedCoaches: coachAvailabilities.length
+    });
   } catch (error) {
     console.error('Error in removeMember:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: 'Error removing member',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 

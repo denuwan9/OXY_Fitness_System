@@ -6,6 +6,7 @@ import CoachSchedule from '../components/schedule/CoachSchedule';
 import ManagerSchedule from '../components/schedule/ManagerSchedule';
 import InstructorSchedule from '../pages/InstructorSchedule';
 import CoachAvailability from '../pages/CoachAvailability';
+import ManagerDashboard from '../pages/ManagerDashboard';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useAuth();
@@ -60,6 +61,16 @@ const ScheduleRoutes = () => {
         element={
           <ProtectedRoute allowedRoles={['manager']}>
             <ManagerSchedule />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Manager Dashboard Route */}
+      <Route
+        path="/manager-dashboard"
+        element={
+          <ProtectedRoute allowedRoles={['manager']}>
+            <ManagerDashboard />
           </ProtectedRoute>
         }
       />
