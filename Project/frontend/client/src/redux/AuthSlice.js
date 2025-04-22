@@ -12,6 +12,7 @@ export const updateUser=createAsyncThunk('updateuser',async()=>{
     }
 })
 
+
 const initialState = {
     loading:null,
     error:null,
@@ -48,5 +49,7 @@ const AuthSlice = createSlice({
 })
 
 export const { SetUser, Logout } = AuthSlice.actions
+
+
 
 export default AuthSlice.reducer

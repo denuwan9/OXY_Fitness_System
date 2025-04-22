@@ -5,6 +5,7 @@ import { get, deleteUser, post } from "../services/ApiEndpoint";
 import { useDispatch } from "react-redux";
 import { Logout } from "../redux/AuthSlice";
 import toast from "react-hot-toast";
+import axios from "axios";
 
 const UserManager = () => {
   const dispatch = useDispatch();
@@ -16,37 +17,88 @@ const UserManager = () => {
   
   useEffect(() => {
     const GetUsers = async () => {
-      try {
-        const request = await get('/api/admin/getuser');
-        const response = request.data;
-        if (request.status === 200) {
-          setUsers(response.users); // Assuming the response contains a `users` array
+        try {
+            const request = await get('/api/admin/getuser');
+            console.log('API Response:', request.data);
+            
+            // Handle both possible response structures
+            const usersData = request.data.users || request.data.user;
+            
+            if (!usersData) {
+                throw new Error("No users data found in response");
+            }
+
+            setUsers(Array.isArray(usersData) ? usersData : []);
+            
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            toast.error(error.response?.data?.message || "Failed to fetch users");
         }
-      } catch (error) {
-        console.log(error);
-        toast.error("Failed to fetch users");
-      }
     };
     GetUsers();
-  }, []);
+}, []);
 
-  const handleDeleteUser = async (id) => {
-    try {
-      // Fixed typo in the URL: 'delet' → 'delete'
-      const request = await deleteUser(`/api/admin/delete/${id}`);
-      const response = request.data;
-      if (request.status === 200) {
-        toast.success(response.message);
-        console.log(response);
-        // Refresh the user list after deletion
-        setUsers(users.filter(user => user._id !== id));
-      }
-    } catch (error) {
-      if(error.response){
-        toast.error(error.response.data.message);
-      }
+const handleDeleteUser = async (id) => {
+  try {
+    // Confirm deletion
+    const confirmDelete = window.confirm("Are you sure you want to delete this user?");
+    if (!confirmDelete) return;
+
+    // Show loading state
+    const deletingToast = toast.loading('Deleting user...');
+
+    // First check if user is admin
+    const userToDelete = users.find(user => user._id === id);
+    if (userToDelete?.role === 'admin') {
+      toast.error("Cannot delete admin users", { id: deletingToast });
+      return;
     }
-  };
+
+    // Make POST request to match backend route
+    const request = await axios.post(
+      `http://localhost:6017/api/admin/delet/${id}`,
+      {}, // empty data object
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      }
+    );
+    
+    // Success handling
+    if (request.status === 200) {
+      toast.success(request.data.message, { id: deletingToast });
+      
+      // Optimistic update (immediate UI update)
+      setUsers(prevUsers => prevUsers.filter(user => user._id !== id));
+      
+      // Alternative: Refetch for data consistency
+      // const refreshRequest = await get('/api/admin/getuser');
+      // setUsers(refreshRequest.data.users || []);
+    }
+  } catch (error) {
+    console.error("Delete error details:", error);
+
+    // Specific error handling
+    if (error.response) {
+      if (error.response.status === 401) {
+        toast.error("Session expired. Please login again.");
+        handleLogout();
+      } else if (error.response.status === 403) {
+        toast.error("Admin users cannot be deleted");
+      } else {
+        toast.error(error.response.data.message || "Failed to delete user");
+      }
+    } else if (error.request) {
+      toast.error("No response from server. Please check your connection.");
+    } else {
+      toast.error("Delete request failed. Please try again.");
+    }
+  }
+};
+
 
   // State for adding a new user
   const [newUser, setNewUser] = useState({
@@ -174,8 +226,8 @@ const UserManager = () => {
       case "number":
         if (!value.trim()) {
           errorMessage = "This field is required.";
-        } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(value)) {
-          errorMessage = "Phone number must be in the format (555) 123-4567.";
+        } else if (!/^\+?[0-9\s\-\(\)]{8,20}$/.test(value)) {
+          errorMessage = "Please enter a valid phone number (e.g., +1234567890).";
         }
         break;
 
@@ -222,30 +274,82 @@ const UserManager = () => {
     if (!user.number.trim()) {
       newErrors.number = "Phone Number is required.";
       isValid = false;
-    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(user.number)) {
-      newErrors.number = "Phone number must be in the format (555) 123-4567.";
+    } else if (!/^\+?[0-9\s\-\(\)]{8,20}$/.test(user.number)) {
+      newErrors.number = "Please enter a valid phone number (e.g., +1234567890).";
       isValid = false;
     }
 
     setErrors(newErrors);
     return isValid;
   };
-
+  const toggleEditMode = () => {
+    setIsEditing(!isEditing);
+  };
   // Function to handle adding a new user
-  const handleAddUser = () => {
-    if (validateForm(newUser)) {
-      const newUserId = users.length + 1; // Auto-increment ID
-      setUsers([...users, { id: newUserId, ...newUser }]);
-      setNewUser({
-        fname: "",
-        lname: "",
-        email: "",
-        address: "",
-        city: "",
-        number: "",
-        password: "",
-        role: "member",
-      });
+  const handleAddUser = async () => {
+    // Password validation with direct toast messages
+    if (!newUser.password) {
+      toast.error("Password is required");
+      return;
+    }
+    
+    if (newUser.password.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+    
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,128}$/.test(newUser.password)) {
+      toast.error("Password must contain: uppercase, lowercase, number, and special character");
+      return;
+    }
+    
+    if (newUser.password.length > 128) {
+      toast.error("Password cannot exceed 128 characters");
+      return;
+    }
+  
+    // Then validate other form fields
+    if (!validateForm(newUser)) {
+      toast.error("Please fill all required fields correctly");
+      return;
+    }
+  
+    try {
+      const addingToast = toast.loading('Adding user...');
+  
+      const response = await axios.post(
+        "http://localhost:6017/api/auth/addUser",
+        newUser,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+  
+      if (response.data.success) {
+        toast.success(response.data.message, { id: addingToast });
+        setUsers([...users, response.data.user]);
+        setNewUser({
+          fname: "",
+          lname: "",
+          email: "",
+          address: "",
+          city: "",
+          number: "",
+          password: "",
+          role: "user",
+        });
+      } else {
+        toast.error(response.data.message, { id: addingToast });
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        "Failed to add user"
+      );
     }
   };
 
@@ -262,35 +366,59 @@ const UserManager = () => {
         city: userToEdit.city || "",
         number: userToEdit.number || "",
         password: "", // Don't populate password for security reasons
-        role: userToEdit.role || "member",
+        role: userToEdit.role || "user",
       });
       setIsEditing(true);
     }
   };
 
   // Function to handle updating a user
-  const handleUpdateUser = () => {
-    if (validateForm(editUser)) {
-      // Update local state
-      setUsers(
-        users.map((user) =>
-          user._id === editUser.id ? { ...user, ...editUser } : user
-        )
-      );
+  const handleUpdateUser = async () => {
+    if (!validateForm(editUser)) return;
+  
+    try {
+      const updatingToast = toast.loading('Updating user...');
       
-      // Reset edit form
-      setEditUser({
-        id: null,
-        fname: "",
-        lname: "",
-        email: "",
-        address: "",
-        city: "",
-        number: "",
-        password: "",
-        role: "",
-      });
-      setIsEditing(false);
+      // Remove id from the data we're sending
+      const { id, ...updateData } = editUser;
+      
+      const response = await axios.put(
+        `http://localhost:6017/api/admin/updateUser/${id}`,
+        updateData,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
+      );
+  
+      if (response.status === 200) {
+        toast.success(response.data.message, { id: updatingToast });
+        
+        // Update local state with the returned user data
+        setUsers(users.map(user => 
+          user._id === id ? { ...user, ...response.data.user } : user
+        ));
+        
+        // Reset edit form
+        setEditUser({
+          id: null,
+          fname: "",
+          lname: "",
+          email: "",
+          address: "",
+          city: "",
+          number: "",
+          password: "",
+          role: "",
+        });
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error(error.response?.data?.message || "Failed to update user");
     }
   };
 
@@ -324,6 +452,25 @@ const UserManager = () => {
                 <span className="button-text">Home</span>
               </Link>
             </li>
+                        {/* Profile Button */}
+                        <li>
+                          <Link to="/profile" className="menu-button">
+                            <span className="button-icon">👤</span>
+                            <span className="button-text">Profile</span>
+                          </Link>
+                        </li>
+            
+                        {/* Edit Profile Button */}
+                        <li>
+                          <button onClick={toggleEditMode} className="menu-button">
+                            <span className="button-icon">✏️</span>
+                            <span className="button-text">
+                              {isEditing ? "Cancel Editing" : "Edit Profile"}
+                            </span>
+                          </button>
+                        </li>
+
+            
 
             {/* Logout Button */}
             <li>
@@ -407,11 +554,12 @@ const UserManager = () => {
             />
             <select
               name="role"
-              value={newUser.role}
+              value={newUser.role || user}
               onChange={handleInputChange}
             >
               <option value="admin">Admin</option>
-              <option value="member">Member</option>
+              <option value="manager">Manager</option>
+              <option value="user">User</option>
               <option value="supplier">Supplier</option>
               <option value="trainer">Trainer</option>
             </select>
@@ -489,7 +637,8 @@ const UserManager = () => {
               onChange={handleInputChange}
             >
               <option value="admin">Admin</option>
-              <option value="member">Member</option>
+              <option value="manager">Manager</option>
+              <option value="user">User</option>
               <option value="supplier">Supplier</option>
               <option value="trainer">Trainer</option>
             </select>

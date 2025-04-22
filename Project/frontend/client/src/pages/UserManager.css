@@ -134,6 +134,12 @@
     cursor: pointer;
     transition: background-color 0.3s ease;
   }
+
+  .button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+  }
   
   .action-button:hover {
     background-color: #005bb5;
@@ -206,4 +212,14 @@
     font-size: 14px;
     margin-top: 5px;
     display: block;
+  }
+
+  .error-input {
+    border: 1px solid red;
+  }
+  
+  .error-message {
+    color: red;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
   }

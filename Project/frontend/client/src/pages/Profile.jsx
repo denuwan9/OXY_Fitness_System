@@ -1,31 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import "./Profile.css"; // Import the CSS file
-import { post } from '../services/ApiEndpoint'
-import { Logout } from "../redux/AuthSlice";
+import "./Profile.css";
+import { post, put } from '../services/ApiEndpoint';
+import { Logout, updateUser } from "../redux/AuthSlice";
+import axios from "axios";
+
 
 
 
 const Profile = () => {
-  const user = useSelector((state) => state.Auth.user)
-  console.log(user)
+  const user = useSelector((state) => state.Auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
   // State for the profile picture
   const [avatar, setAvatar] = useState(
-    "https://placekitten.com/150/150" // Placeholder image
+    user?.profilePicture || "https://placekitten.com/150/150" // Placeholder image
   );
 
   // State for editable profile information
   const [profileInfo, setProfileInfo] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "(555) 123-4567",
-    address: "123 Main Street",
-    city: "New York",
+    firstName: user?.fname || "",
+    lastName: user?.lname || "",
+    email: user?.email || "",
+    phone: user?.number || "",
+    address: user?.address || "",
+    city: user?.city || "",
   });
 
   // State to toggle edit mode
@@ -48,8 +49,23 @@ const Profile = () => {
     phone: "",
   });
 
+  // Update profileInfo when user data changes
+  useEffect(() => {
+    if (user) {
+      setProfileInfo({
+        firstName: user.fname || "",
+        lastName: user.lname || "",
+        email: user.email || "",
+        phone: user.number || "",
+        address: user.address || "",
+        city: user.city || "",
+      });
+      setAvatar(user.profilePicture || "https://placekitten.com/150/150");
+    }
+  }, [user]);
+
   // Function to handle avatar upload
-  const handleAvatarUpload = (e) => {
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
@@ -61,9 +77,21 @@ const Profile = () => {
         alert("File size should be less than 5MB.");
         return;
       }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatar(reader.result);
+        const imageUrl = reader.result;
+        setAvatar(imageUrl);
+        
+        // Update the user's profile picture in the backend
+        if (user) {
+          const updatedUser = { ...user, profilePicture: imageUrl };
+          dispatch(updateUser(updatedUser));
+          
+          // Here you would typically make an API call to save the image to the backend
+          // For example:
+          // post('/api/user/update-profile-picture', { image: imageUrl });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -103,8 +131,8 @@ const Profile = () => {
       case "phone":
         if (!value.trim()) {
           errorMessage = "This field is required.";
-        } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(value)) {
-          errorMessage = "Phone number must be in the format (555) 123-4567.";
+        } else if ( !/^\+?[0-9\s\-\(\)]{8,20}$/.test(value)) {
+          errorMessage = "Please enter a valid phone number (e.g., +1234567890).";
         }
         break;
 
@@ -151,8 +179,8 @@ const Profile = () => {
     if (!profileInfo.phone.trim()) {
       newErrors.phone = "Phone Number is required.";
       isValid = false;
-    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(profileInfo.phone)) {
-      newErrors.phone = "Phone number must be in the format (555) 123-4567.";
+    } else if (! /^\+?[0-9\s\-\(\)]{8,20}$/.test(profileInfo.phone)) {
+      newErrors.phone = "Please enter a valid phone number (e.g., +1234567890).";
       isValid = false;
     }
 
@@ -186,13 +214,76 @@ const Profile = () => {
   };
 
   // Function to save changes
-  const saveChanges = () => {
-    if (validateForm()) {
-      setIsEditing(false);
-      console.log("Profile updated:", profileInfo);
+  const saveChanges = async () => {
+    if (!validateForm()) {
+      alert('Please fix the validation errors before saving.');
+      return;
+    }
+  
+    try {
+      const id = user?.id || user?._id;
+      if (!id) {
+        throw new Error('User ID is not available.');
+      }
+  
+      const updatedUser = {
+        fname: profileInfo.firstName,
+        lname: profileInfo.lastName,
+        email: profileInfo.email,
+        number: profileInfo.phone,
+        address: profileInfo.address,
+        city: profileInfo.city,
+        profilePicture: avatar // Make sure to include the avatar
+      };
+  
+      // Send update request to backend
+      const response = await axios.put(
+        `http://localhost:6017/api/auth/userUpdate/${id}`,
+        updatedUser,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+          withCredentials: true,
+        }
+      );
+  
+      // Check if response contains updated user data
+      if (response.data && response.data.user) {
+        // Dispatch the update action with the complete user data
+        dispatch(updateUser(response.data.user));
+        
+        // Update local state with the new data
+        setProfileInfo({
+          firstName: response.data.user.fname || "",
+          lastName: response.data.user.lname || "",
+          email: response.data.user.email || "",
+          phone: response.data.user.number || "",
+          address: response.data.user.address || "",
+          city: response.data.user.city || "",
+        });
+        
+        if (response.data.user.profilePicture) {
+          setAvatar(response.data.user.profilePicture);
+        }
+  
+        setIsEditing(false);
+        alert('Profile updated successfully!');
+      } else {
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.message || 
+                          'Failed to update profile';
+      alert(errorMessage);
     }
   };
-
+  
+  
+      
   // Function to handle BMI input changes
   const handleBmiInputChange = (e) => {
     const { name, value } = e.target;
@@ -238,7 +329,9 @@ const Profile = () => {
             <li>
               <button onClick={toggleEditMode} className="menu-button">
                 <span className="button-icon">✏️</span>
-                <span className="button-text">Edit Profile</span>
+                <span className="button-text">
+                  {isEditing ? "Cancel Editing" : "Edit Profile"}
+                </span>
               </button>
             </li>
 
@@ -254,7 +347,7 @@ const Profile = () => {
 
             {/* Logout Button */}
             <li>
-              <button  onClick={handleLogout}>
+              <button onClick={handleLogout} className="menu-button">
                 <span className="button-icon">🚪</span>
                 <span className="button-text">Log out</span>
               </button>
@@ -268,24 +361,13 @@ const Profile = () => {
         {/* Profile Picture Section */}
         <div className="profile-picture-section">
           <div className="avatar-container">
-            <img src={avatar} alt="Profile" className="avatar" />
-            <label htmlFor="avatar-upload" className="camera-icon">
-              📷
-            </label>
-            <input
-              id="avatar-upload"
-              type="file"
-              accept="image/*"
-              onChange={handleAvatarUpload}
-              className="hidden"
-            />
+            
           </div>
-          <p className="avatar-instruction">
-            Click the camera icon to update your avatar
-          </p>
+          
         </div>
-        <div className="user-card" > 
-          <h2 >Welcome,  {user && user.fname}</h2>
+        
+        <div className="user-card">
+          <h2>Welcome, {profileInfo.firstName}</h2>
         </div>
 
         {/* Personal Details Section */}
@@ -304,7 +386,7 @@ const Profile = () => {
                     name="firstName"
                     value={profileInfo.firstName}
                     onChange={handleInputChange}
-                    className="edit-input"
+                    className={`edit-input ${errors.firstName ? "error" : ""}`}
                   />
                   {errors.firstName && (
                     <span className="error-message">{errors.firstName}</span>
@@ -325,7 +407,7 @@ const Profile = () => {
                     name="lastName"
                     value={profileInfo.lastName}
                     onChange={handleInputChange}
-                    className="edit-input"
+                    className={`edit-input ${errors.lastName ? "error" : ""}`}
                   />
                   {errors.lastName && (
                     <span className="error-message">{errors.lastName}</span>
@@ -346,7 +428,7 @@ const Profile = () => {
                     name="email"
                     value={profileInfo.email}
                     onChange={handleInputChange}
-                    className="edit-input"
+                    className={`edit-input ${errors.email ? "error" : ""}`}
                   />
                   {errors.email && (
                     <span className="error-message">{errors.email}</span>
@@ -367,7 +449,8 @@ const Profile = () => {
                     name="phone"
                     value={profileInfo.phone}
                     onChange={handleInputChange}
-                    className="edit-input"
+                    className={`edit-input ${errors.phone ? "error" : ""}`}
+                    placeholder="(012) 123-4567"
                   />
                   {errors.phone && (
                     <span className="error-message">{errors.phone}</span>
@@ -413,9 +496,14 @@ const Profile = () => {
 
           {/* Save Changes Button (Visible in Edit Mode) */}
           {isEditing && (
-            <button className="save-changes-button" onClick={saveChanges}>
-              Save Changes
-            </button>
+            <div className="edit-actions">
+              <button className="save-changes-button" onClick={saveChanges}>
+                Save Changes
+              </button>
+              <button className="cancel-button" onClick={toggleEditMode}>
+                Cancel
+              </button>
+            </div>
           )}
         </div>
 

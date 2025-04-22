@@ -5,6 +5,7 @@ import cookieparser from "cookie-parser"
 import DbCon from "./utlis/db.js"
 import AuthRoutes from "./routes/authRoutes.js"
 import AdminRoutes from "./routes/AdminRoutes.js"
+import UserModel from "./models/userModel.js"
 
 
 dotenv.config()
@@ -22,6 +23,9 @@ app.use(cors({
 }));
 app.use("/api/auth",AuthRoutes)
 app.use("/api/admin",AdminRoutes)
+
+
+
 
 
 app.get("/", (req, res) => {

@@ -311,3 +311,36 @@
   margin-top: 5px;
   display: block;
 }
+
+.edit-input {
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+.cancel-button {
+  padding: 10px 20px;
+  background-color: #f07e7e;
+  color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-left: 10px;
+}
+
+.cancel-button:hover {
+  background-color: #ce4444;
+  border-color: #c89f9f;
+  color: #ffffff;
+}
+
+.cancel-button:active {
+  background-color: #d5d5d5;
+  transform: translateY(1px);
+}
+
