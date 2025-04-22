@@ -16,8 +16,8 @@ router.post('/generate', auth, scheduleController.generateSchedule);
 // Get user's schedule
 router.get('/user/:userId', auth, async (req, res) => {
   try {
-    // Check if user is requesting their own schedule or has admin/manager role
-    if (req.params.userId !== req.user.userId && !['admin', 'manager', 'coach'].includes(req.user.role)) {
+    // Check if user is requesting their own schedule or has admin/manager/coach/trainer role
+    if (req.params.userId !== req.user.userId && !['admin', 'manager', 'coach', 'trainer'].includes(req.user.role)) {
       return res.status(403).json({ message: 'Not authorized to view this schedule' });
     }
 
@@ -209,5 +209,8 @@ router.get('/change-requests', auth, checkRole(['manager']), async (req, res) =>
     });
   }
 });
+
+// Get all reschedule requests (Manager only)
+router.get('/reschedule-requests', auth, checkRole(['manager']), scheduleController.getAllRescheduleRequests);
 
 module.exports = router; 

@@ -257,6 +257,19 @@ const scheduleService = {
       });
       throw error;
     }
+  },
+
+  // Get all reschedule requests
+  getAllRescheduleRequests: async () => {
+    try {
+      console.log('Fetching all reschedule requests');
+      const response = await axiosInstance.get('/schedules/reschedule-requests');
+      console.log('Reschedule requests response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching reschedule requests:', error);
+      throw error;
+    }
   }
 };
 

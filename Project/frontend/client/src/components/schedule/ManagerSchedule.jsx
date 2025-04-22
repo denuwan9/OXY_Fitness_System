@@ -232,82 +232,78 @@ const ManagerSchedule = () => {
         <Grid container spacing={3}>
           <Grid item xs={12}>
             <Typography variant="body1" color="text.secondary" align="center">
-              No pending schedule change requests
+              No schedule change requests
             </Typography>
           </Grid>
         </Grid>
       );
     }
 
+    // Separate pending and past requests
+    const pendingRequests = requests.filter(req => req.status === 'pending');
+    const pastRequests = requests.filter(req => req.status !== 'pending');
+
     return (
       <Grid container spacing={3}>
-        {requests.map((request) => {
-          console.log('Rendering request:', request);
-          const currentSession = request.scheduleId?.sessions?.[0];
-          
-          return (
-            <Grid item xs={12} key={request._id}>
-              <StyledCard>
-                <CardContent>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                        <Person sx={{ mr: 1 }} />
-                        <Typography variant="h6">
-                          Member: {request.userId?.name || 'Unknown'}
+        {/* Pending Requests */}
+        <Grid item xs={12}>
+          <Typography variant="h6" gutterBottom>
+            Pending Requests
+          </Typography>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Member</TableCell>
+                  <TableCell>Current Schedule</TableCell>
+                  <TableCell>Requested Schedule</TableCell>
+                  <TableCell>Reason</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pendingRequests.map((request) => (
+                  <TableRow key={request._id}>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Person />
+                        <Typography>
+                          {request.userId?.name || 'Unknown'}
                         </Typography>
                         <Chip
                           label={request.userId?.membershipType}
                           color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
                                  request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
                           size="small"
-                          sx={{ ml: 2 }}
                         />
                       </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <AccessTime sx={{ mr: 1 }} />
-                        <Typography>
-                          Current: {currentSession?.date ? 
-                            new Date(currentSession.date).toLocaleDateString() : 'N/A'} at{' '}
-                          {currentSession?.time || 'N/A'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <AccessTime sx={{ mr: 1 }} />
-                        <Typography>
-                          Requested: {request.newDate ? 
-                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.newTime || 'N/A'}
-                        </Typography>
-                      </Box>
-                      {request.reason && (
-                        <Box sx={{ mt: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Reason: {request.reason}
-                          </Typography>
-                        </Box>
-                      )}
-                      <Box sx={{ mt: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Workout Type: {currentSession?.workoutType || 'N/A'}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Duration: {currentSession?.duration || 'N/A'} minutes
-                        </Typography>
-                        {currentSession?.notes && (
-                          <Typography variant="body2" color="text.secondary">
-                            Notes: {currentSession.notes}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                    </TableCell>
+                    <TableCell>
+                      {request.scheduleId?.sessions?.[0]?.date ? 
+                        new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
+                      {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {request.newDate ? 
+                        new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
+                      {request.newTime || 'N/A'}
+                    </TableCell>
+                    <TableCell>{request.reason}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={request.status}
+                        color={request.status === 'pending' ? 'warning' : 
+                               request.status === 'approved' ? 'success' : 'error'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button
                           variant="contained"
                           color="success"
+                          size="small"
                           startIcon={<CheckCircle />}
                           onClick={() => handleApprove(request.scheduleId._id, request._id)}
                           disabled={loading}
@@ -317,6 +313,7 @@ const ManagerSchedule = () => {
                         <Button
                           variant="contained"
                           color="error"
+                          size="small"
                           startIcon={<Cancel />}
                           onClick={() => handleReject(request.scheduleId._id, request._id)}
                           disabled={loading}
@@ -324,13 +321,75 @@ const ManagerSchedule = () => {
                           Reject
                         </Button>
                       </Box>
-                    </Grid>
-                  </Grid>
-                </CardContent>
-              </StyledCard>
-            </Grid>
-          );
-        })}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Grid>
+
+        {/* Past Requests */}
+        <Grid item xs={12}>
+          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+            Past Requests
+          </Typography>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Member</TableCell>
+                  <TableCell>Current Schedule</TableCell>
+                  <TableCell>Requested Schedule</TableCell>
+                  <TableCell>Reason</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Date</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {pastRequests.map((request) => (
+                  <TableRow key={request._id}>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Person />
+                        <Typography>
+                          {request.userId?.name || 'Unknown'}
+                        </Typography>
+                        <Chip
+                          label={request.userId?.membershipType}
+                          color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
+                                 request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
+                          size="small"
+                        />
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      {request.scheduleId?.sessions?.[0]?.date ? 
+                        new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
+                      {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      {request.newDate ? 
+                        new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
+                      {request.newTime || 'N/A'}
+                    </TableCell>
+                    <TableCell>{request.reason}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={request.status}
+                        color={request.status === 'approved' ? 'success' : 'error'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {new Date(request.createdAt).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Grid>
       </Grid>
     );
   };

@@ -168,35 +168,72 @@ exports.requestScheduleChange = async (req, res) => {
   }
 };
 
+// Get all reschedule requests (Manager only)
+exports.getAllRescheduleRequests = async (req, res) => {
+  try {
+    console.log('Getting all reschedule requests');
+    const requests = await RescheduleRequest.find()
+      .populate('userId', 'name email membershipType')
+      .populate('scheduleId')
+      .sort({ createdAt: -1 });
+    
+    console.log(`Found ${requests.length} requests`);
+    res.json(requests);
+  } catch (error) {
+    console.error('Error getting reschedule requests:', error);
+    res.status(500).json({ 
+      message: 'Error retrieving reschedule requests',
+      error: error.message 
+    });
+  }
+};
+
 // Approve schedule change (Operation Manager only)
 exports.approveScheduleChange = async (req, res) => {
   try {
     const { scheduleId, sessionId } = req.params;
-    const schedule = await Schedule.findById(scheduleId);
+    console.log('Approving schedule change:', { scheduleId, sessionId });
 
+    // Find the reschedule request
+    const request = await RescheduleRequest.findById(sessionId);
+    if (!request) {
+      console.log('Reschedule request not found');
+      return res.status(404).json({ message: 'Reschedule request not found' });
+    }
+
+    // Find the schedule
+    const schedule = await Schedule.findById(scheduleId);
     if (!schedule) {
+      console.log('Schedule not found');
       return res.status(404).json({ message: 'Schedule not found' });
     }
 
-    const session = schedule.sessions.id(sessionId);
-    if (!session) {
-      return res.status(404).json({ message: 'Session not found' });
+    // Update the schedule with the new date and time
+    const session = schedule.sessions.find(s => s._id.toString() === request.scheduleId.toString());
+    if (session) {
+      session.date = request.newDate;
+      session.time = request.newTime;
+      session.status = 'scheduled';
     }
 
-    if (session.newDate && session.newTime) {
-      session.date = session.newDate;
-      session.time = session.newTime;
-    }
-
-    session.status = 'scheduled';
-    session.pendingApproval = false;
-    session.newDate = undefined;
-    session.newTime = undefined;
-
+    // Update the request status
+    request.status = 'approved';
+    await request.save();
     await schedule.save();
-    res.json(schedule);
+
+    console.log('Schedule change approved successfully');
+    res.json({ 
+      message: 'Schedule change approved successfully',
+      schedule,
+      request
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error approving schedule change:', error);
+    res.status(500).json({ 
+      message: 'Error approving schedule change',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
