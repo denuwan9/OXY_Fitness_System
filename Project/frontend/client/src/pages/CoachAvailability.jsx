@@ -43,12 +43,28 @@ import {
   Schedule,
   Group,
   CheckCircle,
-  Warning
+  Warning,
+  Email,
+  Phone,
+  Star
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { mockUsers } from '../mockData/scheduleData';
 import coachAvailabilityService from '../services/coachAvailabilityService';
 import userService from '../services/userService';
+
+/**
+ * CoachAvailability Component
+ * 
+ * Features:
+ * - Set working days and time ranges
+ * - Manage member assignments
+ *   - Session Capacity Management:
+ *     - Each time range can have its own capacity
+ *     - Capacity is displayed in the time ranges table
+ *     - Default capacity is 1 if not specified
+ *     - Capacity can be set when adding/editing time ranges
+ */
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -106,7 +122,6 @@ const CoachAvailability = () => {
   const [availability, setAvailability] = useState({
     days: [],
     timeRanges: [],
-    maxMembersPerSession: 1
   });
   const [assignedMembers, setAssignedMembers] = useState([]);
   const [openTimeDialog, setOpenTimeDialog] = useState(false);
@@ -114,7 +129,8 @@ const CoachAvailability = () => {
   const [newTimeRange, setNewTimeRange] = useState({
     startTime: '',
     endTime: '',
-    day: ''
+    day: '',
+    capacity: 1
   });
   const [selectedMember, setSelectedMember] = useState(null);
   const [isFirstTime, setIsFirstTime] = useState(true);
@@ -164,7 +180,6 @@ const CoachAvailability = () => {
               id: `${day.day}-${range.startTime}-${range.endTime}`
             }))
           ),
-          maxMembersPerSession: data.availability[0]?.maxMembersPerSession || 1
         });
 
         // Extract member data from assignedMembers array
@@ -184,7 +199,6 @@ const CoachAvailability = () => {
         setAvailability({
           days: [],
           timeRanges: [],
-          maxMembersPerSession: 1
         });
         setAssignedMembers([]);
       }
@@ -200,7 +214,6 @@ const CoachAvailability = () => {
       setAvailability({
         days: [],
         timeRanges: [],
-        maxMembersPerSession: 1
       });
       setAssignedMembers([]);
     } finally {
@@ -223,7 +236,7 @@ const CoachAvailability = () => {
         ...prev,
         timeRanges: [...prev.timeRanges, { ...newTimeRange, id: Date.now() }]
       }));
-      setNewTimeRange({ startTime: '', endTime: '', day: '' });
+      setNewTimeRange({ startTime: '', endTime: '', day: '', capacity: 1 });
       setOpenTimeDialog(false);
     }
   };
@@ -282,13 +295,11 @@ const CoachAvailability = () => {
         day,
         timeRanges: availability.timeRanges
           .filter(range => range.day === day)
-          .map(({ startTime, endTime }) => ({ startTime, endTime })),
-        maxMembersPerSession: availability.maxMembersPerSession
+          .map(({ startTime, endTime, capacity }) => ({ startTime, endTime, capacity })),
       }));
 
       await coachAvailabilityService.updateAvailability(
-        formattedAvailability,
-        availability.maxMembersPerSession
+        formattedAvailability
       );
       
       setIsFirstTime(false);
@@ -454,6 +465,7 @@ const CoachAvailability = () => {
                           <StyledTableCell>Day</StyledTableCell>
                           <StyledTableCell>Start Time</StyledTableCell>
                           <StyledTableCell>End Time</StyledTableCell>
+                          <StyledTableCell>Capacity</StyledTableCell>
                           <StyledTableCell>Actions</StyledTableCell>
                         </TableRow>
                       </TableHead>
@@ -479,6 +491,12 @@ const CoachAvailability = () => {
                               </Box>
                             </TableCell>
                             <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Group sx={{ color: 'primary.main' }} />
+                                {range.capacity || 1}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
                               <Tooltip title="Remove Time Range">
                                 <IconButton
                                   size="small"
@@ -500,38 +518,6 @@ const CoachAvailability = () => {
                       </TableBody>
                     </Table>
                   </TableContainer>
-                </Box>
-
-                {/* Max Members Per Session */}
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h5" gutterBottom sx={{ 
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                  }}>
-                    <Group sx={{ fontSize: 28 }} />
-                    Session Capacity
-                  </Typography>
-                  <TextField
-                    type="number"
-                    label="Max Members Per Session"
-                    value={availability.maxMembersPerSession}
-                    onChange={(e) => setAvailability(prev => ({
-                      ...prev,
-                      maxMembersPerSession: parseInt(e.target.value) || 1
-                    }))}
-                    sx={{ 
-                      mt: 2,
-                      '& .MuiOutlinedInput-root': { 
-                        borderRadius: 2,
-                        '&:hover fieldset': {
-                          borderColor: 'primary.main',
-                        },
-                      },
-                    }}
-                  />
                 </Box>
 
                 {/* Save Button */}
@@ -724,25 +710,6 @@ const CoachAvailability = () => {
                       </Table>
                     </TableContainer>
                   </Box>
-                  <Divider sx={{ my: 3 }} />
-                  <Box>
-                    <Typography variant="subtitle1" gutterBottom sx={{ 
-                      fontWeight: 600,
-                      color: 'text.secondary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                    }}>
-                      <Group sx={{ fontSize: 20 }} />
-                      Session Capacity:
-                    </Typography>
-                    <Chip 
-                      label={`${availability.maxMembersPerSession} members per session`}
-                      color="secondary"
-                      variant="outlined"
-                      sx={{ mt: 1 }}
-                    />
-                  </Box>
                 </StyledPaper>
               </Grid>
             </>
@@ -821,6 +788,17 @@ const CoachAvailability = () => {
                     ))}
                   </Select>
                 </FormControl>
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Session Capacity"
+                  type="number"
+                  value={newTimeRange.capacity}
+                  onChange={(e) => setNewTimeRange({ ...newTimeRange, capacity: parseInt(e.target.value) || 1 })}
+                  InputProps={{ inputProps: { min: 1 } }}
+                  sx={{ borderRadius: 2 }}
+                />
               </Grid>
             </Grid>
           </DialogContent>
