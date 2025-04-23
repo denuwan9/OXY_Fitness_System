@@ -223,4 +223,6 @@ const userUpdate = async (req, res, next) => {
   }
 };
 
+
+
 export { register, Login, Logout, CheckUser, addUser, getUser, userUpdate };

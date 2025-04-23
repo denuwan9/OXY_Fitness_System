@@ -1,5 +1,8 @@
 
 import UserModel from "../models/userModel.js" 
+import bcrypt from "bcryptjs"
+
+
 
 const Getuser=async(req,res)=>{
     try {
@@ -60,10 +63,20 @@ const updateUser = async (req, res) => {
       const updateData = req.body;
   
       // Prevent role escalation if needed
-      if (updateData.role === 'admin') {
+      /*if (updateData.role === 'admin') {
         return res.status(403).json({ message: "Cannot change role to admin" });
-      }
-  
+      }*/
+
+
+        // If password is provided and not empty, hash it
+    if (updateData.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(updateData.password, salt);
+    } else {
+      // If no password provided, remove it from update
+      delete updateData.password;
+    }
+        
       const updatedUser = await UserModel.findByIdAndUpdate(
         id,
         updateData,

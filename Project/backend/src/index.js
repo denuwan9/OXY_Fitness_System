@@ -47,7 +47,18 @@ app.post('/forgot-password', (req, res) => {
             from: process.env.EMAIL_USER,
             to: user.email,
             subject: 'Reset Password Link',
-            text: `http://localhost:5173/reset_password/${user._id}/${token}`
+            html: `
+    <div style="font-family: Arial, sans-serif; color: #333;">
+      <h2>Hi ${user.name || 'there'},</h2>
+      <p>You requested a password reset. Click the button below to reset your password:</p>
+      <a href="http://localhost:5173/reset_password/${user._id}/${token}" 
+         style="display: inline-block; padding: 10px 20px; background-color: #f39c12; color: #fff; text-decoration: none; border-radius: 5px;">
+        Reset Password
+      </a>
+      <p style="margin-top: 20px;">If you didn’t request this, you can safely ignore this email.</p>
+      <p>Thanks,<br>Oxi Fitness Team</p>
+    </div>
+  `
           };
           
           transporter.sendMail(mailOptions, function(error, info){
@@ -79,6 +90,8 @@ app.post('/reset-password/:id/:token', (req, res) => {
         }
     })
 })
+
+
 
 
 app.get("/", (req, res) => {

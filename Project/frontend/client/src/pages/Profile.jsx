@@ -106,6 +106,8 @@ const Profile = () => {
     validateField(name, value);
   };
 
+
+  
   // Function to validate a specific field
   const validateField = (name, value) => {
     let errorMessage = "";

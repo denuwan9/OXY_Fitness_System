@@ -39,7 +39,11 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
-  }
+  },
+  avatar:{
+    type: String, // store image path or URL
+  },
+  
 },{timestamps: true});
 
 
