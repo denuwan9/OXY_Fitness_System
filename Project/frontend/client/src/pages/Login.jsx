@@ -57,7 +57,7 @@ const Login = () => {
             navigate('/schedule');
             break;
           case 'coach':
-            navigate('/schedule/coach');
+            navigate('/schedule/availability');
             break;
           case 'manager':
             navigate('/schedule/manager');

@@ -312,18 +312,6 @@ exports.assignMealPlan = async (req, res) => {
     const { scheduleId, meals, membershipType } = req.body;
     console.log('Assigning meal plan:', { scheduleId, meals, membershipType });
 
-    // Validate that all 7 days are present
-    const requiredDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    const providedDays = meals.map(meal => meal.day);
-    const missingDays = requiredDays.filter(day => !providedDays.includes(day));
-
-    if (missingDays.length > 0) {
-      return res.status(400).json({ 
-        message: 'Meal plan must include all 7 days of the week',
-        missingDays 
-      });
-    }
-
     // Find the schedule
     const schedule = await Schedule.findById(scheduleId);
     if (!schedule) {
@@ -334,9 +322,9 @@ exports.assignMealPlan = async (req, res) => {
     // Format meals to ensure proper structure
     const formattedMeals = meals.map(meal => ({
       day: meal.day,
-      breakfast: meal.breakfast,
-      lunch: meal.lunch,
-      dinner: meal.dinner,
+      breakfast: meal.breakfast || '',
+      lunch: meal.lunch || '',
+      dinner: meal.dinner || '',
       snacks: Array.isArray(meal.snacks) ? meal.snacks : [meal.snacks],
       nutritionalInfo: {
         calories: Number(meal.nutritionalInfo?.calories) || 0,

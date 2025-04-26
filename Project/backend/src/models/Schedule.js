@@ -32,7 +32,16 @@ const scheduleSchema = new mongoose.Schema({
     },
     endTime: {
       type: String,
-      required: true
+      default: function() {
+        // If time is in format "HH:MM", add 1 hour
+        const time = this.time;
+        if (time && time.includes(':')) {
+          const [hours, minutes] = time.split(':');
+          const endHour = (parseInt(hours) + 1) % 24;
+          return `${endHour.toString().padStart(2, '0')}:${minutes}`;
+        }
+        return '';
+      }
     },
     status: {
       type: String,

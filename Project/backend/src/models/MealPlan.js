@@ -14,15 +14,15 @@ const mealPlanSchema = new mongoose.Schema({
     },
     breakfast: {
       type: String,
-      required: true
+      default: ''
     },
     lunch: {
       type: String,
-      required: true
+      default: ''
     },
     dinner: {
       type: String,
-      required: true
+      default: ''
     },
     snacks: [String],
     nutritionalInfo: {

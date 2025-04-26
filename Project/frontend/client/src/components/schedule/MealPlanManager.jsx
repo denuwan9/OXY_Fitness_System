@@ -250,6 +250,7 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
         };
         console.log('Update payload:', updatePayload);
         await onUpdateMealPlan(updatePayload);
+        setShowSuccess(true);
       } else {
         // Create new meal plan
         console.log('Creating new meal plan');
@@ -259,6 +260,7 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
           membershipType: mealPlanData.membershipType || 'Silver'
         };
         await onAddMealPlan(createPayload);
+        setShowSuccess(true);
       }
       
       setError(null);
@@ -366,14 +368,11 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
   );
 
   const renderNutritionInput = (day, field, value, label) => {
-    const numericValue = value || 0;
-    console.log(`Rendering nutrition input for ${day} - ${field}:`, numericValue);
-    
     return (
       <TextField
         variant="outlined"
         type="number"
-        value={numericValue}
+        value={value === 0 ? '' : value}
         onChange={e => {
           const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
           handleInputChange(day, field, newValue);

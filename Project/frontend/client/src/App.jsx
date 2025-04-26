@@ -11,29 +11,38 @@ import Unauthorized from './pages/Unauthorized';
 import Schedule from './pages/Schedule';
 import CoachScheduleManager from './components/CoachScheduleManager';
 import OperationManagerSchedule from './components/OperationManagerSchedule';
+import { useAuth } from './contexts/AuthContext';
+
+function AppContent() {
+  const { user } = useAuth();
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {user && <Navbar />}
+      <main className="container mx-auto px-4 py-8">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/forgot-password" element={<Login />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+          
+          {/* Schedule Routes */}
+          <Route path="/schedule/*" element={<ScheduleRoutes />} />
+          <Route path="/coach/schedule-manager" element={<CoachScheduleManager />} />
+          <Route path="/operation-manager/schedule-requests" element={<OperationManagerSchedule />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-gray-900 text-white">
-          <Navbar />
-          <main className="container mx-auto px-4 py-8">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/forgot-password" element={<Login />} />
-              <Route path="/unauthorized" element={<Unauthorized />} />
-              
-              {/* Schedule Routes */}
-              <Route path="/schedule/*" element={<ScheduleRoutes />} />
-              <Route path="/coach/schedule-manager" element={<CoachScheduleManager />} />
-              <Route path="/operation-manager/schedule-requests" element={<OperationManagerSchedule />} />
-            </Routes>
-          </main>
-        </div>
+        <AppContent />
       </Router>
     </AuthProvider>
   );
