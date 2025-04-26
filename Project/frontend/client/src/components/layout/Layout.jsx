@@ -19,7 +19,17 @@ const Layout = ({ children }) => {
     '/schedule/progress'
   ];
 
-  const shouldShowNavbar = schedulePaths.some(path => location.pathname.startsWith(path));
+  // Hide navbar on auth pages
+  const authPaths = ['/login', '/register', '/forgot-password'];
+
+  // Check if current path is an auth path
+  const isAuthPath = authPaths.some(path => location.pathname === path);
+  
+  // Check if current path is a schedule path
+  const isSchedulePath = schedulePaths.some(path => location.pathname.startsWith(path));
+  
+  // Only show navbar if it's a schedule path AND not an auth path
+  const shouldShowNavbar = isSchedulePath && !isAuthPath;
 
   return (
     <div className="layout">

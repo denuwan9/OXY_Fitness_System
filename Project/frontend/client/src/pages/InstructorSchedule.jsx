@@ -74,47 +74,54 @@ import MealPlanManager from '../components/schedule/MealPlanManager';
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
   marginBottom: theme.spacing(3),
-  backgroundColor: theme.palette.background.paper,
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
   borderRadius: theme.spacing(3),
-  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+  backdropFilter: 'blur(8px)',
   transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
   '&:hover': {
     transform: 'translateY(-4px)',
-    boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
+    boxShadow: '0 12px 48px rgba(0,0,0,0.12)',
   },
+  border: '1px solid rgba(255, 255, 255, 0.2)',
 }));
 
 const StyledCalendar = styled(Calendar)(({ theme }) => ({
   width: "100%",
   maxWidth: "800px",
   margin: "0 auto",
-  backgroundColor: theme.palette.background.paper,
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
   borderRadius: theme.spacing(3),
   padding: theme.spacing(3),
-  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+  backdropFilter: 'blur(8px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
   "& .react-calendar__tile": {
     color: theme.palette.text.primary,
     padding: theme.spacing(2),
     borderRadius: theme.spacing(1),
+    transition: 'all 0.2s ease-in-out',
     "&:hover": {
-      backgroundColor: theme.palette.primary.light,
-      color: theme.palette.primary.contrastText,
+      backgroundColor: 'rgba(33, 150, 243, 0.1)',
+      transform: 'scale(1.05)',
     },
   },
   "& .react-calendar__tile--active": {
-    backgroundColor: theme.palette.primary.main,
-    color: theme.palette.primary.contrastText,
+    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+    color: '#fff',
     fontWeight: 'bold',
+    boxShadow: '0 4px 12px rgba(33, 150, 243, 0.3)',
   },
   "& .react-calendar__month-view__days__day--weekend": {
     color: theme.palette.error.main,
   },
   "& .react-calendar__tile--now": {
-    backgroundColor: theme.palette.secondary.light,
-    color: theme.palette.secondary.contrastText,
+    background: 'linear-gradient(45deg, #FF6B6B 30%, #FF8E53 90%)',
+    color: '#fff',
+    boxShadow: '0 4px 12px rgba(255, 107, 107, 0.3)',
   },
   "& .react-calendar__tile--disabled": {
-    backgroundColor: theme.palette.action.disabledBackground,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     color: theme.palette.action.disabled,
     cursor: 'not-allowed',
     pointerEvents: 'none',
@@ -124,10 +131,14 @@ const StyledCalendar = styled(Calendar)(({ theme }) => ({
 
 const StyledCard = styled(Card)(({ theme }) => ({
   borderRadius: theme.spacing(2),
-  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-  transition: 'transform 0.2s ease-in-out',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+  transition: 'all 0.3s ease-in-out',
+  background: 'rgba(255, 255, 255, 0.95)',
+  backdropFilter: 'blur(8px)',
+  border: '1px solid rgba(255, 255, 255, 0.2)',
   '&:hover': {
-    transform: 'translateY(-2px)',
+    transform: 'translateY(-4px)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
   },
 }));
 
@@ -137,8 +148,10 @@ const StyledButton = styled(Button)(({ theme }) => ({
   fontWeight: 600,
   padding: theme.spacing(1.5, 3),
   boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  transition: 'all 0.3s ease-in-out',
   '&:hover': {
-    boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+    transform: 'translateY(-2px)',
+    boxShadow: '0 6px 20px rgba(0,0,0,0.15)',
   },
 }));
 
@@ -146,17 +159,20 @@ const StyledTableCell = styled(TableCell)(({ theme }) => ({
   padding: theme.spacing(2),
   fontWeight: 500,
   '&.MuiTableCell-head': {
-    backgroundColor: theme.palette.primary.main,
-    color: theme.palette.primary.contrastText,
+    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+    color: '#fff',
+    fontWeight: 600,
   },
 }));
 
 const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  transition: 'all 0.2s ease-in-out',
   '&:nth-of-type(odd)': {
-    backgroundColor: theme.palette.action.hover,
+    backgroundColor: 'rgba(33, 150, 243, 0.05)',
   },
   '&:hover': {
-    backgroundColor: theme.palette.action.selected,
+    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+    transform: 'scale(1.01)',
   },
 }));
 
@@ -1143,34 +1159,73 @@ const InstructorSchedule = () => {
     <Layout>
       <Box sx={{ 
         p: 4, 
-        bgcolor: 'background.default', 
         minHeight: '100vh',
-        mt: 2
+        mt: 2,
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%)',
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: 'url("/images/gym-background.jpg")',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.1,
+          zIndex: 0,
+        }
       }}>
-        <Grid container spacing={4}>
+        <Grid container spacing={4} sx={{ position: 'relative', zIndex: 1 }}>
           {/* Header Section */}
           <Grid item xs={12}>
             <StyledPaper>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: 3,
+                position: 'relative',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -16,
+                  left: 0,
+                  right: 0,
+                  height: '2px',
+                  background: 'linear-gradient(90deg, transparent, #2196F3, transparent)',
+                }
+              }}>
                 <Box>
                   <Typography variant="h3" component="h1" gutterBottom sx={{ 
                     fontWeight: 700,
                     background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.1)',
                   }}>
                     Instructor Schedule Management
                   </Typography>
-                  <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
+                  <Typography variant="h6" color="text.secondary" sx={{ 
+                    fontWeight: 400,
+                    opacity: 0.8,
+                  }}>
                     Manage member schedules and meal plans efficiently
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2 }}>
                   <StyledButton
-                    variant="outlined"
-                    color="secondary"
+                    variant="contained"
+                    color="primary"
                     startIcon={<Download />}
                     onClick={handleDownloadReport}
+                    sx={{
+                      background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                      }
+                    }}
                   >
                     Download Report
                   </StyledButton>
@@ -1189,20 +1244,31 @@ const InstructorSchedule = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1,
+                position: 'relative',
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: -8,
+                  left: 0,
+                  width: '60px',
+                  height: '3px',
+                  background: 'linear-gradient(90deg, #2196F3, #21CBF3)',
+                  borderRadius: '2px',
+                }
               }}>
                 <Person sx={{ fontSize: 28 }} />
                 Assigned Members
               </Typography>
               {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                  <CircularProgress size={40} />
+                  <CircularProgress size={40} sx={{ color: 'primary.main' }} />
                 </Box>
               ) : error ? (
-                <Alert severity="error" sx={{ mt: 2 }}>
+                <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
                   {error}
                 </Alert>
               ) : members.length === 0 ? (
-                <Alert severity="info" sx={{ mt: 2 }}>
+                <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
                   No members assigned to you yet.
                 </Alert>
               ) : (
@@ -1218,13 +1284,22 @@ const InstructorSchedule = () => {
                     <TableBody>
                       {members.map((member) => (
                         <StyledTableRow key={member._id}>
-                          <TableCell>{member.name}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Person sx={{ color: 'primary.main' }} />
+                              {member.name}
+                            </Box>
+                          </TableCell>
                           <TableCell>
                             <Chip 
                               label={member.membershipType} 
                               size="small" 
                               color={member.membershipType === 'Platinum' ? 'primary' : 
                                      member.membershipType === 'Gold' ? 'secondary' : 'default'}
+                              sx={{
+                                fontWeight: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                              }}
                             />
                           </TableCell>
                           <TableCell>
@@ -1233,9 +1308,11 @@ const InstructorSchedule = () => {
                               onClick={() => handleMemberSelect(member)}
                               color={selectedMember?._id === member._id ? "primary" : "default"}
                               sx={{
+                                transition: 'all 0.2s ease-in-out',
                                 '&:hover': {
                                   backgroundColor: 'primary.light',
                                   color: 'primary.contrastText',
+                                  transform: 'scale(1.1)',
                                 },
                               }}
                             >
@@ -1255,20 +1332,38 @@ const InstructorSchedule = () => {
           <Grid item xs={12} md={8}>
             {selectedMember && showMemberActions ? (
               <>
-                <Box sx={{ mb: 3, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                <Box sx={{ 
+                  mb: 3, 
+                  display: 'flex', 
+                  gap: 2, 
+                  justifyContent: 'flex-end',
+                  flexWrap: 'wrap'
+                }}>
                   <StyledButton
                     variant="contained"
                     color="primary"
                     startIcon={<Schedule />}
                     onClick={handleOpenScheduleDialog}
+                    sx={{
+                      background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                      }
+                    }}
                   >
                     Add Schedule
                   </StyledButton>
                   <StyledButton
                     variant="contained"
-                    color="info"
+                    color="secondary"
                     startIcon={<FitnessCenter />}
                     onClick={() => setShowExerciseManagement(!showExerciseManagement)}
+                    sx={{
+                      background: 'linear-gradient(45deg, #FF6B6B 30%, #FF8E53 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #FF5252 30%, #FF7043 90%)',
+                      }
+                    }}
                   >
                     {showExerciseManagement ? 'Back to Schedule' : 'Manage Exercises'}
                   </StyledButton>
@@ -1276,6 +1371,15 @@ const InstructorSchedule = () => {
                     variant="outlined"
                     color="error"
                     onClick={handleCloseMemberActions}
+                    sx={{
+                      borderColor: 'error.main',
+                      color: 'error.main',
+                      '&:hover': {
+                        backgroundColor: 'error.light',
+                        borderColor: 'error.dark',
+                        color: 'error.contrastText',
+                      }
+                    }}
                   >
                     Close Actions
                   </StyledButton>
@@ -1286,7 +1390,23 @@ const InstructorSchedule = () => {
                 ) : (
                   <>
                     <StyledPaper>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        mb: 3,
+                        position: 'relative',
+                        '&::after': {
+                          content: '""',
+                          position: 'absolute',
+                          bottom: -8,
+                          left: 0,
+                          width: '60px',
+                          height: '3px',
+                          background: 'linear-gradient(90deg, #2196F3, #21CBF3)',
+                          borderRadius: '2px',
+                        }
+                      }}>
                         <Typography variant="h5" sx={{ 
                           fontWeight: 600,
                           color: 'primary.main',
@@ -1335,10 +1455,11 @@ const InstructorSchedule = () => {
                             }}>
                               <Typography variant="caption" sx={{ 
                                 fontWeight: 600,
-                                color: 'primary.main',
-                                backgroundColor: 'primary.light',
-                                padding: '2px 6px',
+                                color: '#fff',
+                                backgroundColor: 'rgba(33, 150, 243, 0.9)',
+                                padding: '2px 8px',
                                 borderRadius: '12px',
+                                boxShadow: '0 2px 8px rgba(33, 150, 243, 0.3)',
                               }}>
                                 {sessions.length} session{sessions.length !== 1 ? 's' : ''}
                               </Typography>
@@ -1351,6 +1472,17 @@ const InstructorSchedule = () => {
                           fontWeight: 600,
                           color: 'primary.main',
                           mb: 2,
+                          position: 'relative',
+                          '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            bottom: -4,
+                            left: 0,
+                            width: '40px',
+                            height: '2px',
+                            background: 'linear-gradient(90deg, #2196F3, #21CBF3)',
+                            borderRadius: '2px',
+                          }
                         }}>
                           Existing Schedules
                         </Typography>
@@ -1363,12 +1495,31 @@ const InstructorSchedule = () => {
               </>
             ) : (
               <StyledPaper>
-                <Typography variant="h6" gutterBottom>
-                  Select a member to view and manage their schedule
-                </Typography>
-                <Typography color="text.secondary">
-                  Click on a member from the list to view their schedule and available actions.
-                </Typography>
+                <Box sx={{ 
+                  textAlign: 'center',
+                  py: 4,
+                  px: 2,
+                }}>
+                  <Person sx={{ 
+                    fontSize: 64, 
+                    color: 'primary.main',
+                    opacity: 0.5,
+                    mb: 2
+                  }} />
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    fontWeight: 600,
+                    color: 'text.primary',
+                  }}>
+                    Select a member to view and manage their schedule
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ 
+                    maxWidth: '400px',
+                    margin: '0 auto',
+                    opacity: 0.8,
+                  }}>
+                    Click on a member from the list to view their schedule and available actions.
+                  </Typography>
+                </Box>
               </StyledPaper>
             )}
           </Grid>
@@ -1383,14 +1534,17 @@ const InstructorSchedule = () => {
           PaperProps={{
             sx: {
               borderRadius: 3,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+              boxShadow: '0 12px 48px rgba(0,0,0,0.15)',
+              background: 'rgba(255, 255, 255, 0.98)',
+              backdropFilter: 'blur(8px)',
             }
           }}
         >
           <DialogTitle sx={{ 
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
+            background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+            color: '#fff',
             fontWeight: 600,
+            borderRadius: '12px 12px 0 0',
           }}>
             Add Schedule
           </DialogTitle>
@@ -1403,7 +1557,12 @@ const InstructorSchedule = () => {
                     <Select
                       {...register('day')}
                       label="Day"
-                      sx={{ borderRadius: 2 }}
+                      sx={{ 
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'rgba(0, 0, 0, 0.1)',
+                        },
+                      }}
                     >
                       {instructorAvailability?.availability.map((day) => (
                         <MenuItem key={day.day} value={day.day}>
@@ -1420,7 +1579,12 @@ const InstructorSchedule = () => {
                     <Select
                       {...register('time')}
                       label="Time Range"
-                      sx={{ borderRadius: 2 }}
+                      sx={{ 
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'rgba(0, 0, 0, 0.1)',
+                        },
+                      }}
                     >
                       {instructorAvailability?.availability
                         .find(day => day.day === watch('day'))?.timeRanges.map((range) => (
@@ -1438,7 +1602,12 @@ const InstructorSchedule = () => {
                     <Select
                       {...register('workoutType')}
                       label="Workout Type"
-                      sx={{ borderRadius: 2 }}
+                      sx={{ 
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'rgba(0, 0, 0, 0.1)',
+                        },
+                      }}
                     >
                       {mockWorkoutTypes.map((type) => (
                         <MenuItem key={type.id} value={type.id}>
@@ -1456,7 +1625,14 @@ const InstructorSchedule = () => {
                     {...register('duration')}
                     error={!!errors.duration}
                     helperText={errors.duration?.message}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'rgba(0, 0, 0, 0.1)',
+                        },
+                      } 
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -1468,21 +1644,40 @@ const InstructorSchedule = () => {
                     rows={4}
                     error={!!errors.notes}
                     helperText={errors.notes?.message}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                    sx={{ 
+                      '& .MuiOutlinedInput-root': { 
+                        borderRadius: 2,
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: 'rgba(0, 0, 0, 0.1)',
+                        },
+                      } 
+                    }}
                   />
                 </Grid>
               </Grid>
               <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
                 <Button
                   onClick={() => setOpenScheduleDialog(false)}
-                  sx={{ borderRadius: 2 }}
+                  sx={{ 
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   variant="contained"
-                  sx={{ borderRadius: 2 }}
+                  sx={{ 
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                    '&:hover': {
+                      background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                    }
+                  }}
                 >
                   Add Schedule
                 </Button>
@@ -1500,14 +1695,17 @@ const InstructorSchedule = () => {
           PaperProps={{
             sx: {
               borderRadius: 3,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+              boxShadow: '0 12px 48px rgba(0,0,0,0.15)',
+              background: 'rgba(255, 255, 255, 0.98)',
+              backdropFilter: 'blur(8px)',
             }
           }}
         >
           <DialogTitle sx={{ 
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
+            background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+            color: '#fff',
             fontWeight: 600,
+            borderRadius: '12px 12px 0 0',
           }}>
             Reschedule Session
           </DialogTitle>
@@ -1520,7 +1718,13 @@ const InstructorSchedule = () => {
                   label="Day"
                   onChange={(e) => {
                     setNewDate(e.target.value);
-                    setNewTime(''); // Reset time when day changes
+                    setNewTime('');
+                  }}
+                  sx={{ 
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(0, 0, 0, 0.1)',
+                    },
                   }}
                 >
                   {instructorAvailability?.availability.map((day) => (
@@ -1536,7 +1740,13 @@ const InstructorSchedule = () => {
                   value={newTime}
                   label="Time Range"
                   onChange={(e) => setNewTime(e.target.value)}
-                  disabled={!newDate} // Disable if no day is selected
+                  disabled={!newDate}
+                  sx={{ 
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(0, 0, 0, 0.1)',
+                    },
+                  }}
                 >
                   {instructorAvailability?.availability
                     .find(day => day.day === newDate)?.timeRanges.map((range) => (
@@ -1556,7 +1766,15 @@ const InstructorSchedule = () => {
                 onChange={(e) => setReason(e.target.value)}
                 multiline
                 rows={4}
-                sx={{ mb: 2 }}
+                sx={{ 
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': { 
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'rgba(0, 0, 0, 0.1)',
+                    },
+                  } 
+                }}
               />
             </Box>
           </DialogContent>
@@ -1585,7 +1803,10 @@ const InstructorSchedule = () => {
                 borderRadius: 2,
                 textTransform: 'none',
                 fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                }
               }}
             >
               Submit Reschedule Request

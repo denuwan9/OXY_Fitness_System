@@ -175,46 +175,50 @@ const Register = () => {
                 </select>
                 {errors.role && <span className="error-message">{errors.role}</span>}
               </div>
-              <div className="form-group">
-                <label htmlFor="dietType">Diet Type</label>
-                <select
-                  id="dietType"
-                  name="dietType"
-                  value={formData.dietType}
-                  onChange={handleChange}
-                  disabled={loading}
-                >
-                  <option value="None">None</option>
-                  <option value="Vegetarian">Vegetarian</option>
-                  <option value="Vegan">Vegan</option>
-                  <option value="Pescatarian">Pescatarian</option>
-                  <option value="Non-Vegetarian">Non-Vegetarian</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label htmlFor="allergies">Allergies (comma-separated)</label>
-                <input
-                  type="text"
-                  id="allergies"
-                  name="allergies"
-                  value={formData.allergies}
-                  onChange={handleChange}
-                  disabled={loading}
-                  placeholder="e.g. Mushroom, Peanuts, Dairy"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="specialGuidelines">Special Guidelines</label>
-                <textarea
-                  id="specialGuidelines"
-                  name="specialGuidelines"
-                  value={formData.specialGuidelines}
-                  onChange={handleChange}
-                  disabled={loading}
-                  placeholder="e.g. No spicy food, low sodium, etc."
-                />
-              </div>
+              {formData.role === 'user' && (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="dietType">Diet Type</label>
+                    <select
+                      id="dietType"
+                      name="dietType"
+                      value={formData.dietType}
+                      onChange={handleChange}
+                      disabled={loading}
+                    >
+                      <option value="None">None</option>
+                      <option value="Vegetarian">Vegetarian</option>
+                      <option value="Vegan">Vegan</option>
+                      <option value="Pescatarian">Pescatarian</option>
+                      <option value="Non-Vegetarian">Non-Vegetarian</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="allergies">Allergies (comma-separated)</label>
+                    <input
+                      type="text"
+                      id="allergies"
+                      name="allergies"
+                      value={formData.allergies}
+                      onChange={handleChange}
+                      disabled={loading}
+                      placeholder="e.g. Mushroom, Peanuts, Dairy"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="specialGuidelines">Special Guidelines</label>
+                    <textarea
+                      id="specialGuidelines"
+                      name="specialGuidelines"
+                      value={formData.specialGuidelines}
+                      onChange={handleChange}
+                      disabled={loading}
+                      placeholder="e.g. No spicy food, low sodium, etc."
+                    />
+                  </div>
+                </>
+              )}
               <button 
                 type="submit" 
                 className="register-button"

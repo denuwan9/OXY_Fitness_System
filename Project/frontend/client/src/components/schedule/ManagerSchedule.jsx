@@ -60,6 +60,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
 const ManagerSchedule = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
+  const [requestTypeTab, setRequestTypeTab] = useState(0);
   const [changeRequests, setChangeRequests] = useState([]);
   const [members, setMembers] = useState([]);
   const [coaches, setCoaches] = useState([]);
@@ -69,8 +70,13 @@ const ManagerSchedule = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Check if user has manager role
+    if (!user || user.role !== 'manager') {
+      setError('Access denied. Only managers can access this page.');
+      return;
+    }
     loadData();
-  }, []);
+  }, [user]);
 
   const loadData = async () => {
     try {
@@ -139,28 +145,54 @@ const ManagerSchedule = () => {
     console.log('ChangeRequests state updated:', changeRequests);
   }, [changeRequests]);
 
-  const handleApprove = async (scheduleId, sessionId) => {
+  const handleApprove = async (scheduleId, requestId) => {
     try {
+      if (!user || user.role !== 'manager') {
+        setError('Access denied. Only managers can approve schedule changes.');
+        return;
+      }
       setLoading(true);
-      await scheduleService.approveScheduleChange(scheduleId, sessionId);
+      
+      // Find the request
+      const request = changeRequests.find(req => req._id === requestId);
+      if (!request) {
+        setError('Request not found');
+        return;
+      }
+
+      // Use the request's _id for the API call
+      await scheduleService.approveScheduleChange(scheduleId, request._id);
       setSuccess('Schedule change approved successfully');
       loadData();
     } catch (err) {
-      setError('Failed to approve schedule change');
+      setError(err.response?.data?.message || 'Failed to approve schedule change');
       console.error('Error approving change:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReject = async (scheduleId, sessionId) => {
+  const handleReject = async (scheduleId, requestId) => {
     try {
+      if (!user || user.role !== 'manager') {
+        setError('Access denied. Only managers can reject schedule changes.');
+        return;
+      }
       setLoading(true);
-      await scheduleService.rejectScheduleChange(scheduleId, sessionId);
+
+      // Find the request
+      const request = changeRequests.find(req => req._id === requestId);
+      if (!request) {
+        setError('Request not found');
+        return;
+      }
+
+      // Use the request's _id for the API call
+      await scheduleService.rejectScheduleChange(scheduleId, request._id);
       setSuccess('Schedule change rejected');
       loadData();
     } catch (err) {
-      setError('Failed to reject schedule change');
+      setError(err.response?.data?.message || 'Failed to reject schedule change');
       console.error('Error rejecting change:', err);
     } finally {
       setLoading(false);
@@ -223,7 +255,7 @@ const ManagerSchedule = () => {
     }
 
     // Ensure we have an array of requests
-    const requests = Array.isArray(changeRequests) ? changeRequests : [changeRequests];
+    const requests = Array.isArray(changeRequests) ? changeRequests : [changeRequests].filter(Boolean);
     console.log('Processed requests for rendering:', requests);
 
     if (!requests || requests.length === 0) {
@@ -239,157 +271,332 @@ const ManagerSchedule = () => {
       );
     }
 
-    // Separate pending and past requests
-    const pendingRequests = requests.filter(req => req.status === 'pending');
-    const pastRequests = requests.filter(req => req.status !== 'pending');
+    // Separate requests by type and status
+    const memberRequests = requests.filter(req => {
+      // If the userId is the same as the coachId in the schedule, it's a coach request
+      return req.userId._id !== req.scheduleId.coachId;
+    });
+    const coachRequests = requests.filter(req => {
+      // If the userId is the same as the coachId in the schedule, it's a coach request
+      return req.userId._id === req.scheduleId.coachId;
+    });
+    const pendingMemberRequests = memberRequests.filter(req => req.status === 'pending');
+    const pendingCoachRequests = coachRequests.filter(req => req.status === 'pending');
+    const pastMemberRequests = memberRequests.filter(req => req.status !== 'pending');
+    const pastCoachRequests = coachRequests.filter(req => req.status !== 'pending');
+
+    console.log('Filtered requests:', {
+      memberRequests,
+      coachRequests,
+      pendingMemberRequests,
+      pendingCoachRequests,
+      pastMemberRequests,
+      pastCoachRequests
+    });
 
     return (
       <Grid container spacing={3}>
-        {/* Pending Requests */}
+        {/* Tabs for Member and Coach Requests */}
         <Grid item xs={12}>
-          <Typography variant="h6" gutterBottom>
-            Pending Requests
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Member</TableCell>
-                  <TableCell>Current Schedule</TableCell>
-                  <TableCell>Requested Schedule</TableCell>
-                  <TableCell>Reason</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pendingRequests.map((request) => (
-                  <TableRow key={request._id}>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Person />
-                        <Typography>
-                          {request.userId?.name || 'Unknown'}
-                        </Typography>
-                        <Chip
-                          label={request.userId?.membershipType}
-                          color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
-                                 request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
-                          size="small"
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      {request.scheduleId?.sessions?.[0]?.date ? 
-                        new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
-                      {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {request.newDate ? 
-                        new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
-                      {request.newTime || 'N/A'}
-                    </TableCell>
-                    <TableCell>{request.reason}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={request.status}
-                        color={request.status === 'pending' ? 'warning' : 
-                               request.status === 'approved' ? 'success' : 'error'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button
-                          variant="contained"
-                          color="success"
-                          size="small"
-                          startIcon={<CheckCircle />}
-                          onClick={() => handleApprove(request.scheduleId._id, request._id)}
-                          disabled={loading}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="error"
-                          size="small"
-                          startIcon={<Cancel />}
-                          onClick={() => handleReject(request.scheduleId._id, request._id)}
-                          disabled={loading}
-                        >
-                          Reject
-                        </Button>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Tabs
+            value={requestTypeTab}
+            onChange={(e, newValue) => setRequestTypeTab(newValue)}
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}
+          >
+            <Tab label="Member Requests" />
+            <Tab label="Coach Requests" />
+          </Tabs>
         </Grid>
 
-        {/* Past Requests */}
-        <Grid item xs={12}>
-          <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-            Past Requests
-          </Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Member</TableCell>
-                  <TableCell>Current Schedule</TableCell>
-                  <TableCell>Requested Schedule</TableCell>
-                  <TableCell>Reason</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Date</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pastRequests.map((request) => (
-                  <TableRow key={request._id}>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Person />
-                        <Typography>
-                          {request.userId?.name || 'Unknown'}
-                        </Typography>
-                        <Chip
-                          label={request.userId?.membershipType}
-                          color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
-                                 request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
-                          size="small"
-                        />
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      {request.scheduleId?.sessions?.[0]?.date ? 
-                        new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
-                      {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {request.newDate ? 
-                        new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
-                      {request.newTime || 'N/A'}
-                    </TableCell>
-                    <TableCell>{request.reason}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={request.status}
-                        color={request.status === 'approved' ? 'success' : 'error'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {new Date(request.createdAt).toLocaleDateString()}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Grid>
+        {/* Member Requests */}
+        {requestTypeTab === 0 && (
+          <>
+            {/* Pending Member Requests */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Pending Member Requests
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Member</TableCell>
+                      <TableCell>Current Schedule</TableCell>
+                      <TableCell>Requested Schedule</TableCell>
+                      <TableCell>Reason</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pendingMemberRequests.map((request) => (
+                      <TableRow key={request._id}>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Person />
+                            <Typography>
+                              {request.userId?.name || 'Unknown'}
+                            </Typography>
+                            <Chip
+                              label={request.userId?.membershipType}
+                              color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
+                                     request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
+                              size="small"
+                            />
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {request.scheduleId?.sessions?.[0]?.date ? 
+                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {request.newDate ? 
+                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.newTime || 'N/A'}
+                        </TableCell>
+                        <TableCell>{request.reason}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={request.status}
+                            color={request.status === 'pending' ? 'warning' : 
+                                   request.status === 'approved' ? 'success' : 'error'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                              variant="contained"
+                              color="success"
+                              size="small"
+                              startIcon={<CheckCircle />}
+                              onClick={() => handleApprove(request.scheduleId._id, request._id)}
+                              disabled={loading}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              size="small"
+                              startIcon={<Cancel />}
+                              onClick={() => handleReject(request.scheduleId._id, request._id)}
+                              disabled={loading}
+                            >
+                              Reject
+                            </Button>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Grid>
+
+            {/* Past Member Requests */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+                Past Member Requests
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Member</TableCell>
+                      <TableCell>Current Schedule</TableCell>
+                      <TableCell>Requested Schedule</TableCell>
+                      <TableCell>Reason</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Date</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pastMemberRequests.map((request) => (
+                      <TableRow key={request._id}>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Person />
+                            <Typography>
+                              {request.userId?.name || 'Unknown'}
+                            </Typography>
+                            <Chip
+                              label={request.userId?.membershipType}
+                              color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
+                                     request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
+                              size="small"
+                            />
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {request.scheduleId?.sessions?.[0]?.date ? 
+                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {request.newDate ? 
+                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.newTime || 'N/A'}
+                        </TableCell>
+                        <TableCell>{request.reason}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={request.status}
+                            color={request.status === 'approved' ? 'success' : 'error'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {new Date(request.createdAt).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Grid>
+          </>
+        )}
+
+        {/* Coach Requests */}
+        {requestTypeTab === 1 && (
+          <>
+            {/* Pending Coach Requests */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>
+                Pending Coach Requests
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Coach</TableCell>
+                      <TableCell>Current Schedule</TableCell>
+                      <TableCell>Requested Schedule</TableCell>
+                      <TableCell>Reason</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pendingCoachRequests.map((request) => (
+                      <TableRow key={request._id}>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <FitnessCenter />
+                            <Typography>
+                              {request.userId?.name || 'Unknown'}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {request.scheduleId?.sessions?.[0]?.date ? 
+                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {request.newDate ? 
+                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.newTime || 'N/A'}
+                        </TableCell>
+                        <TableCell>{request.reason}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={request.status}
+                            color={request.status === 'pending' ? 'warning' : 
+                                   request.status === 'approved' ? 'success' : 'error'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                              variant="contained"
+                              color="success"
+                              size="small"
+                              startIcon={<CheckCircle />}
+                              onClick={() => handleApprove(request.scheduleId._id, request._id)}
+                              disabled={loading}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant="contained"
+                              color="error"
+                              size="small"
+                              startIcon={<Cancel />}
+                              onClick={() => handleReject(request.scheduleId._id, request._id)}
+                              disabled={loading}
+                            >
+                              Reject
+                            </Button>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Grid>
+
+            {/* Past Coach Requests */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+                Past Coach Requests
+              </Typography>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Coach</TableCell>
+                      <TableCell>Current Schedule</TableCell>
+                      <TableCell>Requested Schedule</TableCell>
+                      <TableCell>Reason</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Date</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pastCoachRequests.map((request) => (
+                      <TableRow key={request._id}>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <FitnessCenter />
+                            <Typography>
+                              {request.userId?.name || 'Unknown'}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          {request.scheduleId?.sessions?.[0]?.date ? 
+                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {request.newDate ? 
+                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
+                          {request.newTime || 'N/A'}
+                        </TableCell>
+                        <TableCell>{request.reason}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={request.status}
+                            color={request.status === 'approved' ? 'success' : 'error'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {new Date(request.createdAt).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Grid>
+          </>
+        )}
       </Grid>
     );
   };
