@@ -24,14 +24,14 @@ const mealPlanSchema = new mongoose.Schema({
       type: String,
       required: true
     },
-    snacks: [String]
+    snacks: [String],
+    nutritionalInfo: {
+      calories: Number,
+      protein: Number,
+      carbs: Number,
+      fats: Number
+    }
   }],
-  nutritionalInfo: {
-    calories: Number,
-    protein: Number,
-    carbs: Number,
-    fats: Number
-  },
   createdAt: {
     type: Date,
     default: Date.now

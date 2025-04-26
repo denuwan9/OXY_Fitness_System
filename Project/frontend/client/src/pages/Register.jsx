@@ -11,7 +11,10 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'user' // Default role
+    role: 'user', // Default role
+    dietType: 'None',
+    allergies: '',
+    specialGuidelines: ''
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -64,7 +67,11 @@ const Register = () => {
       setLoading(true);
       try {
         // Remove confirmPassword before sending to API
-        const { confirmPassword, ...registrationData } = formData;
+        const { confirmPassword, allergies, ...registrationData } = formData;
+        // Convert allergies to array if not empty
+        registrationData.allergies = allergies
+          ? allergies.split(',').map(a => a.trim()).filter(Boolean)
+          : [];
         const response = await api.post('/auth/register', registrationData);
         
         // Store token
@@ -167,6 +174,46 @@ const Register = () => {
                   ))}
                 </select>
                 {errors.role && <span className="error-message">{errors.role}</span>}
+              </div>
+              <div className="form-group">
+                <label htmlFor="dietType">Diet Type</label>
+                <select
+                  id="dietType"
+                  name="dietType"
+                  value={formData.dietType}
+                  onChange={handleChange}
+                  disabled={loading}
+                >
+                  <option value="None">None</option>
+                  <option value="Vegetarian">Vegetarian</option>
+                  <option value="Vegan">Vegan</option>
+                  <option value="Pescatarian">Pescatarian</option>
+                  <option value="Non-Vegetarian">Non-Vegetarian</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="allergies">Allergies (comma-separated)</label>
+                <input
+                  type="text"
+                  id="allergies"
+                  name="allergies"
+                  value={formData.allergies}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="e.g. Mushroom, Peanuts, Dairy"
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="specialGuidelines">Special Guidelines</label>
+                <textarea
+                  id="specialGuidelines"
+                  name="specialGuidelines"
+                  value={formData.specialGuidelines}
+                  onChange={handleChange}
+                  disabled={loading}
+                  placeholder="e.g. No spicy food, low sodium, etc."
+                />
               </div>
               <button 
                 type="submit" 

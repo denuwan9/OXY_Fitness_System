@@ -308,6 +308,18 @@ exports.assignMealPlan = async (req, res) => {
     const { scheduleId, meals, membershipType } = req.body;
     console.log('Assigning meal plan:', { scheduleId, meals, membershipType });
 
+    // Validate that all 7 days are present
+    const requiredDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const providedDays = meals.map(meal => meal.day);
+    const missingDays = requiredDays.filter(day => !providedDays.includes(day));
+
+    if (missingDays.length > 0) {
+      return res.status(400).json({ 
+        message: 'Meal plan must include all 7 days of the week',
+        missingDays 
+      });
+    }
+
     // Find the schedule
     const schedule = await Schedule.findById(scheduleId);
     if (!schedule) {
@@ -315,13 +327,28 @@ exports.assignMealPlan = async (req, res) => {
       return res.status(404).json({ message: 'Schedule not found' });
     }
 
+    // Format meals to ensure proper structure
+    const formattedMeals = meals.map(meal => ({
+      day: meal.day,
+      breakfast: meal.breakfast,
+      lunch: meal.lunch,
+      dinner: meal.dinner,
+      snacks: Array.isArray(meal.snacks) ? meal.snacks : [meal.snacks],
+      nutritionalInfo: {
+        calories: Number(meal.nutritionalInfo?.calories) || 0,
+        protein: Number(meal.nutritionalInfo?.protein) || 0,
+        carbs: Number(meal.nutritionalInfo?.carbs) || 0,
+        fats: Number(meal.nutritionalInfo?.fats) || 0
+      }
+    }));
+
     // Create or update meal plan
     let mealPlan;
     if (schedule.mealPlan) {
       // Update existing meal plan
       mealPlan = await MealPlan.findById(schedule.mealPlan);
       if (mealPlan) {
-        mealPlan.meals = meals;
+        mealPlan.meals = formattedMeals;
         mealPlan.membershipType = membershipType;
         await mealPlan.save();
       }
@@ -329,7 +356,7 @@ exports.assignMealPlan = async (req, res) => {
       // Create new meal plan
       mealPlan = new MealPlan({
         membershipType,
-        meals
+        meals: formattedMeals
       });
       await mealPlan.save();
     }
@@ -362,7 +389,21 @@ exports.getMealPlan = async (req, res) => {
       return res.status(404).json({ message: 'Meal plan not found' });
     }
 
-    res.json(schedule.mealPlan);
+    // Get current day of the week
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentDay = days[new Date().getDay()];
+
+    // Find today's meal plan
+    const todayMealPlan = schedule.mealPlan.meals.find(meal => meal.day === currentDay);
+
+    if (!todayMealPlan) {
+      return res.status(404).json({ message: 'No meal plan found for today' });
+    }
+
+    res.json({
+      ...schedule.mealPlan.toObject(),
+      todayMealPlan
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -15,7 +15,10 @@ const createUser = async (req, res) => {
       membershipType,
       membershipStartDate,
       membershipEndDate,
-      profileImage
+      profileImage,
+      dietType,
+      allergies,
+      specialGuidelines
     } = req.body;
 
     // Check if user already exists
@@ -35,7 +38,10 @@ const createUser = async (req, res) => {
       membershipType,
       membershipStartDate,
       membershipEndDate,
-      profileImage
+      profileImage,
+      dietType,
+      allergies,
+      specialGuidelines
     });
 
     await user.save();
@@ -103,7 +109,7 @@ const getMembers = async (req, res) => {
     const members = await User.find({ 
       role: 'user',
       isActive: true 
-    }).select('name email phone membershipType profileImage role');
+    }).select('name email phone membershipType profileImage role dietType allergies specialGuidelines');
     
     console.log(`Found ${members.length} members`);
     res.json({ 

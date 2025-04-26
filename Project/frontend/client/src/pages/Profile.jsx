@@ -10,7 +10,10 @@ const Profile = () => {
     address: '123 Fitness Street, Gym City',
     membershipType: 'Premium',
     membershipExpiry: '2024-12-31',
-    profileImage: '/images/profileimg.png'
+    profileImage: '/images/profileimg.png',
+    dietType: 'None',
+    allergies: '',
+    specialGuidelines: ''
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -176,6 +179,43 @@ const Profile = () => {
                     value={profileData.address}
                     onChange={handleChange}
                     disabled={!isEditing}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Diet Type</label>
+                  <select
+                    name="dietType"
+                    value={profileData.dietType}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                  >
+                    <option value="None">None</option>
+                    <option value="Vegetarian">Vegetarian</option>
+                    <option value="Vegan">Vegan</option>
+                    <option value="Pescatarian">Pescatarian</option>
+                    <option value="Non-Vegetarian">Non-Vegetarian</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Allergies (comma-separated)</label>
+                  <input
+                    type="text"
+                    name="allergies"
+                    value={profileData.allergies}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                    placeholder="e.g. Mushroom, Peanuts, Dairy"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Special Guidelines</label>
+                  <textarea
+                    name="specialGuidelines"
+                    value={profileData.specialGuidelines}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                    placeholder="e.g. No spicy food, low sodium, etc."
                   />
                 </div>
 

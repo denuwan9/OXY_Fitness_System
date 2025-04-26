@@ -58,7 +58,7 @@ const validRoles = ['admin', 'manager', 'trainer', 'user', 'supplier'];
  */
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, phone, address } = req.body;
+    const { name, email, password, role, phone, address, dietType, allergies, specialGuidelines } = req.body;
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -83,7 +83,10 @@ router.post('/register', async (req, res) => {
       password,
       role: role || 'user', // Use provided role or default to 'user'
       phone,
-      address
+      address,
+      dietType,
+      allergies,
+      specialGuidelines
     });
 
     await user.save();

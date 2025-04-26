@@ -51,6 +51,17 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  // Dietary preferences
+  dietType: {
+    type: String,
+    enum: ['None', 'Vegetarian', 'Vegan', 'Pescatarian', 'Non-Vegetarian', 'Other'],
+    default: 'None'
+  },
+  allergies: [String],
+  specialGuidelines: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

@@ -56,7 +56,11 @@ import {
   Cancel,
   Schedule,
   Person,
-  Delete
+  Delete,
+  InfoOutlined,
+  WarningAmberOutlined,
+  SpaOutlined,
+  Block
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { mockSchedules, mockWorkoutTypes } from '../mockData/scheduleData';
@@ -65,6 +69,7 @@ import userService from '../services/userService';
 import scheduleService from '../services/scheduleService';
 import ExerciseManagement from '../components/ExerciseManagement';
 import exerciseService from '../services/exerciseService';
+import MealPlanManager from '../components/schedule/MealPlanManager';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -226,6 +231,28 @@ const InstructorSchedule = () => {
     loadAssignedMembers();
   }, [user]);
 
+  const fetchMealPlan = async (memberId) => {
+    try {
+      const response = await scheduleService.getUserSchedule(memberId);
+      console.log('Fetched schedules response:', response); // Debug log
+      
+      if (response && Array.isArray(response)) {
+        setMemberSchedules(prev => ({
+          ...prev,
+          [memberId]: response
+        }));
+        return response;
+      } else {
+        console.error('Invalid response format:', response);
+        throw new Error('Invalid response format from server');
+      }
+    } catch (error) {
+      console.error('Error fetching meal plan:', error);
+      setError(`Failed to load meal plan: ${error.message || 'Unknown error'}`);
+      throw error; // Re-throw to be handled by caller
+    }
+  };
+
   const loadAssignedMembers = async () => {
     try {
       setLoading(true);
@@ -295,21 +322,11 @@ const InstructorSchedule = () => {
       setSelectedMember(member);
       setShowMemberActions(true);
 
-      // Get member schedules
-      const memberSchedules = await scheduleService.getUserSchedule(member._id);
-      console.log('Received schedules:', memberSchedules);
-      
-      // Ensure memberSchedules is an array
-      const schedulesArray = Array.isArray(memberSchedules) ? memberSchedules : [memberSchedules];
-      
-      // Store all schedules for this member
-      setMemberSchedules(prev => ({
-        ...prev,
-        [member._id]: schedulesArray
-      }));
+      // Fetch member schedules and meal plans
+      const schedules = await fetchMealPlan(member._id);
       
       // Combine all sessions from all schedules
-      const allSessions = schedulesArray.reduce((acc, schedule) => {
+      const allSessions = schedules.reduce((acc, schedule) => {
         if (schedule.sessions && Array.isArray(schedule.sessions)) {
           return [...acc, ...schedule.sessions];
         }
@@ -338,7 +355,7 @@ const InstructorSchedule = () => {
 
     } catch (error) {
       console.error('Error loading member schedules:', error);
-      setError('Failed to load member schedules');
+      setError(`Failed to load member schedules: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -518,10 +535,10 @@ const InstructorSchedule = () => {
         
         const scheduleIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === schedule._id);
         if (scheduleIndex >= 0) {
-          // Update the entire schedule object with the response
+          // Update the existing schedule with the new meal plan
           updatedSchedules[selectedMember._id][scheduleIndex] = {
             ...updatedSchedules[selectedMember._id][scheduleIndex],
-            mealPlan: response.mealPlan // Use the mealPlan from the response
+            mealPlan: response.mealPlan
           };
         }
         
@@ -787,9 +804,147 @@ const InstructorSchedule = () => {
   const renderMealPlanSection = () => {
     if (!selectedMember) return null;
 
-    const schedule = memberSchedules[selectedMember._id]?.find(s => 
+    // Get all schedules for the selected member
+    const memberSchedulesList = memberSchedules[selectedMember._id] || [];
+    console.log('Member Schedules List:', memberSchedulesList);
+    
+    // Find the schedule for the selected date
+    const schedule = memberSchedulesList.find(s => 
       new Date(s.sessions[0].date).toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0]
     );
+    console.log('Found Schedule:', schedule);
+
+    // Prepare mealPlans prop for MealPlanManager
+    let mealPlans = [];
+    if (schedule && schedule.mealPlan) {
+      // Format the meal plan data to match what MealPlanManager expects
+      const formattedMealPlan = {
+        _id: schedule.mealPlan._id,
+        name: '7-Day Meal Plan',
+        description: 'Weekly meal plan',
+        meals: schedule.mealPlan.meals.map(meal => ({
+          day: meal.day,
+          breakfast: meal.breakfast.split(',').map(item => item.trim()),
+          lunch: meal.lunch.split(',').map(item => item.trim()),
+          dinner: meal.dinner.split(',').map(item => item.trim()),
+          snacks: Array.isArray(meal.snacks) ? meal.snacks : [meal.snacks],
+          calories: meal.nutritionalInfo?.calories || 0,
+          protein: meal.nutritionalInfo?.protein || 0,
+          carbs: meal.nutritionalInfo?.carbs || 0,
+          fats: meal.nutritionalInfo?.fats || 0
+        }))
+      };
+      mealPlans = [formattedMealPlan];
+    }
+    console.log('Formatted Meal Plans:', mealPlans);
+
+    // If no meal plan found, try to find any schedule with a meal plan
+    if (mealPlans.length === 0) {
+      const scheduleWithMealPlan = memberSchedulesList.find(s => s.mealPlan);
+      if (scheduleWithMealPlan) {
+        console.log('Found schedule with meal plan:', scheduleWithMealPlan);
+        const formattedMealPlan = {
+          _id: scheduleWithMealPlan.mealPlan._id,
+          name: '7-Day Meal Plan',
+          description: 'Weekly meal plan',
+          meals: scheduleWithMealPlan.mealPlan.meals.map(meal => ({
+            day: meal.day,
+            breakfast: meal.breakfast.split(',').map(item => item.trim()),
+            lunch: meal.lunch.split(',').map(item => item.trim()),
+            dinner: meal.dinner.split(',').map(item => item.trim()),
+            snacks: Array.isArray(meal.snacks) ? meal.snacks : [meal.snacks],
+            calories: meal.nutritionalInfo?.calories || 0,
+            protein: meal.nutritionalInfo?.protein || 0,
+            carbs: meal.nutritionalInfo?.carbs || 0,
+            fats: meal.nutritionalInfo?.fats || 0
+          }))
+        };
+        mealPlans.push(formattedMealPlan);
+      }
+    }
+
+    // Handler for saving meal plan
+    const handleSaveMealPlan = async (mealPlanData) => {
+      try {
+        if (!selectedMember) {
+          setError('Please select a member first');
+          return;
+        }
+
+        // Validate meal plan data
+        if (!mealPlanData || !mealPlanData.meals || !Array.isArray(mealPlanData.meals)) {
+          throw new Error('Invalid meal plan data structure');
+        }
+
+        let schedule = memberSchedules[selectedMember._id]?.[0];
+        if (!schedule) {
+          // Auto-create a new schedule if none exists
+          const newSchedule = await scheduleService.createSchedule({
+            userId: selectedMember._id,
+            coachId: user._id,
+            membershipType: selectedMember.membershipType || 'Silver',
+            scheduleType: 'weekday',
+            sessions: [],
+            mealPlan: null
+          });
+          schedule = newSchedule;
+          // Update local state with new schedule
+          setMemberSchedules(prev => ({
+            ...prev,
+            [selectedMember._id]: [newSchedule, ...(prev[selectedMember._id] || [])]
+          }));
+        }
+
+        // Format meals for backend
+        const formattedMeals = mealPlanData.meals.map(meal => ({
+          day: meal.day,
+          breakfast: Array.isArray(meal.breakfast) ? meal.breakfast.join(', ') : meal.breakfast,
+          lunch: Array.isArray(meal.lunch) ? meal.lunch.join(', ') : meal.lunch,
+          dinner: Array.isArray(meal.dinner) ? meal.dinner.join(', ') : meal.dinner,
+          snacks: Array.isArray(meal.snacks) ? meal.snacks.join(', ') : meal.snacks,
+          nutritionalInfo: {
+            calories: Number(meal.nutritionalInfo?.calories) || 0,
+            protein: Number(meal.nutritionalInfo?.protein) || 0,
+            carbs: Number(meal.nutritionalInfo?.carbs) || 0,
+            fats: Number(meal.nutritionalInfo?.fats) || 0
+          }
+        }));
+
+        const mealPlanPayload = {
+          scheduleId: schedule._id,
+          membershipType: selectedMember.membershipType || 'Silver',
+          meals: formattedMeals
+        };
+
+        console.log('Saving meal plan payload:', mealPlanPayload);
+        const response = await scheduleService.assignMealPlan(mealPlanPayload);
+        console.log('Meal plan save response:', response);
+
+        // Update the local state with the new meal plan
+        setMemberSchedules(prev => {
+          const updatedSchedules = { ...prev };
+          if (!updatedSchedules[selectedMember._id]) {
+            updatedSchedules[selectedMember._id] = [];
+          }
+          
+          const scheduleIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === schedule._id);
+          if (scheduleIndex >= 0) {
+            // Update the existing schedule with the new meal plan
+            updatedSchedules[selectedMember._id][scheduleIndex] = {
+              ...updatedSchedules[selectedMember._id][scheduleIndex],
+              mealPlan: response.mealPlan
+            };
+          }
+          
+          return updatedSchedules;
+        });
+
+        setError(null);
+      } catch (error) {
+        console.error('Error saving meal plan:', error);
+        setError(error.message || 'Failed to save meal plan. Please try again.');
+      }
+    };
 
     return (
       <StyledPaper>
@@ -814,278 +969,64 @@ const InstructorSchedule = () => {
             <Restaurant sx={{ fontSize: 28, color: '#FF6B6B' }} />
             Meal Plan for {selectedMember.name}
           </Typography>
-          <StyledButton
-            variant="contained"
-            sx={{
-              background: 'linear-gradient(45deg, #FF6B6B 30%, #FF8E53 90%)',
-              color: 'white',
-              '&:hover': {
-                background: 'linear-gradient(45deg, #FF8E53 30%, #FF6B6B 90%)',
-              }
-            }}
-            startIcon={<Restaurant />}
-            onClick={handleOpenMealPlanDialog}
-          >
-            Edit Meal Plan
-          </StyledButton>
         </Box>
-        {schedule?.mealPlan?.meals ? (
-          <Grid container spacing={3}>
-            {schedule.mealPlan.meals.map((meal, index) => (
-              <Grid item xs={12} key={meal._id || index}>
-                <Card sx={{
-                  borderRadius: 4,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                  overflow: 'visible',
-                  position: 'relative',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    transition: 'transform 0.3s ease-in-out',
-                  }
-                }}>
-                  <Box sx={{
-                    position: 'absolute',
-                    top: -15,
-                    left: 20,
-                    bgcolor: 'secondary.main',
-                    color: 'white',
-                    px: 3,
-                    py: 1,
-                    borderRadius: '20px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    zIndex: 1
-                  }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                      {meal.day}
-                    </Typography>
-                  </Box>
-                  <CardContent sx={{ pt: 4, pb: 3 }}>
-                    <Grid container spacing={3}>
-                      <Grid item xs={12} md={6}>
-                        <Box sx={{
-                          p: 2.5,
-                          bgcolor: 'background.paper',
-                          borderRadius: 3,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          height: '100%',
-                          transition: 'all 0.3s ease-in-out',
-                          '&:hover': {
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                            borderColor: 'primary.main',
-                          }
-                        }}>
-                          <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            mb: 2,
-                            pb: 1,
-                            borderBottom: '2px solid',
-                            borderColor: 'primary.light'
-                          }}>
-                            <Restaurant sx={{ color: 'primary.main' }} />
-                            <Typography variant="h6" color="primary.main" sx={{ fontWeight: 600 }}>
-                              Breakfast
-                            </Typography>
-                          </Box>
-                          <Typography variant="body1" sx={{
-                            color: 'text.primary',
-                            fontSize: '1rem',
-                            lineHeight: 1.6
-                          }}>
-                            {meal.breakfast || 'No breakfast planned'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={12} md={6}>
-                        <Box sx={{
-                          p: 2.5,
-                          bgcolor: 'background.paper',
-                          borderRadius: 3,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          height: '100%',
-                          transition: 'all 0.3s ease-in-out',
-                          '&:hover': {
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                            borderColor: 'secondary.main',
-                          }
-                        }}>
-                          <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            mb: 2,
-                            pb: 1,
-                            borderBottom: '2px solid',
-                            borderColor: 'secondary.light'
-                          }}>
-                            <Restaurant sx={{ color: 'secondary.main' }} />
-                            <Typography variant="h6" color="secondary.main" sx={{ fontWeight: 600 }}>
-                              Lunch
-                            </Typography>
-                          </Box>
-                          <Typography variant="body1" sx={{
-                            color: 'text.primary',
-                            fontSize: '1rem',
-                            lineHeight: 1.6
-                          }}>
-                            {meal.lunch || 'No lunch planned'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Box sx={{
-                          p: 2.5,
-                          bgcolor: 'background.paper',
-                          borderRadius: 3,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          transition: 'all 0.3s ease-in-out',
-                          '&:hover': {
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                            borderColor: 'error.main',
-                          }
-                        }}>
-                          <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            mb: 2,
-                            pb: 1,
-                            borderBottom: '2px solid',
-                            borderColor: 'error.light'
-                          }}>
-                            <Restaurant sx={{ color: 'error.main' }} />
-                            <Typography variant="h6" color="error.main" sx={{ fontWeight: 600 }}>
-                              Dinner
-                            </Typography>
-                          </Box>
-                          <Typography variant="body1" sx={{
-                            color: 'text.primary',
-                            fontSize: '1rem',
-                            lineHeight: 1.6
-                          }}>
-                            {meal.dinner || 'No dinner planned'}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Box sx={{
-                          p: 2.5,
-                          bgcolor: 'background.paper',
-                          borderRadius: 3,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          transition: 'all 0.3s ease-in-out',
-                          '&:hover': {
-                            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                            borderColor: 'info.main',
-                          }
-                        }}>
-                          <Box sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1,
-                            mb: 2,
-                            pb: 1,
-                            borderBottom: '2px solid',
-                            borderColor: 'info.light'
-                          }}>
-                            <Restaurant sx={{ color: 'info.main' }} />
-                            <Typography variant="h6" color="info.main" sx={{ fontWeight: 600 }}>
-                              Snacks
-                            </Typography>
-                          </Box>
-                          {Array.isArray(meal.snacks) && meal.snacks.length > 0 ? (
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                              {meal.snacks.map((snack, idx) => (
-                                <Chip
-                                  key={idx}
-                                  label={snack}
-                                  sx={{
-                                    bgcolor: 'info.light',
-                                    color: 'info.dark',
-                                    fontWeight: 500,
-                                    borderRadius: '16px',
-                                    '&:hover': {
-                                      bgcolor: 'info.main',
-                                      color: 'white',
-                                      transform: 'translateY(-2px)',
-                                    },
-                                    transition: 'all 0.3s ease-in-out',
-                                  }}
-                                />
-                              ))}
-                            </Box>
-                          ) : (
-                            <Typography variant="body1" sx={{
-                              color: 'text.primary',
-                              fontSize: '1rem',
-                              lineHeight: 1.6
-                            }}>
-                              No snacks planned
-                            </Typography>
-                          )}
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        ) : (
-          <Box sx={{ 
-            display: 'flex', 
+        {/* Member Preferences Display */}
+        {selectedMember && (
+          <Box sx={{
+            mb: 3,
+            p: 3,
+            bgcolor: '#fffde7',
+            borderRadius: 3,
+            border: '1.5px solid #ffe082',
+            boxShadow: '0 2px 8px rgba(255, 193, 7, 0.08)',
+            display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            p: 6,
-            textAlign: 'center',
-            bgcolor: 'background.paper',
-            borderRadius: 4,
-            border: '2px dashed',
-            borderColor: 'secondary.light',
-            transition: 'all 0.3s ease-in-out',
-            '&:hover': {
-              borderColor: 'secondary.main',
-              transform: 'scale(1.02)',
-            }
+            gap: 1.5,
+            position: 'relative',
           }}>
-            <Restaurant sx={{ 
-              fontSize: 64, 
-              color: 'secondary.light',
-              mb: 2,
-              animation: 'pulse 2s infinite',
-              '@keyframes pulse': {
-                '0%': { transform: 'scale(1)' },
-                '50%': { transform: 'scale(1.1)' },
-                '100%': { transform: 'scale(1)' },
-              }
-            }} />
-            <Typography variant="h5" color="secondary.main" gutterBottom sx={{ fontWeight: 600 }}>
-              No meal plan assigned for this date
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 400, mb: 3 }}>
-              Create a personalized meal plan to help your client achieve their fitness goals
-            </Typography>
-            <StyledButton
-              variant="contained"
-              color="secondary"
-              startIcon={<Restaurant />}
-              onClick={handleOpenMealPlanDialog}
-              sx={{
-                px: 4,
-                py: 1.5,
-                borderRadius: '28px',
-                fontSize: '1.1rem'
-              }}
-            >
-              Create Meal Plan
-            </StyledButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <WarningAmberOutlined sx={{ color: '#fbc02d', mr: 1 }} />
+              <Typography variant="h6" color="warning.main" sx={{ fontWeight: 700 }}>
+                Member Preferences & Guidelines
+              </Typography>
+              <InfoOutlined sx={{ color: '#bdb76b', ml: 1 }} titleAccess="These preferences are important for safe and personalized meal planning." />
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <SpaOutlined sx={{ color: '#43a047' }} />
+              <Typography><b>Diet Type:</b> {selectedMember.dietType || 'Not specified'}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Block sx={{ color: selectedMember.allergies && selectedMember.allergies.length > 0 ? '#e53935' : '#bdbdbd' }} />
+              <Typography>
+                <b>Allergies:</b> {Array.isArray(selectedMember.allergies) && selectedMember.allergies.length > 0
+                  ? selectedMember.allergies.map((a, i) => (
+                      <span key={i} style={{
+                        background: '#ffebee',
+                        color: '#c62828',
+                        borderRadius: '8px',
+                        padding: '2px 8px',
+                        marginRight: 6,
+                        fontWeight: 600,
+                        fontSize: '0.95em',
+                        display: 'inline-block',
+                      }}>{a}</span>
+                    ))
+                  : 'None'}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <InfoOutlined sx={{ color: '#1976d2', mt: '2px' }} />
+              <Typography><b>Special Guidelines:</b> {selectedMember.specialGuidelines || 'None'}</Typography>
+            </Box>
           </Box>
+        )}
+        <MealPlanManager
+          mealPlans={mealPlans}
+          onAddMealPlan={handleSaveMealPlan}
+          onUpdateMealPlan={handleSaveMealPlan}
+        />
+        {error && (
+          <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>
         )}
       </StyledPaper>
     );
@@ -1550,132 +1491,6 @@ const InstructorSchedule = () => {
               </Button>
             </DialogActions>
           </form>
-        </Dialog>
-
-        {/* Meal Plan Dialog */}
-        <Dialog 
-          open={openMealPlanDialog} 
-          onClose={() => setOpenMealPlanDialog(false)} 
-          maxWidth="sm" 
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 3,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
-            }
-          }}
-        >
-          <DialogTitle sx={{ 
-            bgcolor: 'secondary.main',
-            color: 'secondary.contrastText',
-            fontWeight: 600,
-          }}>
-            Edit Meal Plan
-          </DialogTitle>
-          <DialogContent sx={{ p: 4 }}>
-            <Grid container spacing={3}>
-              {mealPlanData.meals.map((meal, index) => (
-                <React.Fragment key={index}>
-                  <Grid item xs={12}>
-                    <Typography variant="h6" gutterBottom sx={{ 
-                      fontWeight: 600,
-                      color: 'secondary.main',
-                    }}>
-                      {meal.day}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Breakfast"
-                      multiline
-                      rows={2}
-                      value={meal.breakfast}
-                      onChange={(e) => {
-                        const newMeals = [...mealPlanData.meals];
-                        newMeals[index] = { ...newMeals[index], breakfast: e.target.value };
-                        setMealPlanData({ ...mealPlanData, meals: newMeals });
-                      }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Lunch"
-                      multiline
-                      rows={2}
-                      value={meal.lunch}
-                      onChange={(e) => {
-                        const newMeals = [...mealPlanData.meals];
-                        newMeals[index] = { ...newMeals[index], lunch: e.target.value };
-                        setMealPlanData({ ...mealPlanData, meals: newMeals });
-                      }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Dinner"
-                      multiline
-                      rows={2}
-                      value={meal.dinner}
-                      onChange={(e) => {
-                        const newMeals = [...mealPlanData.meals];
-                        newMeals[index] = { ...newMeals[index], dinner: e.target.value };
-                        setMealPlanData({ ...mealPlanData, meals: newMeals });
-                      }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Snacks (comma-separated)"
-                      multiline
-                      rows={2}
-                      value={meal.snacks.join(', ')}
-                      onChange={(e) => {
-                        const newMeals = [...mealPlanData.meals];
-                        newMeals[index] = { 
-                          ...newMeals[index], 
-                          snacks: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
-                        };
-                        setMealPlanData({ ...mealPlanData, meals: newMeals });
-                      }}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                </React.Fragment>
-              ))}
-            </Grid>
-          </DialogContent>
-          <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
-            <Button 
-              onClick={() => setOpenMealPlanDialog(false)}
-              sx={{ 
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleMealPlanSubmit} 
-              variant="contained" 
-              color="secondary"
-              sx={{ 
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              }}
-            >
-              Save Meal Plan
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* Reschedule Dialog */}
