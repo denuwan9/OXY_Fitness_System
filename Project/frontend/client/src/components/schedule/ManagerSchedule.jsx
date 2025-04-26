@@ -39,6 +39,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import scheduleService from '../../services/scheduleService';
 import userService from '../../services/userService';
 import coachAvailabilityService from '../../services/coachAvailabilityService';
+import Layout from '../layout/Layout';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -802,45 +803,47 @@ const ManagerSchedule = () => {
   );
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ py: 4 }}>
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {success && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {success}
-          </Alert>
-        )}
+    <Layout>
+      <Container maxWidth="lg">
+        <Box sx={{ py: 4 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {success}
+            </Alert>
+          )}
 
-        {/* Header Section */}
-        <StyledPaper>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Manager Dashboard
-          </Typography>
-        </StyledPaper>
+          {/* Header Section */}
+          <StyledPaper>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Manager Dashboard
+            </Typography>
+          </StyledPaper>
 
-        {/* Tabs */}
-        <Paper sx={{ mb: 4, borderRadius: 3 }}>
-          <Tabs
-            value={activeTab}
-            onChange={(e, newValue) => setActiveTab(newValue)}
-            sx={{ borderBottom: 1, borderColor: 'divider' }}
-          >
-            <Tab label="Change Requests" icon={<AccessTime />} iconPosition="start" />
-            <Tab label="Members" icon={<Person />} iconPosition="start" />
-            <Tab label="Coaches" icon={<FitnessCenter />} iconPosition="start" />
-          </Tabs>
-        </Paper>
+          {/* Tabs */}
+          <Paper sx={{ mb: 4, borderRadius: 3 }}>
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab label="Change Requests" icon={<AccessTime />} iconPosition="start" />
+              <Tab label="Members" icon={<Person />} iconPosition="start" />
+              <Tab label="Coaches" icon={<FitnessCenter />} iconPosition="start" />
+            </Tabs>
+          </Paper>
 
-        {/* Content based on active tab */}
-        {activeTab === 0 && renderChangeRequests()}
-        {activeTab === 1 && renderMembersList()}
-        {activeTab === 2 && renderCoachesList()}
-      </Box>
-    </Container>
+          {/* Content based on active tab */}
+          {activeTab === 0 && renderChangeRequests()}
+          {activeTab === 1 && renderMembersList()}
+          {activeTab === 2 && renderCoachesList()}
+        </Box>
+      </Container>
+    </Layout>
   );
 };
 
