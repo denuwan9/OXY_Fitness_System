@@ -32,7 +32,7 @@ const scheduleSchema = new mongoose.Schema({
     },
     status: {
       type: String,
-      enum: ['scheduled', 'completed', 'cancelled', 'rescheduled'],
+      enum: ['scheduled', 'completed', 'cancelled', 'pending_reschedule', 'rescheduled'],
       default: 'scheduled'
     },
     workoutType: {
@@ -44,7 +44,14 @@ const scheduleSchema = new mongoose.Schema({
       required: true,
       default: '60 minutes'
     },
-    notes: String
+    notes: String,
+    rescheduled: {
+      type: Boolean,
+      default: false
+    },
+    newDate: Date,
+    newTime: String,
+    reason: String
   }],
   mealPlan: {
     type: mongoose.Schema.Types.ObjectId,

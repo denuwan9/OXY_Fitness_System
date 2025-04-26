@@ -183,6 +183,12 @@ const InstructorSchedule = () => {
   const [error, setError] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [showMemberActions, setShowMemberActions] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [openRescheduleDialog, setOpenRescheduleDialog] = useState(false);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [reason, setReason] = useState('');
+  const [success, setSuccess] = useState('');
 
   const {
     register,
@@ -230,6 +236,31 @@ const InstructorSchedule = () => {
       
       console.log('Relevant Members:', relevantMembers);
       setMembers(relevantMembers);
+
+      // Load schedules for each member
+      const memberSchedulesData = {};
+      for (const member of relevantMembers) {
+        try {
+          const schedules = await scheduleService.getUserSchedule(member._id);
+          if (Array.isArray(schedules)) {
+            // Process each schedule to include rescheduled information
+            const processedSchedules = schedules.map(schedule => ({
+              ...schedule,
+              sessions: schedule.sessions.map(session => ({
+                ...session,
+                rescheduled: session.status === 'pending_reschedule',
+                newDate: session.newDate || session.date,
+                newTime: session.newTime || session.time
+              }))
+            }));
+            memberSchedulesData[member._id] = processedSchedules;
+          }
+        } catch (error) {
+          console.error(`Error loading schedules for member ${member._id}:`, error);
+        }
+      }
+      
+      setMemberSchedules(memberSchedulesData);
     } catch (err) {
       setError('Failed to load assigned members. Please try again later.');
       console.error('Error loading assigned members:', err);
@@ -591,109 +622,201 @@ const InstructorSchedule = () => {
       return acc;
     }, []);
 
+    // Separate regular and rescheduled sessions
+    const regularSessions = allSessions.filter(session => !session.rescheduled);
+    const rescheduledSessions = allSessions.filter(session => session.rescheduled);
+
     // Sort sessions by date
-    allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    regularSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    rescheduledSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     return (
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
-          borderRadius: 3,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-          overflow: 'hidden',
-        }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow>
-              <StyledTableCell>Date</StyledTableCell>
-              <StyledTableCell>Time</StyledTableCell>
-              <StyledTableCell>Duration</StyledTableCell>
-              <StyledTableCell>Workout Type</StyledTableCell>
-              <StyledTableCell>Status</StyledTableCell>
-              <StyledTableCell>Actions</StyledTableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {allSessions.map((session) => (
-              <StyledTableRow key={`${session.scheduleId}-${session.date}`}>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Event sx={{ color: 'primary.main' }} />
-                    {new Date(session.date).toLocaleDateString()}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <AccessTime sx={{ color: 'primary.main' }} />
-                    {session.time}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={`${session.duration} min`}
-                    size="small"
-                    color="primary"
-                    variant="outlined"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={getWorkoutTypeName(session.workoutType)}
-                    size="small"
-                    color="secondary"
-                    variant="outlined"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={session.status}
-                    size="small"
-                    color={session.status === 'scheduled' ? 'success' : 
-                           session.status === 'completed' ? 'primary' : 'error'}
-                    icon={session.status === 'scheduled' ? <Schedule /> :
-                          session.status === 'completed' ? <CheckCircle /> : <Cancel />}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title="Edit Schedule">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleEditSchedule(schedules.find(s => s._id === session.scheduleId), session)}
-                        sx={{
-                          color: 'primary.main',
-                          '&:hover': {
-                            backgroundColor: 'primary.light',
-                            color: 'primary.contrastText',
-                          },
-                        }}
-                      >
-                        <Edit />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Delete Schedule">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteSchedule(session.scheduleId)}
-                        sx={{
-                          color: 'error.main',
-                          '&:hover': {
-                            backgroundColor: 'error.light',
-                            color: 'error.contrastText',
-                          },
-                        }}
-                      >
-                        <Delete />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </TableCell>
-              </StyledTableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <>
+        {/* Regular Sessions Table */}
+        <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2 }}>
+          Current Schedule
+        </Typography>
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            borderRadius: 3,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+            overflow: 'hidden',
+            mb: 4
+          }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow>
+                <StyledTableCell>Date</StyledTableCell>
+                <StyledTableCell>Time</StyledTableCell>
+                <StyledTableCell>Duration</StyledTableCell>
+                <StyledTableCell>Workout Type</StyledTableCell>
+                <StyledTableCell>Status</StyledTableCell>
+                <StyledTableCell>Actions</StyledTableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {regularSessions.map((session) => (
+                <StyledTableRow key={`${session.scheduleId}-${session.date}`}>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Event sx={{ color: 'primary.main' }} />
+                      {new Date(session.date).toLocaleDateString()}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AccessTime sx={{ color: 'primary.main' }} />
+                      {session.time}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={`${session.duration} min`}
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={getWorkoutTypeName(session.workoutType)}
+                      size="small"
+                      color="secondary"
+                      variant="outlined"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip 
+                      label={session.status}
+                      size="small"
+                      color={session.status === 'scheduled' ? 'success' : 
+                             session.status === 'completed' ? 'primary' : 'error'}
+                      icon={session.status === 'scheduled' ? <Schedule /> :
+                            session.status === 'completed' ? <CheckCircle /> : <Cancel />}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="Edit Schedule">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditSchedule(schedules.find(s => s._id === session.scheduleId), session)}
+                          sx={{
+                            color: 'primary.main',
+                            '&:hover': {
+                              backgroundColor: 'primary.light',
+                              color: 'primary.contrastText',
+                            },
+                          }}
+                        >
+                          <Edit />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Reschedule Session">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setSelectedSession(session);
+                            setOpenRescheduleDialog(true);
+                          }}
+                          sx={{
+                            color: 'secondary.main',
+                            '&:hover': {
+                              backgroundColor: 'secondary.light',
+                              color: 'secondary.contrastText',
+                            },
+                          }}
+                        >
+                          <Schedule />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
+                </StyledTableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        {/* Rescheduled Sessions Table */}
+        {rescheduledSessions.length > 0 && (
+          <>
+            <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2 }}>
+              Pending Reschedule Requests
+            </Typography>
+            <TableContainer 
+              component={Paper} 
+              sx={{ 
+                borderRadius: 3,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+                mb: 4
+              }}
+            >
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <StyledTableCell>Original Date</StyledTableCell>
+                    <StyledTableCell>Original Time</StyledTableCell>
+                    <StyledTableCell>New Date</StyledTableCell>
+                    <StyledTableCell>New Time</StyledTableCell>
+                    <StyledTableCell>Workout Type</StyledTableCell>
+                    <StyledTableCell>Status</StyledTableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {rescheduledSessions.map((session) => (
+                    <StyledTableRow key={`${session.scheduleId}-${session.date}`}>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Event sx={{ color: 'primary.main' }} />
+                          {new Date(session.date).toLocaleDateString()}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <AccessTime sx={{ color: 'primary.main' }} />
+                          {session.time}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Event sx={{ color: 'secondary.main' }} />
+                          {new Date(session.newDate).toLocaleDateString()}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <AccessTime sx={{ color: 'secondary.main' }} />
+                          {session.newTime}
+                        </Box>
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={getWorkoutTypeName(session.workoutType)}
+                          size="small"
+                          color="secondary"
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label="Pending Approval"
+                          size="small"
+                          color="warning"
+                          icon={<Schedule />}
+                        />
+                      </TableCell>
+                    </StyledTableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </>
+        )}
+      </>
     );
   };
 
@@ -1018,6 +1141,65 @@ const InstructorSchedule = () => {
     setSelectedDate(new Date());
     setEditingSchedule(null);
     setOpenScheduleDialog(true);
+  };
+
+  const handleRescheduleRequest = async () => {
+    try {
+      if (!selectedSession || !newDate || !newTime || !reason) {
+        setError('Please fill in all fields');
+        return;
+      }
+
+      const rescheduleData = {
+        scheduleId: selectedSession.scheduleId,
+        sessionId: selectedSession._id,
+        newDate,
+        newTime,
+        reason,
+        status: 'pending_reschedule'
+      };
+
+      const response = await scheduleService.requestReschedule(rescheduleData);
+
+      // Update the local state to reflect the rescheduled session
+      setMemberSchedules(prev => {
+        const updatedSchedules = { ...prev };
+        const memberSchedule = updatedSchedules[selectedMember._id];
+        
+        if (memberSchedule) {
+          const scheduleIndex = memberSchedule.findIndex(s => s._id === selectedSession.scheduleId);
+          if (scheduleIndex !== -1) {
+            const sessionIndex = memberSchedule[scheduleIndex].sessions.findIndex(
+              s => s._id === selectedSession._id
+            );
+            if (sessionIndex !== -1) {
+              // Update the session with rescheduled information
+              memberSchedule[scheduleIndex].sessions[sessionIndex] = {
+                ...memberSchedule[scheduleIndex].sessions[sessionIndex],
+                rescheduled: true,
+                newDate,
+                newTime,
+                reason,
+                status: 'pending_reschedule'
+              };
+            }
+          }
+        }
+        
+        return updatedSchedules;
+      });
+
+      setOpenRescheduleDialog(false);
+      setSuccess('Reschedule request submitted successfully');
+      setError(null);
+      
+      // Reset form fields
+      setNewDate('');
+      setNewTime('');
+      setReason('');
+    } catch (err) {
+      setError('Failed to submit reschedule request');
+    }
   };
 
   if (!user || (user.role !== 'instructor' && user.role !== 'coach')) {
@@ -1491,6 +1673,53 @@ const InstructorSchedule = () => {
               }}
             >
               Save Meal Plan
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Reschedule Dialog */}
+        <Dialog
+          open={openRescheduleDialog}
+          onClose={() => setOpenRescheduleDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Reschedule Session</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <TextField
+                fullWidth
+                type="date"
+                label="New Date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                type="time"
+                label="New Time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label="Reason for Reschedule"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                multiline
+                rows={4}
+                sx={{ mb: 2 }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenRescheduleDialog(false)}>Cancel</Button>
+            <Button onClick={handleRescheduleRequest} color="primary">
+              Submit Reschedule Request
             </Button>
           </DialogActions>
         </Dialog>

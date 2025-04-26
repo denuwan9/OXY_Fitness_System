@@ -6,6 +6,10 @@ const rescheduleRequestSchema = new mongoose.Schema({
     ref: 'Schedule',
     required: true
   },
+  sessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    required: true
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

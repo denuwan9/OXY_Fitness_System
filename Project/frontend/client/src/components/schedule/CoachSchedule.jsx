@@ -31,6 +31,7 @@ import {
   Edit,
   Add,
   Delete,
+  Schedule,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
@@ -62,6 +63,11 @@ const CoachSchedule = () => {
   const [selectedDay, setSelectedDay] = useState('Monday');
   const [openExerciseDialog, setOpenExerciseDialog] = useState(false);
   const [openMealDialog, setOpenMealDialog] = useState(false);
+  const [openRescheduleDialog, setOpenRescheduleDialog] = useState(false);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [newDate, setNewDate] = useState('');
+  const [newTime, setNewTime] = useState('');
+  const [reason, setReason] = useState('');
   const [exercisePlan, setExercisePlan] = useState({
     exercises: []
   });
@@ -113,6 +119,30 @@ const CoachSchedule = () => {
       loadSchedules();
     } catch (err) {
       setError('Failed to assign meal plan');
+    }
+  };
+
+  const handleRescheduleRequest = async () => {
+    try {
+      if (!selectedSession || !newDate || !newTime || !reason) {
+        setError('Please fill in all fields');
+        return;
+      }
+
+      await scheduleService.requestReschedule({
+        scheduleId: selectedSchedule._id,
+        sessionId: selectedSession._id,
+        newDate,
+        newTime,
+        reason,
+      });
+
+      setOpenRescheduleDialog(false);
+      setSuccess('Reschedule request submitted successfully');
+      setError(null);
+      loadSchedules();
+    } catch (err) {
+      setError('Failed to submit reschedule request');
     }
   };
 
@@ -174,7 +204,7 @@ const CoachSchedule = () => {
                     </Typography>
                   </Box>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={4}>
                       <Button
                         variant="outlined"
                         startIcon={<FitnessCenter />}
@@ -187,7 +217,7 @@ const CoachSchedule = () => {
                         Manage Exercise Plan
                       </Button>
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid item xs={12} sm={4}>
                       <Button
                         variant="outlined"
                         startIcon={<Restaurant />}
@@ -198,6 +228,20 @@ const CoachSchedule = () => {
                         fullWidth
                       >
                         Manage Meal Plan
+                      </Button>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Button
+                        variant="outlined"
+                        startIcon={<Schedule />}
+                        onClick={() => {
+                          setSelectedSchedule(schedule);
+                          setSelectedSession(schedule.sessions[0]);
+                          setOpenRescheduleDialog(true);
+                        }}
+                        fullWidth
+                      >
+                        Reschedule Session
                       </Button>
                     </Grid>
                   </Grid>
@@ -288,7 +332,6 @@ const CoachSchedule = () => {
                     <Grid item xs={12}>
                       <Button
                         color="error"
-                        startIcon={<Delete />}
                         onClick={() => removeExercise(index)}
                       >
                         Remove Exercise
@@ -409,6 +452,53 @@ const CoachSchedule = () => {
             <Button onClick={() => setOpenMealDialog(false)}>Cancel</Button>
             <Button onClick={handleMealPlanSubmit} color="primary">
               Save Meal Plan
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Reschedule Dialog */}
+        <Dialog
+          open={openRescheduleDialog}
+          onClose={() => setOpenRescheduleDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Reschedule Session</DialogTitle>
+          <DialogContent>
+            <Box sx={{ pt: 2 }}>
+              <TextField
+                fullWidth
+                type="date"
+                label="New Date"
+                value={newDate}
+                onChange={(e) => setNewDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                type="time"
+                label="New Time"
+                value={newTime}
+                onChange={(e) => setNewTime(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{ mb: 2 }}
+              />
+              <TextField
+                fullWidth
+                label="Reason for Reschedule"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                multiline
+                rows={4}
+                sx={{ mb: 2 }}
+              />
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenRescheduleDialog(false)}>Cancel</Button>
+            <Button onClick={handleRescheduleRequest} color="primary">
+              Submit Reschedule Request
             </Button>
           </DialogActions>
         </Dialog>

@@ -517,7 +517,7 @@ exports.updateSchedule = async (req, res) => {
     }
 
     // Check if user is authorized to update
-    if (schedule.coachId.toString() !== req.user._id) {
+    if (schedule.coachId.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'Not authorized to update this schedule' });
     }
 

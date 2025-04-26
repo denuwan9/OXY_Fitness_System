@@ -78,10 +78,11 @@ router.get('/meal-plan/:scheduleId', auth, async (req, res) => {
 // Request reschedule
 router.post('/reschedule', auth, async (req, res) => {
   try {
-    const { scheduleId, newDate, newTime, reason } = req.body;
+    const { scheduleId, sessionId, newDate, newTime, reason } = req.body;
     
     console.log('Reschedule request received:', {
       scheduleId,
+      sessionId,
       newDate,
       newTime,
       reason,
@@ -95,10 +96,28 @@ router.post('/reschedule', auth, async (req, res) => {
       console.log('Schedule not found with ID:', scheduleId);
       return res.status(404).json({ message: 'Schedule not found' });
     }
+
+    // Find the session in the schedule
+    const session = schedule.sessions.id(sessionId);
+    if (!session) {
+      console.log('Session not found with ID:', sessionId);
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // Update the session with reschedule information
+    session.status = 'pending_reschedule';
+    session.rescheduled = true;
+    session.newDate = newDate;
+    session.newTime = newTime;
+    session.reason = reason;
+
+    // Save the updated schedule
+    await schedule.save();
     
-    // Create reschedule request
+    // Create reschedule request for tracking
     const rescheduleRequest = new RescheduleRequest({
       scheduleId,
+      sessionId,
       userId: req.user.userId,
       newDate,
       newTime,
@@ -109,7 +128,10 @@ router.post('/reschedule', auth, async (req, res) => {
     console.log('Creating reschedule request:', rescheduleRequest);
     await rescheduleRequest.save();
     
-    res.status(201).json({ message: 'Reschedule request submitted successfully' });
+    res.status(201).json({ 
+      message: 'Reschedule request submitted successfully',
+      schedule
+    });
   } catch (error) {
     console.error('Reschedule request error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

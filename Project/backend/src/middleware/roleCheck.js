@@ -7,10 +7,7 @@ const checkRole = (roles) => {
     // Convert single role to array if needed
     const requiredRoles = Array.isArray(roles) ? roles : [roles];
     
-    // Map backend roles to frontend roles
-    const userRole = req.user.role === 'trainer' ? 'coach' : req.user.role;
-
-    if (!requiredRoles.includes(userRole)) {
+    if (!requiredRoles.includes(req.user.role)) {
       return res.status(403).json({ 
         message: 'Forbidden - Insufficient permissions',
         requiredRoles,
