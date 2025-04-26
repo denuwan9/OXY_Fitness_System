@@ -67,9 +67,10 @@ const ExerciseImage = styled(CardMedia)(({ theme }) => ({
   backgroundColor: '#f5f5f5',
 }));
 
-const ExerciseManagement = ({ onAssignExercises }) => {
+const ExerciseManagement = ({ onAssignExercises, memberId }) => {
   const [exercises, setExercises] = useState([]);
   const [selectedExercises, setSelectedExercises] = useState([]);
+  const [prevAssignedExercises, setPrevAssignedExercises] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [newExercise, setNewExercise] = useState({
     name: '',
@@ -80,6 +81,7 @@ const ExerciseManagement = ({ onAssignExercises }) => {
     sets: 3,
     reps: 12
   });
+  const [editingExercise, setEditingExercise] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -87,6 +89,23 @@ const ExerciseManagement = ({ onAssignExercises }) => {
   useEffect(() => {
     loadExercises();
   }, []);
+
+  useEffect(() => {
+    if (memberId) {
+      exerciseService.getMemberExercises(memberId)
+        .then((assigned) => {
+          setSelectedExercises(assigned);
+          setPrevAssignedExercises(assigned);
+        })
+        .catch(() => {
+          setSelectedExercises([]);
+          setPrevAssignedExercises([]);
+        });
+    } else {
+      setSelectedExercises([]);
+      setPrevAssignedExercises([]);
+    }
+  }, [memberId]);
 
   const loadExercises = async () => {
     try {
@@ -102,12 +121,28 @@ const ExerciseManagement = ({ onAssignExercises }) => {
     }
   };
 
-  const handleOpenDialog = () => {
+  const handleOpenDialog = (exercise = null) => {
+    if (exercise) {
+      setEditingExercise(exercise);
+      setNewExercise({ ...exercise });
+    } else {
+      setEditingExercise(null);
+      setNewExercise({
+        name: '',
+        description: '',
+        category: '',
+        imageUrl: '',
+        difficulty: 'beginner',
+        sets: 3,
+        reps: 12
+      });
+    }
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+    setEditingExercise(null);
     setNewExercise({
       name: '',
       description: '',
@@ -119,48 +154,69 @@ const ExerciseManagement = ({ onAssignExercises }) => {
     });
   };
 
-  const handleAddExercise = async () => {
+  const handleAddOrUpdateExercise = async () => {
     try {
-      const response = await exerciseService.createExercise(newExercise);
-      setExercises([...exercises, response]);
-      setSuccess('Exercise added successfully');
+      if (editingExercise) {
+        // Update
+        await exerciseService.updateExercise(editingExercise._id, newExercise);
+        setSuccess('Exercise updated successfully');
+      } else {
+        // Create
+        await exerciseService.createExercise(newExercise);
+        setSuccess('Exercise added successfully');
+      }
       handleCloseDialog();
+      loadExercises();
     } catch (err) {
-      setError('Failed to add exercise. Please try again.');
-      console.error('Error adding exercise:', err);
+      setError('Failed to save exercise. Please try again.');
+      console.error('Error saving exercise:', err);
     }
   };
 
   const handleDeleteExercise = async (id) => {
     try {
       await exerciseService.deleteExercise(id);
-      setExercises(exercises.filter(exercise => exercise._id !== id));
       setSuccess('Exercise deleted successfully');
+      loadExercises();
     } catch (err) {
       setError('Failed to delete exercise. Please try again.');
       console.error('Error deleting exercise:', err);
     }
   };
 
-  const handleExerciseSelect = (exercise) => {
-    setSelectedExercises(prev => {
-      const isSelected = prev.find(e => e._id === exercise._id);
-      if (isSelected) {
-        return prev.filter(e => e._id !== exercise._id);
-      }
-      return [...prev, exercise];
-    });
+  const handleExerciseSelect = async (exercise) => {
+    const isSelected = selectedExercises.find(e => e._id === exercise._id);
+    if (isSelected) {
+      // Remove assignment immediately
+      await exerciseService.removeExerciseAssignment(exercise._id, memberId);
+      setSelectedExercises(prev => prev.filter(e => e._id !== exercise._id));
+      setPrevAssignedExercises(prev => prev.filter(e => e._id !== exercise._id));
+    } else {
+      // Assign immediately
+      await exerciseService.assignExercises([exercise._id], [memberId]);
+      setSelectedExercises(prev => [...prev, exercise]);
+      setPrevAssignedExercises(prev => [...prev, exercise]);
+    }
   };
 
   const handleAssignExercises = async () => {
-    if (selectedExercises.length > 0) {
+    if (selectedExercises.length > 0 || prevAssignedExercises.length > 0) {
       try {
+        // Assign new ones (as before)
         await onAssignExercises(selectedExercises);
-        setSelectedExercises([]);
-        setSuccess('Exercises assigned successfully');
+
+        // Remove unassigned ones
+        const selectedIds = selectedExercises.map(e => e._id);
+        const toRemove = prevAssignedExercises.filter(e => !selectedIds.includes(e._id));
+        for (const ex of toRemove) {
+          await exerciseService.removeExerciseAssignment(ex._id, memberId);
+        }
+
+        setPrevAssignedExercises(selectedExercises);
+        setSuccess('Exercises updated successfully');
       } catch (err) {
-        setError('Failed to assign exercises. Please try again.');
-        console.error('Error assigning exercises:', err);
+        setError('Failed to update exercises. Please try again.');
+        console.error('Error updating exercises:', err);
       }
     }
   };
@@ -204,7 +260,7 @@ const ExerciseManagement = ({ onAssignExercises }) => {
               <Button
                 variant="contained"
                 startIcon={<Add />}
-                onClick={handleOpenDialog}
+                onClick={() => handleOpenDialog()}
               >
                 Add Exercise
               </Button>
@@ -219,9 +275,16 @@ const ExerciseManagement = ({ onAssignExercises }) => {
                       title={exercise.name}
                     />
                     <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        {exercise.name}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Checkbox
+                          checked={!!selectedExercises.find(e => e._id === exercise._id)}
+                          onChange={() => handleExerciseSelect(exercise)}
+                          color="primary"
+                        />
+                        <Typography variant="h6" gutterBottom sx={{ ml: 1 }}>
+                          {exercise.name}
+                        </Typography>
+                      </Box>
                       <Typography variant="body2" color="text.secondary" paragraph>
                         {exercise.description}
                       </Typography>
@@ -244,7 +307,7 @@ const ExerciseManagement = ({ onAssignExercises }) => {
                         />
                         <Box>
                           <Tooltip title="Edit">
-                            <IconButton size="small">
+                            <IconButton size="small" onClick={() => handleOpenDialog(exercise)}>
                               <Edit />
                             </IconButton>
                           </Tooltip>
@@ -290,20 +353,12 @@ const ExerciseManagement = ({ onAssignExercises }) => {
               ))}
             </List>
             <Divider sx={{ my: 2 }} />
-            <Button
-              variant="contained"
-              fullWidth
-              disabled={selectedExercises.length === 0}
-              onClick={handleAssignExercises}
-            >
-              Assign Selected Exercises
-            </Button>
           </StyledPaper>
         </Grid>
       </Grid>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Exercise</DialogTitle>
+        <DialogTitle>{editingExercise ? 'Edit Exercise' : 'Add New Exercise'}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <TextField
@@ -373,10 +428,10 @@ const ExerciseManagement = ({ onAssignExercises }) => {
           <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={handleAddExercise}
+            onClick={handleAddOrUpdateExercise}
             disabled={!newExercise.name || !newExercise.description}
           >
-            Add Exercise
+            {editingExercise ? 'Update Exercise' : 'Add Exercise'}
           </Button>
         </DialogActions>
       </Dialog>

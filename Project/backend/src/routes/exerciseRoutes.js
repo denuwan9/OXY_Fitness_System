@@ -19,6 +19,6 @@ router.post('/assign', checkRole(['instructor', 'trainer']), exerciseController.
 router.delete('/:exerciseId/member/:memberId', checkRole(['instructor', 'trainer']), exerciseController.removeExerciseAssignment);
 
 // Member routes
-router.get('/member/:memberId', checkRole(['user']), exerciseController.getMemberExercises);
+router.get('/member/:memberId', checkRole(['user', 'trainer', 'instructor']), exerciseController.getMemberExercises);
 
 module.exports = router; 

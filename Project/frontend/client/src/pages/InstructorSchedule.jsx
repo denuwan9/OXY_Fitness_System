@@ -1172,7 +1172,7 @@ const InstructorSchedule = () => {
         return;
       }
 
-      const exerciseIds = exercises.map(exercise => exercise.id);
+      const exerciseIds = exercises.map(exercise => exercise._id);
       await exerciseService.assignExercises(exerciseIds, [selectedMember._id]);
       setSuccess('Exercises assigned successfully');
       setShowExerciseManagement(false);
@@ -1344,7 +1344,7 @@ const InstructorSchedule = () => {
                 </Box>
 
                 {showExerciseManagement ? (
-                  <ExerciseManagement onAssignExercises={handleAssignExercises} />
+                  <ExerciseManagement onAssignExercises={handleAssignExercises} memberId={selectedMember?._id} />
                 ) : (
                   <>
                     <StyledPaper>
