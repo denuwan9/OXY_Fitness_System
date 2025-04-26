@@ -30,6 +30,14 @@ const coachAvailabilityService = {
       console.log('Coach availability response:', response.data);
       return response.data;
     } catch (error) {
+      if (error.response?.status === 404) {
+        // Return empty availability object if not found
+        return {
+          coachId,
+          availability: [],
+          assignedMembers: []
+        };
+      }
       console.error('Error fetching coach availability:', error);
       throw error;
     }
@@ -62,21 +70,35 @@ const coachAvailabilityService = {
   },
 
   // Assign member to coach
-  assignMember: async (memberId) => {
+  assignMember: async (memberId, coachId) => {
     try {
-      console.log('Assigning member to coach:', memberId);
-      const coachId = getAuthUserId();
-      if (!coachId) {
-        throw new Error('No coach ID found. Please log in again.');
+      console.log('Assigning member to coach:', { memberId, coachId });
+      
+      // Validate inputs
+      if (!memberId) {
+        throw new Error('Member ID is required');
       }
+      if (!coachId) {
+        throw new Error('Coach ID is required');
+      }
+
+      // Ensure IDs are strings
+      const memberIdStr = memberId.toString();
+      const coachIdStr = coachId.toString();
+
+      // Make the request
       const response = await axios.post(`${API_URL}/assign-member`, {
-        memberId,
-        coachId
+        memberId: memberIdStr,
+        coachId: coachIdStr
       });
+
       console.log('Member assigned successfully:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error assigning member:', error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
       throw error;
     }
   },
@@ -85,11 +107,17 @@ const coachAvailabilityService = {
   removeMember: async (memberId) => {
     console.log('Removing member:', memberId);
     try {
+      if (!memberId) {
+        throw new Error('Member ID is required');
+      }
       const response = await axios.delete(`${API_URL}/remove-member/${memberId}`);
       console.log('Remove member response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error removing member:', error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
       throw error;
     }
   },
@@ -107,6 +135,9 @@ const coachAvailabilityService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching assigned members:', error);
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
       throw error;
     }
   }

@@ -202,7 +202,29 @@ const ManagerSchedule = () => {
   const handleAssignMember = async (memberId, coachId) => {
     try {
       setLoading(true);
-      await coachAvailabilityService.assignMember({ memberId, coachId });
+      
+      // If no coach is selected, find the current coach and remove the assignment
+      if (!coachId) {
+        const currentCoach = coaches.find(coach => 
+          coachAssignments[coach._id]?.some(assignment => 
+            assignment.memberId._id === memberId
+          )
+        );
+        if (currentCoach) {
+          await coachAvailabilityService.removeMember(memberId);
+          setCoachAssignments(prev => ({
+            ...prev,
+            [currentCoach._id]: (prev[currentCoach._id] || []).filter(
+              assignment => assignment.memberId._id !== memberId
+            )
+          }));
+          setSuccess('Member assignment removed successfully');
+        }
+        return;
+      }
+
+      // Assign member to new coach
+      await coachAvailabilityService.assignMember(memberId, coachId);
       
       // Update local state
       setCoachAssignments(prev => ({
@@ -212,8 +234,8 @@ const ManagerSchedule = () => {
 
       setSuccess('Member assigned successfully');
     } catch (error) {
-      setError('Failed to assign member');
-      console.error('Error assigning member:', error);
+      console.error('Error in handleAssignMember:', error);
+      setError(error.message || 'Failed to assign member');
     } finally {
       setLoading(false);
     }
@@ -715,7 +737,6 @@ const ManagerSchedule = () => {
             <TableCell>Email</TableCell>
             <TableCell>Specialization</TableCell>
             <TableCell>Assigned Members</TableCell>
-            <TableCell>Actions</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -730,7 +751,7 @@ const ManagerSchedule = () => {
               <TableCell>{coach.email}</TableCell>
               <TableCell>{coach.specialization || 'General'}</TableCell>
               <TableCell>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                   {coachAssignments[coach._id]?.map((assignment) => {
                     const member = members.find(m => m._id === assignment.memberId._id);
                     return member ? (
@@ -742,14 +763,36 @@ const ManagerSchedule = () => {
                       />
                     ) : null;
                   })}
+                  <FormControl size="small" sx={{ minWidth: 160 }}>
+                    <Select
+                      value=""
+                      onChange={(e) => {
+                        const memberId = e.target.value;
+                        if (memberId) {
+                          handleAssignMember(memberId, coach._id);
+                        }
+                      }}
+                      displayEmpty
+                    >
+                      <MenuItem value="" disabled>
+                        <em>Assign Member</em>
+                      </MenuItem>
+                      {members
+                        .filter(member => {
+                          // Only show members not assigned to any coach
+                          const assignedToAnyCoach = Object.values(coachAssignments).some(assignments =>
+                            assignments.some(assignment => assignment.memberId._id === member._id)
+                          );
+                          return !assignedToAnyCoach;
+                        })
+                        .map((member) => (
+                          <MenuItem key={member._id} value={member._id}>
+                            {member.name}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                  </FormControl>
                 </Box>
-              </TableCell>
-              <TableCell>
-                <Tooltip title="Edit Coach">
-                  <IconButton color="primary">
-                    <Edit />
-                  </IconButton>
-                </Tooltip>
               </TableCell>
             </TableRow>
           ))}

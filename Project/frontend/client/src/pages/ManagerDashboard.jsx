@@ -92,37 +92,59 @@ const ManagerDashboard = () => {
 
   const handleAssignMember = async (memberId, coachId) => {
     try {
-      setLoading(true);
-      await coachAvailabilityService.assignMember(memberId);
-      
-      // Update local state
-      setCoachAssignments(prev => ({
-        ...prev,
-        [coachId]: [...(prev[coachId] || []), { memberId: { _id: memberId } }]
-      }));
+      // Find the current coach if any
+      const currentCoach = coaches.find(coach => 
+        coachAssignments[coach._id]?.some(assignment => 
+          assignment.memberId._id === memberId
+        )
+      );
 
-      setSnackbar({
-        open: true,
-        message: 'Member assigned successfully',
-        severity: 'success'
-      });
+      // If there's a current coach and it's different from the new coach, remove from current coach first
+      if (currentCoach && currentCoach._id !== coachId) {
+        await coachAvailabilityService.removeMember(memberId);
+        // Update state immediately after successful removal
+        setCoachAssignments(prev => ({
+          ...prev,
+          [currentCoach._id]: (prev[currentCoach._id] || []).filter(
+            assignment => assignment.memberId._id !== memberId
+          )
+        }));
+      }
+
+      // If a new coach is selected, assign to that coach
+      if (coachId) {
+        const response = await coachAvailabilityService.assignMember(memberId, coachId);
+        // Update state with the response data
+        setCoachAssignments(prev => ({
+          ...prev,
+          [coachId]: [...(prev[coachId] || []), { memberId: { _id: memberId } }]
+        }));
+        setSnackbar({
+          open: true,
+          message: 'Member assigned successfully',
+          severity: 'success'
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: 'Member assignment removed',
+          severity: 'success'
+        });
+      }
     } catch (error) {
+      console.error('Error in handleAssignMember:', error);
       setSnackbar({
         open: true,
-        message: 'Failed to assign member',
+        message: error.message || 'Failed to assign member',
         severity: 'error'
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleRemoveMember = async (memberId, coachId) => {
     try {
-      setLoading(true);
-      await coachAvailabilityService.removeMember(memberId);
-      
-      // Update local state
+      const response = await coachAvailabilityService.removeMember(memberId);
+      // Update state immediately after successful removal
       setCoachAssignments(prev => ({
         ...prev,
         [coachId]: (prev[coachId] || []).filter(assignment => assignment.memberId._id !== memberId)
@@ -134,15 +156,48 @@ const ManagerDashboard = () => {
         severity: 'success'
       });
     } catch (error) {
+      console.error('Error in handleRemoveMember:', error);
       setSnackbar({
         open: true,
-        message: 'Failed to remove member',
+        message: error.message || 'Failed to remove member',
+        severity: 'error'
+      });
+    }
+  };
+
+  // Add a function to refresh the data
+  const refreshData = async () => {
+    try {
+      setLoading(true);
+      const assignments = {};
+      for (const coach of coaches) {
+        try {
+          const availability = await coachAvailabilityService.getCoachAvailability(coach._id);
+          assignments[coach._id] = availability?.assignedMembers || [];
+        } catch (error) {
+          console.error(`Error loading assignments for coach ${coach._id}:`, error);
+          assignments[coach._id] = [];
+        }
+      }
+      setCoachAssignments(assignments);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to refresh data',
         severity: 'error'
       });
     } finally {
       setLoading(false);
     }
   };
+
+  // Add useEffect to refresh data when needed
+  useEffect(() => {
+    if (user && user.role === 'manager') {
+      refreshData();
+    }
+  }, [user, coaches]);
 
   if (!user || user.role !== 'manager') {
     return (
@@ -225,7 +280,22 @@ const ManagerDashboard = () => {
                               assignment.memberId._id === member._id
                             )
                           )?._id || ''}
-                          onChange={(e) => handleAssignMember(member._id, e.target.value)}
+                          onChange={(e) => {
+                            const selectedCoachId = e.target.value;
+                            if (selectedCoachId) {
+                              handleAssignMember(member._id, selectedCoachId);
+                            } else {
+                              // If no coach is selected, find the current coach and remove the assignment
+                              const currentCoach = coaches.find(coach => 
+                                coachAssignments[coach._id]?.some(assignment => 
+                                  assignment.memberId._id === member._id
+                                )
+                              );
+                              if (currentCoach) {
+                                handleRemoveMember(member._id, currentCoach._id);
+                              }
+                            }
+                          }}
                         >
                           <MenuItem value="">
                             <em>None</em>
@@ -273,7 +343,6 @@ const ManagerDashboard = () => {
                   <TableCell>Email</TableCell>
                   <TableCell>Specialization</TableCell>
                   <TableCell>Assigned Members</TableCell>
-                  <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -288,7 +357,7 @@ const ManagerDashboard = () => {
                     <TableCell>{coach.email}</TableCell>
                     <TableCell>{coach.specialization || 'General'}</TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                         {coachAssignments[coach._id]?.map((assignment) => {
                           const member = members.find(m => m._id === assignment.memberId._id);
                           return member ? (
@@ -300,14 +369,34 @@ const ManagerDashboard = () => {
                             />
                           ) : null;
                         })}
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                          <Select
+                            value=""
+                            onChange={(e) => {
+                              const memberId = e.target.value;
+                              if (memberId) {
+                                handleAssignMember(memberId, coach._id);
+                              }
+                            }}
+                            displayEmpty
+                          >
+                            <MenuItem value="" disabled>
+                              <em>Assign Member</em>
+                            </MenuItem>
+                            {members
+                              .filter(member =>
+                                !coachAssignments[coach._id]?.some(
+                                  assignment => assignment.memberId._id === member._id
+                                )
+                              )
+                              .map((member) => (
+                                <MenuItem key={member._id} value={member._id}>
+                                  {member.name}
+                                </MenuItem>
+                              ))}
+                          </Select>
+                        </FormControl>
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip title="Edit Coach">
-                        <IconButton color="primary">
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}

@@ -251,7 +251,11 @@ const CoachAvailability = () => {
   const handleAssignMember = async () => {
     if (selectedMember) {
       try {
-        await coachAvailabilityService.assignMember(selectedMember._id);
+        const coachId = user?.id || user?._id;
+        if (!coachId) {
+          throw new Error('No coach ID found. Please log in again.');
+        }
+        await coachAvailabilityService.assignMember(selectedMember._id, coachId);
         setAssignedMembers(prev => [...prev, selectedMember]);
         setSelectedMember(null);
         setOpenMemberDialog(false);
@@ -263,7 +267,7 @@ const CoachAvailability = () => {
       } catch (error) {
         setSnackbar({
           open: true,
-          message: 'Failed to assign member',
+          message: 'Failed to assign member: ' + (error.message || 'Unknown error'),
           severity: 'error'
         });
       }
