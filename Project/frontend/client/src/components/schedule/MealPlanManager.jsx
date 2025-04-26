@@ -593,10 +593,10 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
               onChange={e => setMealPlanData({ ...mealPlanData, name: e.target.value })}
               fullWidth
               variant="outlined"
-              sx={{ mb: 2 }}
               InputProps={{
                 startAdornment: <Restaurant sx={{ mr: 1, color: 'primary.main' }} />
               }}
+              sx={{ height: 56 }}
               disabled={true} // Always disabled for existing plans
             />
           </Grid>
@@ -612,6 +612,7 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
               InputProps={{
                 startAdornment: <Info sx={{ mr: 1, color: 'primary.main' }} />
               }}
+              sx={{ height: 56 }}
               disabled={true} // Always disabled for existing plans
             />
           </Grid>

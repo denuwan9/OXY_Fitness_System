@@ -30,6 +30,10 @@ const scheduleSchema = new mongoose.Schema({
       type: String,
       required: true
     },
+    endTime: {
+      type: String,
+      required: true
+    },
     status: {
       type: String,
       enum: ['scheduled', 'completed', 'cancelled', 'pending_reschedule', 'rescheduled'],

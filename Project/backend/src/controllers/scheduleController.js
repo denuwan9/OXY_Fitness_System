@@ -39,8 +39,12 @@ exports.createSchedule = async (req, res) => {
       sessions: sessions.map(session => ({
         ...session,
         date: new Date(session.date),
+        time: session.time,
+        endTime: session.endTime,
         duration: session.duration || '60 minutes', // Default to 60 minutes if not provided
-        workoutType: getWorkoutTypeName(session.workoutType) // Convert number to string name
+        workoutType: session.workoutType,
+        notes: session.notes || '',
+        status: session.status || 'scheduled'
       }))
     });
 

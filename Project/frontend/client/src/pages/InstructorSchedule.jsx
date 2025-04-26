@@ -162,8 +162,9 @@ const StyledTableRow = styled(TableRow)(({ theme }) => ({
 
 // Validation schema
 const scheduleSchema = yup.object().shape({
-  time: yup.string().required('Time is required'),
-  workoutType: yup.string().required('Workout Type is required'),
+  day: yup.string().required('Day is required'),
+  time: yup.string().required('Time range is required'),
+  workoutType: yup.string().required('Workout type is required'),
   duration: yup.string().required('Duration is required'),
   notes: yup.string()
 });
@@ -181,6 +182,7 @@ const InstructorSchedule = () => {
   const [openScheduleDialog, setOpenScheduleDialog] = useState(false);
   const [openMealPlanDialog, setOpenMealPlanDialog] = useState(false);
   const [memberSchedules, setMemberSchedules] = useState({});
+  const [instructorAvailability, setInstructorAvailability] = useState(null);
   const [scheduleData, setScheduleData] = useState({
     time: '',
     workoutType: '',
@@ -229,6 +231,12 @@ const InstructorSchedule = () => {
   useEffect(() => {
     console.log('Component mounted'); // Debug log
     loadAssignedMembers();
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadInstructorAvailability();
+    }
   }, [user]);
 
   const fetchMealPlan = async (memberId) => {
@@ -311,6 +319,20 @@ const InstructorSchedule = () => {
     }
   };
 
+  const loadInstructorAvailability = async () => {
+    try {
+      const userId = user?.id || user?._id;
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+      const availability = await coachAvailabilityService.getCoachAvailability(userId);
+      setInstructorAvailability(availability);
+    } catch (error) {
+      console.error('Error loading instructor availability:', error);
+      setError('Failed to load instructor availability');
+    }
+  };
+
   const handleDateChange = (date) => {
     setSelectedDate(date);
   };
@@ -390,85 +412,57 @@ const InstructorSchedule = () => {
     }
   };
 
-  const handleScheduleSubmit = async (data) => {
+  const onSubmit = async (data) => {
     try {
-      // Get the coach ID from the JWT token
-      const token = localStorage.getItem('token');
-      let coachId;
-      if (token) {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
-          '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-        ).join(''));
-        const payload = JSON.parse(jsonPayload);
-        coachId = payload.userId;
-      }
+      setLoading(true);
+      setError(null);
 
-      if (!coachId) {
-        setError('Coach ID not found. Please log in again.');
-        return;
-      }
+      // Convert the selected day to a date
+      const selectedDay = data.day;
+      const today = new Date();
+      const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(selectedDay);
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
 
-      // Get the member's actual membership type
-      const member = members.find(m => m._id === selectedMember._id);
-      if (!member) {
-        setError('Member not found');
-        return;
-      }
-
-      // Validate membership type
-      const validMembershipTypes = ['Platinum', 'Gold', 'Silver'];
-      const membershipType = validMembershipTypes.includes(member.membershipType) 
-        ? member.membershipType 
-        : 'Silver';
-
-      // Format the date to ISO string
-      const formattedDate = selectedDate.toISOString().split('T')[0];
+      // Split the time range into start and end times
+      const [startTime, endTime] = data.time.split('-');
 
       // Get the workout type name from mockWorkoutTypes
       const selectedWorkoutType = mockWorkoutTypes.find(type => type.id === parseInt(data.workoutType));
       if (!selectedWorkoutType) {
-        setError('Invalid workout type');
-        return;
+        throw new Error('Invalid workout type selected');
       }
 
-      const sessionData = {
-        date: formattedDate,
-        time: data.time,
+      const scheduleData = {
+        memberId: selectedMember._id,
+        date: targetDate.toISOString().split('T')[0],
+        time: startTime.trim(),
+        endTime: endTime.trim(),
+        workoutType: selectedWorkoutType.name, // Use the name instead of ID
         duration: data.duration,
-        workoutType: selectedWorkoutType.name,
-        notes: data.notes || '',
-        status: 'scheduled'
+        notes: data.notes
       };
 
-      // Create new schedule
-      const schedulePayload = {
-        userId: selectedMember._id,
-        coachId: coachId,
-        membershipType,
-        scheduleType: 'weekday',
-        sessions: [sessionData],
-        mealPlan: null
-      };
-
-      console.log('Creating new schedule:', schedulePayload);
-      const response = await scheduleService.createSchedule(schedulePayload);
-
-      // Update local state
-      if (response) {
-        const updatedSchedules = { ...memberSchedules };
+      const response = await scheduleService.createSchedule(scheduleData);
+      
+      // Update the local state with the new schedule
+      setMemberSchedules(prev => {
+        const updatedSchedules = { ...prev };
         if (!updatedSchedules[selectedMember._id]) {
           updatedSchedules[selectedMember._id] = [];
         }
         updatedSchedules[selectedMember._id].push(response);
-        setMemberSchedules(updatedSchedules);
-        setOpenScheduleDialog(false);
-        reset();
-      }
+        return updatedSchedules;
+      });
+
+      setOpenScheduleDialog(false);
+      reset();
+      setSuccess('Schedule added successfully');
     } catch (error) {
-      console.error('Error saving schedule:', error);
-      setError(error.message || 'Failed to save schedule');
+      console.error('Error creating schedule:', error);
+      setError(error.message || 'Failed to create schedule');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1054,11 +1048,21 @@ const InstructorSchedule = () => {
         return;
       }
 
+      // Convert the selected day to a date
+      const today = new Date();
+      const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(newDate);
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
+
+      // Split the time range into start and end times
+      const [startTime, endTime] = newTime.split('-');
+
       const rescheduleData = {
         scheduleId: selectedSession.scheduleId,
         sessionId: selectedSession._id,
-        newDate,
-        newTime,
+        newDate: targetDate.toISOString().split('T')[0],
+        newTime: startTime.trim(),
+        endTime: endTime.trim(),
         reason,
         status: 'pending_reschedule'
       };
@@ -1081,8 +1085,9 @@ const InstructorSchedule = () => {
               memberSchedule[scheduleIndex].sessions[sessionIndex] = {
                 ...memberSchedule[scheduleIndex].sessions[sessionIndex],
                 rescheduled: true,
-                newDate,
-                newTime,
+                newDate: targetDate.toISOString().split('T')[0],
+                newTime: startTime.trim(),
+                endTime: endTime.trim(),
                 reason,
                 status: 'pending_reschedule'
               };
@@ -1261,14 +1266,6 @@ const InstructorSchedule = () => {
                   </StyledButton>
                   <StyledButton
                     variant="contained"
-                    color="secondary"
-                    startIcon={<Restaurant />}
-                    onClick={handleOpenMealPlanDialog}
-                  >
-                    Add Meal Plan
-                  </StyledButton>
-                  <StyledButton
-                    variant="contained"
                     color="info"
                     startIcon={<FitnessCenter />}
                     onClick={() => setShowExerciseManagement(!showExerciseManagement)}
@@ -1378,10 +1375,10 @@ const InstructorSchedule = () => {
         </Grid>
 
         {/* Schedule Dialog */}
-        <Dialog 
-          open={openScheduleDialog} 
-          onClose={handleCloseScheduleDialog} 
-          maxWidth="sm" 
+        <Dialog
+          open={openScheduleDialog}
+          onClose={() => setOpenScheduleDialog(false)}
+          maxWidth="sm"
           fullWidth
           PaperProps={{
             sx: {
@@ -1395,34 +1392,45 @@ const InstructorSchedule = () => {
             color: 'primary.contrastText',
             fontWeight: 600,
           }}>
-            {editingSchedule ? 'Edit Schedule' : 'Add New Schedule'}
+            Add Schedule
           </DialogTitle>
-          <form onSubmit={handleSubmit(handleScheduleSubmit)}>
-            <DialogContent sx={{ p: 4 }}>
+          <DialogContent sx={{ p: 4 }}>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <Grid container spacing={3}>
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Date"
-                    type="date"
-                    value={selectedDate.toISOString().split('T')[0]}
-                    onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                    InputLabelProps={{ shrink: true }}
-                    inputProps={{ min: new Date().toISOString().split('T')[0] }}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                  />
+                  <FormControl fullWidth error={!!errors.day}>
+                    <InputLabel>Day</InputLabel>
+                    <Select
+                      {...register('day')}
+                      label="Day"
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {instructorAvailability?.availability.map((day) => (
+                        <MenuItem key={day.day} value={day.day}>
+                          {day.day}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <FormHelperText>{errors.day?.message}</FormHelperText>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Time"
-                    type="time"
-                    {...register('time')}
-                    error={!!errors.time}
-                    helperText={errors.time?.message}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                  />
+                  <FormControl fullWidth error={!!errors.time}>
+                    <InputLabel>Time Range</InputLabel>
+                    <Select
+                      {...register('time')}
+                      label="Time Range"
+                      sx={{ borderRadius: 2 }}
+                    >
+                      {instructorAvailability?.availability
+                        .find(day => day.day === watch('day'))?.timeRanges.map((range) => (
+                          <MenuItem key={`${range.startTime}-${range.endTime}`} value={`${range.startTime}-${range.endTime}`}>
+                            {`${range.startTime} - ${range.endTime}`}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                    <FormHelperText>{errors.time?.message}</FormHelperText>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12}>
                   <FormControl fullWidth error={!!errors.workoutType}>
@@ -1455,42 +1463,32 @@ const InstructorSchedule = () => {
                   <TextField
                     fullWidth
                     label="Notes"
+                    {...register('notes')}
                     multiline
                     rows={4}
-                    {...register('notes')}
                     error={!!errors.notes}
                     helperText={errors.notes?.message}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                   />
                 </Grid>
               </Grid>
-            </DialogContent>
-            <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
-              <Button 
-                onClick={handleCloseScheduleDialog}
-                sx={{ 
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                variant="contained" 
-                color="primary"
-                sx={{ 
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                }}
-              >
-                {editingSchedule ? 'Update' : 'Add'} Schedule
-              </Button>
-            </DialogActions>
-          </form>
+              <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                <Button
+                  onClick={() => setOpenScheduleDialog(false)}
+                  sx={{ borderRadius: 2 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  sx={{ borderRadius: 2 }}
+                >
+                  Add Schedule
+                </Button>
+              </Box>
+            </form>
+          </DialogContent>
         </Dialog>
 
         {/* Reschedule Dialog */}
@@ -1499,29 +1497,58 @@ const InstructorSchedule = () => {
           onClose={() => setOpenRescheduleDialog(false)}
           maxWidth="sm"
           fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 3,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
+            }
+          }}
         >
-          <DialogTitle>Reschedule Session</DialogTitle>
-          <DialogContent>
+          <DialogTitle sx={{ 
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            fontWeight: 600,
+          }}>
+            Reschedule Session
+          </DialogTitle>
+          <DialogContent sx={{ p: 4 }}>
             <Box sx={{ pt: 2 }}>
-              <TextField
-                fullWidth
-                type="date"
-                label="New Date"
-                value={newDate}
-                onChange={(e) => setNewDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                inputProps={{ min: new Date().toISOString().split('T')[0] }}
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                fullWidth
-                type="time"
-                label="New Time"
-                value={newTime}
-                onChange={(e) => setNewTime(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{ mb: 2 }}
-              />
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Day</InputLabel>
+                <Select
+                  value={newDate}
+                  label="Day"
+                  onChange={(e) => {
+                    setNewDate(e.target.value);
+                    setNewTime(''); // Reset time when day changes
+                  }}
+                >
+                  {instructorAvailability?.availability.map((day) => (
+                    <MenuItem key={day.day} value={day.day}>
+                      {day.day}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Time Range</InputLabel>
+                <Select
+                  value={newTime}
+                  label="Time Range"
+                  onChange={(e) => setNewTime(e.target.value)}
+                  disabled={!newDate} // Disable if no day is selected
+                >
+                  {instructorAvailability?.availability
+                    .find(day => day.day === newDate)?.timeRanges.map((range) => (
+                      <MenuItem key={`${range.startTime}-${range.endTime}`} value={`${range.startTime}-${range.endTime}`}>
+                        {`${range.startTime} - ${range.endTime}`}
+                      </MenuItem>
+                    )) || []}
+                </Select>
+                {!newDate && (
+                  <FormHelperText>Please select a day first</FormHelperText>
+                )}
+              </FormControl>
               <TextField
                 fullWidth
                 label="Reason for Reschedule"
@@ -1533,9 +1560,34 @@ const InstructorSchedule = () => {
               />
             </Box>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenRescheduleDialog(false)}>Cancel</Button>
-            <Button onClick={handleRescheduleRequest} color="primary">
+          <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
+            <Button 
+              onClick={() => {
+                setOpenRescheduleDialog(false);
+                setNewDate('');
+                setNewTime('');
+                setReason('');
+              }}
+              sx={{ 
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleRescheduleRequest}
+              variant="contained"
+              color="primary"
+              disabled={!newDate || !newTime || !reason}
+              sx={{ 
+                borderRadius: 2,
+                textTransform: 'none',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}
+            >
               Submit Reschedule Request
             </Button>
           </DialogActions>

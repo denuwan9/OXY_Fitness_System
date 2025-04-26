@@ -50,20 +50,40 @@ const scheduleService = {
   createSchedule: async (scheduleData) => {
     try {
       console.log('Creating new schedule:', scheduleData);
+      
+      // Get the coach ID from the JWT token
+      const token = localStorage.getItem('token');
+      let coachId;
+      if (token) {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => 
+          '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        ).join(''));
+        const payload = JSON.parse(jsonPayload);
+        coachId = payload.userId;
+      }
+
+      if (!coachId) {
+        throw new Error('Coach ID not found. Please log in again.');
+      }
+
       const response = await axiosInstance.post('/schedules', {
-        userId: scheduleData.userId,
-        coachId: scheduleData.coachId,
-        membershipType: scheduleData.membershipType,
-        scheduleType: scheduleData.scheduleType,
-        sessions: scheduleData.sessions.map(session => ({
-          date: session.date,
-          time: session.time,
-          duration: parseInt(session.duration) || 60,
-          workoutType: session.workoutType,
-          notes: session.notes || '',
-          status: session.status || 'scheduled'
-        }))
+        userId: scheduleData.memberId,
+        coachId: coachId,
+        membershipType: 'Platinum', // Default to Platinum for now
+        scheduleType: 'weekday',
+        sessions: [{
+          date: scheduleData.date,
+          time: scheduleData.time,
+          endTime: scheduleData.endTime,
+          duration: scheduleData.duration,
+          workoutType: scheduleData.workoutType,
+          notes: scheduleData.notes || '',
+          status: 'scheduled'
+        }]
       });
+      
       console.log('Schedule created successfully:', response.data);
       return response.data;
     } catch (error) {
