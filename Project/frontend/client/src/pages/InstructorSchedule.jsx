@@ -305,8 +305,11 @@ const InstructorSchedule = () => {
         // Sort sessions by date
         allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
         const nextSession = allSessions[0];
-        setSelectedDate(new Date(nextSession.date));
+        // Keep the current month view but update the selected date
+        const currentDate = new Date();
+        setSelectedDate(currentDate);
       } else {
+        // If no sessions, set to current date
         setSelectedDate(new Date());
       }
 
@@ -329,30 +332,6 @@ const InstructorSchedule = () => {
   const handleCloseMemberActions = () => {
     setShowMemberActions(false);
     setSelectedMember(null);
-  };
-
-  const handleEditSchedule = (schedule, session) => {
-    // Find the complete schedule with meal plan from memberSchedules
-    const completeSchedule = memberSchedules[selectedMember._id]?.find(s => s._id === schedule._id);
-    
-    // Set the editing schedule with the complete data including meal plan
-    setEditingSchedule({
-      ...schedule,
-      mealPlan: completeSchedule?.mealPlan || null // Preserve the meal plan from the complete schedule
-    });
-    
-    setSelectedDate(new Date(session.date));
-    
-    // Find the workout type ID from the name
-    const workoutType = mockWorkoutTypes.find(type => type.name === session.workoutType);
-    
-    // Set form values for editing
-    setValue('time', session.time || '');
-    setValue('workoutType', workoutType ? workoutType.id.toString() : '');
-    setValue('duration', session.duration || '');
-    setValue('notes', session.notes || '');
-
-    setOpenScheduleDialog(true);
   };
 
   const handleDeleteSchedule = async (scheduleId) => {
@@ -431,63 +410,29 @@ const InstructorSchedule = () => {
         status: 'scheduled'
       };
 
-      let response;
-      
-      if (editingSchedule) {
-        // Update existing schedule
-        const updatedSessions = editingSchedule.sessions.map(session => {
-          if (new Date(session.date).toISOString().split('T')[0] === new Date(editingSchedule.sessions[0].date).toISOString().split('T')[0]) {
-            return {
-              ...session,
-              ...sessionData
-            };
-          }
-          return session;
-        });
+      // Create new schedule
+      const schedulePayload = {
+        userId: selectedMember._id,
+        coachId: coachId,
+        membershipType,
+        scheduleType: 'weekday',
+        sessions: [sessionData],
+        mealPlan: null
+      };
 
-        const schedulePayload = {
-          userId: selectedMember._id,
-          coachId: coachId,
-          membershipType,
-          scheduleType: 'weekday',
-          sessions: updatedSessions,
-          mealPlan: editingSchedule.mealPlan // Preserve the meal plan
-        };
-
-        console.log('Updating schedule:', schedulePayload);
-        response = await scheduleService.updateSchedule(editingSchedule._id, schedulePayload);
-      } else {
-        // Create new schedule
-        const schedulePayload = {
-          userId: selectedMember._id,
-          coachId: coachId,
-          membershipType,
-          scheduleType: 'weekday',
-          sessions: [sessionData],
-          mealPlan: null
-        };
-
-        console.log('Creating new schedule:', schedulePayload);
-        response = await scheduleService.createSchedule(schedulePayload);
-      }
+      console.log('Creating new schedule:', schedulePayload);
+      const response = await scheduleService.createSchedule(schedulePayload);
 
       // Update local state
       if (response) {
         const updatedSchedules = { ...memberSchedules };
-        if (editingSchedule) {
-          updatedSchedules[selectedMember._id] = updatedSchedules[selectedMember._id].map(schedule => 
-            schedule._id === editingSchedule._id ? response : schedule
-          );
-        } else {
-          if (!updatedSchedules[selectedMember._id]) {
-            updatedSchedules[selectedMember._id] = [];
-          }
-          updatedSchedules[selectedMember._id].push(response);
+        if (!updatedSchedules[selectedMember._id]) {
+          updatedSchedules[selectedMember._id] = [];
         }
+        updatedSchedules[selectedMember._id].push(response);
         setMemberSchedules(updatedSchedules);
         setOpenScheduleDialog(false);
         reset();
-        setEditingSchedule(null);
       }
     } catch (error) {
       console.error('Error saving schedule:', error);
@@ -600,6 +545,25 @@ const InstructorSchedule = () => {
     return type ? type.name : 'Unknown';
   };
 
+  const formatDuration = (duration) => {
+    // Convert duration to minutes
+    const totalMinutes = parseInt(duration);
+    if (isNaN(totalMinutes)) return '0 minutes';
+
+    // Calculate hours and remaining minutes
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    // Format the duration string
+    if (hours === 0) {
+      return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    } else if (minutes === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    } else {
+      return `${hours} hour${hours !== 1 ? 's' : ''} and ${minutes} minute${minutes !== 1 ? 's' : ''}`;
+    }
+  };
+
   const renderScheduleTable = () => {
     if (!selectedMember || !memberSchedules[selectedMember._id]) {
       return null;
@@ -673,7 +637,7 @@ const InstructorSchedule = () => {
                   </TableCell>
                   <TableCell>
                     <Chip 
-                      label={`${session.duration} min`}
+                      label={formatDuration(session.duration)}
                       size="small"
                       color="primary"
                       variant="outlined"
@@ -699,21 +663,6 @@ const InstructorSchedule = () => {
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Tooltip title="Edit Schedule">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEditSchedule(schedules.find(s => s._id === session.scheduleId), session)}
-                          sx={{
-                            color: 'primary.main',
-                            '&:hover': {
-                              backgroundColor: 'primary.light',
-                              color: 'primary.contrastText',
-                            },
-                          }}
-                        >
-                          <Edit />
-                        </IconButton>
-                      </Tooltip>
                       <Tooltip title="Reschedule Session">
                         <IconButton
                           size="small"
@@ -1139,7 +1088,6 @@ const InstructorSchedule = () => {
       notes: ''
     });
     setSelectedDate(new Date());
-    setEditingSchedule(null);
     setOpenScheduleDialog(true);
   };
 
@@ -1372,6 +1320,7 @@ const InstructorSchedule = () => {
                   <StyledCalendar
                     onChange={handleDateChange}
                     value={selectedDate}
+                    defaultView="month"
                     tileContent={({ date }) => {
                       const memberSchedule = memberSchedules[selectedMember._id];
                       if (!memberSchedule) return null;
@@ -1404,7 +1353,7 @@ const InstructorSchedule = () => {
                             padding: '2px 6px',
                             borderRadius: '12px',
                           }}>
-                            {sessions.length} session(s)
+                            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
                           </Typography>
                         </Box>
                       ) : null;

@@ -89,6 +89,11 @@ const MemberSchedule = () => {
   const [reason, setReason] = useState('');
 
   useEffect(() => {
+    // Set the selected date to current date when component mounts
+    setSelectedDate(new Date());
+  }, []);
+
+  useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
@@ -294,6 +299,7 @@ const MemberSchedule = () => {
             <StyledCalendar
               onChange={setSelectedDate}
               value={selectedDate}
+              defaultView="month"
               tileContent={({ date }) => {
                 const sessions = getSessionsForDate(date);
                 return sessions.length > 0 ? (
