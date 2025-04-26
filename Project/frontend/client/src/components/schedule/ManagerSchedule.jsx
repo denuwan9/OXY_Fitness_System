@@ -24,6 +24,9 @@ import {
   FormControl,
   Select,
   MenuItem,
+  LinearProgress,
+  useTheme,
+  Badge,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -33,6 +36,18 @@ import {
   FitnessCenter,
   Edit,
   Delete,
+  Dashboard,
+  CalendarMonth,
+  Group,
+  SportsGymnastics,
+  Notifications,
+  TrendingUp,
+  Star,
+  EmojiEvents,
+  LocalFireDepartment,
+  Bolt,
+  Speed,
+  Add,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
@@ -41,24 +56,271 @@ import userService from '../../services/userService';
 import coachAvailabilityService from '../../services/coachAvailabilityService';
 import Layout from '../layout/Layout';
 
+// Styled components with modern theme and animations
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
   marginBottom: theme.spacing(3),
   backgroundColor: theme.palette.background.paper,
   borderRadius: theme.spacing(2),
-  boxShadow: theme.shadows[3],
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+  transition: 'all 0.3s ease-in-out',
+  background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)',
+  },
 }));
 
 const StyledCard = styled(Card)(({ theme }) => ({
   marginBottom: theme.spacing(2),
   backgroundColor: theme.palette.background.paper,
-  transition: 'transform 0.2s',
+  borderRadius: theme.spacing(2),
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+  transition: 'box-shadow 0.3s, transform 0.3s',
+  position: 'relative',
+  overflow: 'hidden',
   '&:hover': {
     transform: 'translateY(-2px)',
+    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)',
+  },
+}));
+
+const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
+  borderRadius: theme.spacing(2),
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+  background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+  overflow: 'hidden',
+  '& .MuiTableHead-root': {
+    background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+    '& .MuiTableCell-root': {
+      color: theme.palette.primary.contrastText,
+      fontWeight: 600,
+      fontSize: '1rem',
+      padding: theme.spacing(2),
+      borderBottom: 'none',
+    },
+  },
+  '& .MuiTableBody-root': {
+    '& .MuiTableRow-root': {
+      '&:nth-of-type(odd)': {
+        backgroundColor: theme.palette.background.default,
+      },
+    },
+    '& .MuiTableCell-root': {
+      borderBottom: `1px solid ${theme.palette.divider}`,
+      padding: theme.spacing(2),
+      fontSize: '0.95rem',
+    },
+  },
+}));
+
+const StyledTab = styled(Tab)(({ theme }) => ({
+  textTransform: 'none',
+  fontWeight: 600,
+  minWidth: 0,
+  padding: theme.spacing(2, 3),
+  transition: 'background-color 0.3s, color 0.3s',
+  '&.Mui-selected': {
+    color: theme.palette.primary.main,
+  },
+  '&:hover': {
+    backgroundColor: theme.palette.action.hover,
+    borderRadius: theme.spacing(1),
+  },
+}));
+
+const StatCard = styled(Card)(({ theme }) => ({
+  padding: theme.spacing(3),
+  borderRadius: theme.spacing(2),
+  background: `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+  transition: 'box-shadow 0.3s, transform 0.3s',
+  position: 'relative',
+  overflow: 'hidden',
+  '&:hover': {
+    transform: 'translateY(-5px)',
+    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)',
+  },
+}));
+
+const GradientButton = styled(Button)(({ theme }) => ({
+  background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+  color: theme.palette.primary.contrastText,
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+  },
+}));
+
+const StyledSelect = styled(Select)(({ theme }) => ({
+  borderRadius: theme.spacing(1),
+  backgroundColor: theme.palette.background.paper,
+  transition: 'all 0.3s ease',
+  '& .MuiSelect-select': {
+    padding: theme.spacing(1.5),
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+  },
+  '&:hover': {
+    backgroundColor: theme.palette.action.hover,
+  },
+  '&.Mui-focused': {
+    boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
+  },
+  '& .MuiOutlinedInput-notchedOutline': {
+    borderColor: theme.palette.divider,
+  },
+}));
+
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
+  padding: theme.spacing(1.5),
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+  transition: 'all 0.2s ease',
+  '&:hover': {
+    backgroundColor: theme.palette.action.hover,
+  },
+  '&.Mui-selected': {
+    backgroundColor: `${theme.palette.primary.main}20`,
+    '&:hover': {
+      backgroundColor: `${theme.palette.primary.main}30`,
+    },
+  },
+}));
+
+const StatusChip = styled(Chip)(({ theme, status }) => ({
+  borderRadius: theme.spacing(1),
+  fontWeight: 600,
+  padding: theme.spacing(0.5, 1),
+  backgroundColor: status === 'pending' 
+    ? `${theme.palette.warning.main}20`
+    : status === 'approved' 
+    ? `${theme.palette.success.main}20`
+    : `${theme.palette.error.main}20`,
+  color: status === 'pending' 
+    ? theme.palette.warning.dark
+    : status === 'approved' 
+    ? theme.palette.success.dark
+    : theme.palette.error.dark,
+  border: `1px solid ${
+    status === 'pending' 
+      ? theme.palette.warning.main
+      : status === 'approved' 
+      ? theme.palette.success.main
+      : theme.palette.error.main
+  }`,
+  transition: 'box-shadow 0.2s, transform 0.2s',
+  '&:hover': {
+    transform: 'scale(1.05)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    backgroundColor: status === 'pending' 
+      ? `${theme.palette.warning.main}30`
+      : status === 'approved' 
+      ? `${theme.palette.success.main}30`
+      : `${theme.palette.error.main}30`,
+  },
+  '& .MuiChip-icon': {
+    color: status === 'pending' 
+      ? theme.palette.warning.main
+      : status === 'approved' 
+      ? theme.palette.success.main
+      : theme.palette.error.main,
+  },
+}));
+
+const MembershipChip = styled(Chip)(({ theme, type }) => ({
+  borderRadius: theme.spacing(1),
+  fontWeight: 600,
+  padding: theme.spacing(0.5, 1),
+  backgroundColor: type === 'Platinum' 
+    ? `${theme.palette.primary.main}20`
+    : type === 'Gold' 
+    ? `${theme.palette.secondary.main}20`
+    : `${theme.palette.grey[500]}20`,
+  color: type === 'Platinum' 
+    ? theme.palette.primary.dark
+    : type === 'Gold' 
+    ? theme.palette.secondary.dark
+    : theme.palette.grey[700],
+  border: `1px solid ${
+    type === 'Platinum' 
+      ? theme.palette.primary.main
+      : type === 'Gold' 
+      ? theme.palette.secondary.main
+      : theme.palette.grey[500]
+  }`,
+  '&:hover': {
+    transform: 'scale(1.05)',
+    transition: 'transform 0.2s ease',
+    backgroundColor: type === 'Platinum' 
+      ? `${theme.palette.primary.main}30`
+      : type === 'Gold' 
+      ? `${theme.palette.secondary.main}30`
+      : `${theme.palette.grey[500]}30`,
+  },
+  '& .MuiChip-icon': {
+    color: type === 'Platinum' 
+      ? theme.palette.primary.main
+      : type === 'Gold' 
+      ? theme.palette.secondary.main
+      : theme.palette.grey[500],
+  },
+}));
+
+const ActionButton = styled(Button)(({ theme, color }) => ({
+  borderRadius: theme.spacing(1),
+  textTransform: 'none',
+  fontWeight: 600,
+  padding: theme.spacing(1, 2),
+  transition: 'all 0.3s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+  },
+}));
+
+const UserCell = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+  '& .MuiAvatar-root': {
+    width: 32,
+    height: 32,
+    border: `2px solid ${theme.palette.primary.main}`,
+  },
+  '& .user-info': {
+    display: 'flex',
+    flexDirection: 'column',
+    '& .name': {
+      fontWeight: 600,
+      color: theme.palette.text.primary,
+    },
+    '& .email': {
+      fontSize: '0.8rem',
+      color: theme.palette.text.secondary,
+    },
+  },
+}));
+
+const DateCell = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(0.5),
+  '& .date': {
+    fontWeight: 600,
+    color: theme.palette.text.primary,
+  },
+  '& .time': {
+    fontSize: '0.8rem',
+    color: theme.palette.text.secondary,
   },
 }));
 
 const ManagerSchedule = () => {
+  const theme = useTheme();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [requestTypeTab, setRequestTypeTab] = useState(0);
@@ -336,10 +598,10 @@ const ManagerSchedule = () => {
           <>
             {/* Pending Member Requests */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ color: theme.palette.primary.main }}>
                 Pending Member Requests
               </Typography>
-              <TableContainer component={Paper}>
+              <StyledTableContainer>
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -356,40 +618,59 @@ const ManagerSchedule = () => {
                       <TableRow key={request._id}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Person />
-                            <Typography>
-                              {request.userId?.name || 'Unknown'}
-                            </Typography>
-                            <Chip
-                              label={request.userId?.membershipType}
-                              color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
-                                     request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
-                              size="small"
-                            />
+                            <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 32, height: 32 }}>
+                              <Person sx={{ color: '#fff' }} />
+                            </Avatar>
+                            <Typography fontWeight={600}>{request.userId?.name || 'Unknown'}</Typography>
                           </Box>
                         </TableCell>
                         <TableCell>
-                          {request.scheduleId?.sessions?.[0]?.date ? 
-                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.scheduleId?.sessions?.[0]?.date ? new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
                         <TableCell>
-                          {request.newDate ? 
-                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.newTime || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.newDate ? new Date(request.newDate).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.newTime || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
-                        <TableCell>{request.reason}</TableCell>
                         <TableCell>
-                          <Chip
+                          <Tooltip title={request.reason} arrow>
+                            <Typography sx={{
+                              maxWidth: 180,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {request.reason}
+                            </Typography>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <StatusChip
                             label={request.status}
-                            color={request.status === 'pending' ? 'warning' : 
-                                   request.status === 'approved' ? 'success' : 'error'}
+                            status={request.status}
                             size="small"
+                            icon={
+                              request.status === 'pending' ? <AccessTime /> :
+                              request.status === 'approved' ? <CheckCircle /> :
+                              <Cancel />
+                            }
                           />
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
+                            <ActionButton
                               variant="contained"
                               color="success"
                               size="small"
@@ -398,8 +679,8 @@ const ManagerSchedule = () => {
                               disabled={loading}
                             >
                               Approve
-                            </Button>
-                            <Button
+                            </ActionButton>
+                            <ActionButton
                               variant="contained"
                               color="error"
                               size="small"
@@ -408,22 +689,22 @@ const ManagerSchedule = () => {
                               disabled={loading}
                             >
                               Reject
-                            </Button>
+                            </ActionButton>
                           </Box>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </TableContainer>
+              </StyledTableContainer>
             </Grid>
 
             {/* Past Member Requests */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 4, color: theme.palette.primary.main }}>
                 Past Member Requests
               </Typography>
-              <TableContainer component={Paper}>
+              <StyledTableContainer>
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -440,44 +721,68 @@ const ManagerSchedule = () => {
                       <TableRow key={request._id}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Person />
-                            <Typography>
-                              {request.userId?.name || 'Unknown'}
-                            </Typography>
-                            <Chip
-                              label={request.userId?.membershipType}
-                              color={request.userId?.membershipType === 'Platinum' ? 'primary' : 
-                                     request.userId?.membershipType === 'Gold' ? 'secondary' : 'default'}
-                              size="small"
-                            />
+                            <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 32, height: 32 }}>
+                              <Person sx={{ color: '#fff' }} />
+                            </Avatar>
+                            <Typography fontWeight={600}>{request.userId?.name || 'Unknown'}</Typography>
                           </Box>
                         </TableCell>
                         <TableCell>
-                          {request.scheduleId?.sessions?.[0]?.date ? 
-                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.scheduleId?.sessions?.[0]?.date ? new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
                         <TableCell>
-                          {request.newDate ? 
-                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.newTime || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.newDate ? new Date(request.newDate).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.newTime || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
-                        <TableCell>{request.reason}</TableCell>
                         <TableCell>
-                          <Chip
+                          <Tooltip title={request.reason} arrow>
+                            <Typography sx={{
+                              maxWidth: 180,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {request.reason}
+                            </Typography>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <StatusChip
                             label={request.status}
-                            color={request.status === 'approved' ? 'success' : 'error'}
+                            status={request.status}
                             size="small"
+                            icon={
+                              request.status === 'pending' ? <AccessTime /> :
+                              request.status === 'approved' ? <CheckCircle /> :
+                              <Cancel />
+                            }
                           />
                         </TableCell>
                         <TableCell>
-                          {new Date(request.createdAt).toLocaleDateString()}
+                          <DateCell>
+                            <Typography className="date">
+                              {new Date(request.createdAt).toLocaleDateString()}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </TableContainer>
+              </StyledTableContainer>
             </Grid>
           </>
         )}
@@ -487,10 +792,10 @@ const ManagerSchedule = () => {
           <>
             {/* Pending Coach Requests */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant="h6" gutterBottom sx={{ color: theme.palette.primary.main }}>
                 Pending Coach Requests
               </Typography>
-              <TableContainer component={Paper}>
+              <StyledTableContainer>
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -507,34 +812,59 @@ const ManagerSchedule = () => {
                       <TableRow key={request._id}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <FitnessCenter />
-                            <Typography>
-                              {request.userId?.name || 'Unknown'}
-                            </Typography>
+                            <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 32, height: 32 }}>
+                              <FitnessCenter sx={{ color: '#fff' }} />
+                            </Avatar>
+                            <Typography fontWeight={600}>{request.userId?.name || 'Unknown'}</Typography>
                           </Box>
                         </TableCell>
                         <TableCell>
-                          {request.scheduleId?.sessions?.[0]?.date ? 
-                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.scheduleId?.sessions?.[0]?.date ? new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
                         <TableCell>
-                          {request.newDate ? 
-                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.newTime || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.newDate ? new Date(request.newDate).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.newTime || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
-                        <TableCell>{request.reason}</TableCell>
                         <TableCell>
-                          <Chip
+                          <Tooltip title={request.reason} arrow>
+                            <Typography sx={{
+                              maxWidth: 180,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {request.reason}
+                            </Typography>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <StatusChip
                             label={request.status}
-                            color={request.status === 'pending' ? 'warning' : 
-                                   request.status === 'approved' ? 'success' : 'error'}
+                            status={request.status}
                             size="small"
+                            icon={
+                              request.status === 'pending' ? <AccessTime /> :
+                              request.status === 'approved' ? <CheckCircle /> :
+                              <Cancel />
+                            }
                           />
                         </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
+                            <ActionButton
                               variant="contained"
                               color="success"
                               size="small"
@@ -543,8 +873,8 @@ const ManagerSchedule = () => {
                               disabled={loading}
                             >
                               Approve
-                            </Button>
-                            <Button
+                            </ActionButton>
+                            <ActionButton
                               variant="contained"
                               color="error"
                               size="small"
@@ -553,22 +883,22 @@ const ManagerSchedule = () => {
                               disabled={loading}
                             >
                               Reject
-                            </Button>
+                            </ActionButton>
                           </Box>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </TableContainer>
+              </StyledTableContainer>
             </Grid>
 
             {/* Past Coach Requests */}
             <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 4, color: theme.palette.primary.main }}>
                 Past Coach Requests
               </Typography>
-              <TableContainer component={Paper}>
+              <StyledTableContainer>
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -585,38 +915,68 @@ const ManagerSchedule = () => {
                       <TableRow key={request._id}>
                         <TableCell>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <FitnessCenter />
-                            <Typography>
-                              {request.userId?.name || 'Unknown'}
-                            </Typography>
+                            <Avatar sx={{ bgcolor: theme.palette.primary.main, width: 32, height: 32 }}>
+                              <FitnessCenter sx={{ color: '#fff' }} />
+                            </Avatar>
+                            <Typography fontWeight={600}>{request.userId?.name || 'Unknown'}</Typography>
                           </Box>
                         </TableCell>
                         <TableCell>
-                          {request.scheduleId?.sessions?.[0]?.date ? 
-                            new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.scheduleId?.sessions?.[0]?.date ? new Date(request.scheduleId.sessions[0].date).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.scheduleId?.sessions?.[0]?.time || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
                         <TableCell>
-                          {request.newDate ? 
-                            new Date(request.newDate).toLocaleDateString() : 'N/A'} at{' '}
-                          {request.newTime || 'N/A'}
+                          <DateCell>
+                            <Typography className="date">
+                              {request.newDate ? new Date(request.newDate).toLocaleDateString() : 'N/A'}
+                            </Typography>
+                            <Typography className="time">
+                              {request.newTime || 'N/A'}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
-                        <TableCell>{request.reason}</TableCell>
                         <TableCell>
-                          <Chip
+                          <Tooltip title={request.reason} arrow>
+                            <Typography sx={{
+                              maxWidth: 180,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {request.reason}
+                            </Typography>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>
+                          <StatusChip
                             label={request.status}
-                            color={request.status === 'approved' ? 'success' : 'error'}
+                            status={request.status}
                             size="small"
+                            icon={
+                              request.status === 'pending' ? <AccessTime /> :
+                              request.status === 'approved' ? <CheckCircle /> :
+                              <Cancel />
+                            }
                           />
                         </TableCell>
                         <TableCell>
-                          {new Date(request.createdAt).toLocaleDateString()}
+                          <DateCell>
+                            <Typography className="date">
+                              {new Date(request.createdAt).toLocaleDateString()}
+                            </Typography>
+                          </DateCell>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </TableContainer>
+              </StyledTableContainer>
             </Grid>
           </>
         )}
@@ -652,7 +1012,7 @@ const ManagerSchedule = () => {
     }
 
     return (
-      <TableContainer component={Paper}>
+      <StyledTableContainer>
         <Table>
           <TableHead>
             <TableRow>
@@ -667,23 +1027,36 @@ const ManagerSchedule = () => {
             {members.map((member) => (
               <TableRow key={member._id}>
                 <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Avatar src={member.profileImage} />
-                    {member.name}
-                  </Box>
+                  <UserCell>
+                    <Avatar src={member.profileImage}>
+                      {member.name?.charAt(0)}
+                    </Avatar>
+                    <Box className="user-info">
+                      <Typography className="name">
+                        {member.name}
+                      </Typography>
+                      <Typography className="email">
+                        {member.email}
+                      </Typography>
+                    </Box>
+                  </UserCell>
                 </TableCell>
                 <TableCell>{member.email}</TableCell>
                 <TableCell>
-                  <Chip
+                  <MembershipChip
                     label={member.membershipType}
-                    color={member.membershipType === 'Platinum' ? 'primary' : 
-                           member.membershipType === 'Gold' ? 'secondary' : 'default'}
+                    type={member.membershipType}
                     size="small"
+                    icon={
+                      member.membershipType === 'Platinum' ? <Star /> :
+                      member.membershipType === 'Gold' ? <EmojiEvents /> :
+                      <Person />
+                    }
                   />
                 </TableCell>
                 <TableCell>
                   <FormControl fullWidth size="small">
-                    <Select
+                    <StyledSelect
                       value={coaches.find(coach => 
                         coachAssignments[coach._id]?.some(assignment => 
                           assignment.memberId._id === member._id
@@ -691,15 +1064,21 @@ const ManagerSchedule = () => {
                       )?._id || ''}
                       onChange={(e) => handleAssignMember(member._id, e.target.value)}
                     >
-                      <MenuItem value="">
+                      <StyledMenuItem value="">
                         <em>None</em>
-                      </MenuItem>
+                      </StyledMenuItem>
                       {coaches.map((coach) => (
-                        <MenuItem key={coach._id} value={coach._id}>
+                        <StyledMenuItem key={coach._id} value={coach._id}>
+                          <Avatar 
+                            src={coach.profileImage}
+                            sx={{ width: 24, height: 24, mr: 1 }}
+                          >
+                            {coach.name?.charAt(0)}
+                          </Avatar>
                           {coach.name}
-                        </MenuItem>
+                        </StyledMenuItem>
                       ))}
-                    </Select>
+                    </StyledSelect>
                   </FormControl>
                 </TableCell>
                 <TableCell>
@@ -716,6 +1095,13 @@ const ManagerSchedule = () => {
                           handleRemoveMember(member._id, currentCoach._id);
                         }
                       }}
+                      sx={{
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          transform: 'scale(1.1)',
+                          backgroundColor: theme.palette.error.light,
+                        },
+                      }}
                     >
                       <Delete />
                     </IconButton>
@@ -725,12 +1111,12 @@ const ManagerSchedule = () => {
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </StyledTableContainer>
     );
   };
 
   const renderCoachesList = () => (
-    <TableContainer component={Paper}>
+    <StyledTableContainer>
       <Table>
         <TableHead>
           <TableRow>
@@ -744,54 +1130,89 @@ const ManagerSchedule = () => {
           {coaches.map((coach) => (
             <TableRow key={coach._id}>
               <TableCell>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar src={coach.profileImage} />
-                  {coach.name}
-                </Box>
+                <UserCell>
+                  <Avatar src={coach.profileImage}>
+                    {coach.name?.charAt(0)}
+                  </Avatar>
+                  <Box className="user-info">
+                    <Typography className="name">
+                      {coach.name}
+                    </Typography>
+                    <Typography className="email">
+                      {coach.email}
+                    </Typography>
+                  </Box>
+                </UserCell>
               </TableCell>
               <TableCell>{coach.email}</TableCell>
               <TableCell>{coach.specialization || 'General'}</TableCell>
               <TableCell>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+                <Box sx={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: 1,
+                  background: 'rgba(0,0,0,0.03)',
+                  borderRadius: 2,
+                  p: 1,
+                  minHeight: 48,
+                }}>
                   {coachAssignments[coach._id]?.map((assignment) => {
                     const member = members.find(m => m._id === assignment.memberId._id);
                     return member ? (
                       <Chip
                         key={member._id}
+                        avatar={<Avatar sx={{ width: 24, height: 24 }}>{member.name?.charAt(0)}</Avatar>}
                         label={member.name}
                         size="small"
+                        sx={{
+                          background: theme => theme.palette.primary.light,
+                          color: theme => theme.palette.primary.contrastText,
+                          fontWeight: 600,
+                          boxShadow: 1,
+                          mr: 0.5,
+                          mb: 0.5,
+                          '& .MuiChip-deleteIcon': {
+                            color: theme => theme.palette.error.main,
+                          },
+                          '&:hover': {
+                            boxShadow: 3,
+                            background: theme => theme.palette.primary.main,
+                          }
+                        }}
                         onDelete={() => handleRemoveMember(member._id, coach._id)}
                       />
                     ) : null;
                   })}
-                  <FormControl size="small" sx={{ minWidth: 160 }}>
-                    <Select
+                  <FormControl size="small" sx={{ minWidth: 160, ml: 1 }}>
+                    <StyledSelect
                       value=""
+                      displayEmpty
                       onChange={(e) => {
                         const memberId = e.target.value;
-                        if (memberId) {
-                          handleAssignMember(memberId, coach._id);
-                        }
+                        if (memberId) handleAssignMember(memberId, coach._id);
                       }}
-                      displayEmpty
+                      renderValue={() => (
+                        <Box sx={{ display: 'flex', alignItems: 'center', color: theme => theme.palette.text.secondary }}>
+                          <Add sx={{ fontSize: 18, mr: 0.5 }} />
+                          Assign Member
+                        </Box>
+                      )}
                     >
-                      <MenuItem value="" disabled>
+                      <StyledMenuItem value="" disabled>
                         <em>Assign Member</em>
-                      </MenuItem>
+                      </StyledMenuItem>
                       {members
-                        .filter(member => {
-                          // Only show members not assigned to any coach
-                          const assignedToAnyCoach = Object.values(coachAssignments).some(assignments =>
-                            assignments.some(assignment => assignment.memberId._id === member._id)
-                          );
-                          return !assignedToAnyCoach;
-                        })
+                        .filter(member => !Object.values(coachAssignments).some(assignments =>
+                          assignments.some(assignment => assignment.memberId._id === member._id)
+                        ))
                         .map((member) => (
-                          <MenuItem key={member._id} value={member._id}>
+                          <StyledMenuItem key={member._id} value={member._id}>
+                            <Avatar sx={{ width: 24, height: 24, mr: 1 }}>{member.name?.charAt(0)}</Avatar>
                             {member.name}
-                          </MenuItem>
+                          </StyledMenuItem>
                         ))}
-                    </Select>
+                    </StyledSelect>
                   </FormControl>
                 </Box>
               </TableCell>
@@ -799,48 +1220,152 @@ const ManagerSchedule = () => {
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+    </StyledTableContainer>
   );
 
   return (
     <Layout>
       <Container maxWidth="lg">
         <Box sx={{ py: 4 }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-          {success && (
-            <Alert severity="success" sx={{ mb: 2 }}>
-              {success}
-            </Alert>
-          )}
+          <Box>
+            {error && (
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  mb: 2, 
+                  borderRadius: 2,
+                }}
+              >
+                {error}
+              </Alert>
+            )}
+            {success && (
+              <Alert 
+                severity="success" 
+                sx={{ 
+                  mb: 2, 
+                  borderRadius: 2,
+                }}
+              >
+                {success}
+              </Alert>
+            )}
+          </Box>
 
-          {/* Header Section */}
+          {/* Header Section with Stats */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12} md={4}>
+              <StatCard>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Dashboard className="card-icon" sx={{ 
+                    fontSize: 40, 
+                    color: theme.palette.primary.main, 
+                    mr: 2,
+                  }} />
+                  <Typography variant="h6" color="textSecondary">
+                    Total Requests
+                  </Typography>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                  {changeRequests.length}
+                </Typography>
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                  <TrendingUp sx={{ color: theme.palette.success.main, mr: 1 }} />
+                  <Typography variant="body2" color="textSecondary">
+                    +12% from last month
+                  </Typography>
+                </Box>
+              </StatCard>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <StatCard>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Group className="card-icon" sx={{ 
+                    fontSize: 40, 
+                    color: theme.palette.success.main, 
+                    mr: 2,
+                  }} />
+                  <Typography variant="h6" color="textSecondary">
+                    Active Members
+                  </Typography>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                  {members.length}
+                </Typography>
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                  <Star sx={{ color: theme.palette.warning.main, mr: 1 }} />
+                  <Typography variant="body2" color="textSecondary">
+                    {members.filter(m => m.membershipType === 'Platinum').length} Platinum Members
+                  </Typography>
+                </Box>
+              </StatCard>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <StatCard>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <SportsGymnastics className="card-icon" sx={{ 
+                    fontSize: 40, 
+                    color: theme.palette.warning.main, 
+                    mr: 2,
+                  }} />
+                  <Typography variant="h6" color="textSecondary">
+                    Active Coaches
+                  </Typography>
+                </Box>
+                <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+                  {coaches.length}
+                </Typography>
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                  <EmojiEvents sx={{ color: theme.palette.primary.main, mr: 1 }} />
+                  <Typography variant="body2" color="textSecondary">
+                    {coaches.length} Certified Trainers
+                  </Typography>
+                </Box>
+              </StatCard>
+            </Grid>
+          </Grid>
+
+          {/* Main Content */}
           <StyledPaper>
-            <Typography variant="h4" component="h1" gutterBottom>
-              Manager Dashboard
-            </Typography>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+              <Tabs
+                value={activeTab}
+                onChange={(e, newValue) => setActiveTab(newValue)}
+                variant="fullWidth"
+              >
+                <StyledTab
+                  icon={<CalendarMonth />}
+                  label="Change Requests"
+                  iconPosition="start"
+                />
+                <StyledTab
+                  icon={<Group />}
+                  label="Members"
+                  iconPosition="start"
+                />
+                <StyledTab
+                  icon={<SportsGymnastics />}
+                  label="Coaches"
+                  iconPosition="start"
+                />
+              </Tabs>
+            </Box>
+
+            {loading && (
+              <LinearProgress 
+                sx={{ 
+                  mb: 3, 
+                }} 
+              />
+            )}
+
+            {/* Content based on active tab */}
+            <Box>
+              {activeTab === 0 && renderChangeRequests()}
+              {activeTab === 1 && renderMembersList()}
+              {activeTab === 2 && renderCoachesList()}
+            </Box>
           </StyledPaper>
-
-          {/* Tabs */}
-          <Paper sx={{ mb: 4, borderRadius: 3 }}>
-            <Tabs
-              value={activeTab}
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              sx={{ borderBottom: 1, borderColor: 'divider' }}
-            >
-              <Tab label="Change Requests" icon={<AccessTime />} iconPosition="start" />
-              <Tab label="Members" icon={<Person />} iconPosition="start" />
-              <Tab label="Coaches" icon={<FitnessCenter />} iconPosition="start" />
-            </Tabs>
-          </Paper>
-
-          {/* Content based on active tab */}
-          {activeTab === 0 && renderChangeRequests()}
-          {activeTab === 1 && renderMembersList()}
-          {activeTab === 2 && renderCoachesList()}
         </Box>
       </Container>
     </Layout>
