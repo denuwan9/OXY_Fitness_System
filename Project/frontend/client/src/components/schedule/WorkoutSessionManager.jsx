@@ -214,6 +214,7 @@ const WorkoutSessionManager = ({
                 value={sessionData.date}
                 onChange={(e) => setSessionData({ ...sessionData, date: e.target.value })}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: new Date().toISOString().split('T')[0] }}
               />
             </Grid>
             <Grid item xs={12}>

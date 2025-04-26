@@ -63,6 +63,8 @@ import { mockSchedules, mockWorkoutTypes } from '../mockData/scheduleData';
 import coachAvailabilityService from '../services/coachAvailabilityService';
 import userService from '../services/userService';
 import scheduleService from '../services/scheduleService';
+import ExerciseManagement from '../components/ExerciseManagement';
+import exerciseService from '../services/exerciseService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -105,6 +107,13 @@ const StyledCalendar = styled(Calendar)(({ theme }) => ({
   "& .react-calendar__tile--now": {
     backgroundColor: theme.palette.secondary.light,
     color: theme.palette.secondary.contrastText,
+  },
+  "& .react-calendar__tile--disabled": {
+    backgroundColor: theme.palette.action.disabledBackground,
+    color: theme.palette.action.disabled,
+    cursor: 'not-allowed',
+    pointerEvents: 'none',
+    opacity: 0.5,
   },
 }));
 
@@ -155,7 +164,11 @@ const scheduleSchema = yup.object().shape({
 });
 
 const InstructorSchedule = () => {
+  console.log('InstructorSchedule component rendering'); // Debug log
+
   const { user } = useAuth();
+  console.log('Current user:', user); // Debug log
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -189,6 +202,7 @@ const InstructorSchedule = () => {
   const [newTime, setNewTime] = useState('');
   const [reason, setReason] = useState('');
   const [success, setSuccess] = useState('');
+  const [showExerciseManagement, setShowExerciseManagement] = useState(false);
 
   const {
     register,
@@ -208,6 +222,7 @@ const InstructorSchedule = () => {
   });
 
   useEffect(() => {
+    console.log('Component mounted'); // Debug log
     loadAssignedMembers();
   }, [user]);
 
@@ -1150,6 +1165,22 @@ const InstructorSchedule = () => {
     }
   };
 
+  const handleAssignExercises = async (exercises) => {
+    try {
+      if (!selectedMember) {
+        setError('Please select a member first');
+        return;
+      }
+
+      const exerciseIds = exercises.map(exercise => exercise.id);
+      await exerciseService.assignExercises(exerciseIds, [selectedMember._id]);
+      setSuccess('Exercises assigned successfully');
+      setShowExerciseManagement(false);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Failed to assign exercises');
+    }
+  };
+
   if (!user || (user.role !== 'instructor' && user.role !== 'coach')) {
     return (
       <Layout>
@@ -1168,7 +1199,7 @@ const InstructorSchedule = () => {
         p: 4, 
         bgcolor: 'background.default', 
         minHeight: '100vh',
-        mt: 2 // Add margin top to prevent header overlap
+        mt: 2
       }}>
         <Grid container spacing={4}>
           {/* Header Section */}
@@ -1296,6 +1327,14 @@ const InstructorSchedule = () => {
                     Add Meal Plan
                   </StyledButton>
                   <StyledButton
+                    variant="contained"
+                    color="info"
+                    startIcon={<FitnessCenter />}
+                    onClick={() => setShowExerciseManagement(!showExerciseManagement)}
+                  >
+                    {showExerciseManagement ? 'Back to Schedule' : 'Manage Exercises'}
+                  </StyledButton>
+                  <StyledButton
                     variant="outlined"
                     color="error"
                     onClick={handleCloseMemberActions}
@@ -1304,73 +1343,85 @@ const InstructorSchedule = () => {
                   </StyledButton>
                 </Box>
 
-                <StyledPaper>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h5" sx={{ 
-                      fontWeight: 600,
-                      color: 'primary.main',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                    }}>
-                      <Schedule sx={{ fontSize: 28 }} />
-                      Schedule for {selectedMember.name}
-                    </Typography>
-                  </Box>
-                  <StyledCalendar
-                    onChange={handleDateChange}
-                    value={selectedDate}
-                    defaultView="month"
-                    tileContent={({ date }) => {
-                      const memberSchedule = memberSchedules[selectedMember._id];
-                      if (!memberSchedule) return null;
-
-                      const allSessions = memberSchedule.reduce((acc, schedule) => {
-                        if (schedule.sessions && Array.isArray(schedule.sessions)) {
-                          return [...acc, ...schedule.sessions];
-                        }
-                        return acc;
-                      }, []);
-
-                      const sessions = allSessions.filter(
-                        session => new Date(session.date).toDateString() === date.toDateString()
-                      );
-
-                      return sessions?.length > 0 ? (
-                        <Box sx={{ 
-                          position: "relative", 
-                          height: "100%",
+                {showExerciseManagement ? (
+                  <ExerciseManagement onAssignExercises={handleAssignExercises} />
+                ) : (
+                  <>
+                    <StyledPaper>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography variant="h5" sx={{ 
+                          fontWeight: 600,
+                          color: 'primary.main',
                           display: 'flex',
-                          flexDirection: 'column',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 0.5,
+                          gap: 1,
                         }}>
-                          <Typography variant="caption" sx={{ 
-                            fontWeight: 600,
-                            color: 'primary.main',
-                            backgroundColor: 'primary.light',
-                            padding: '2px 6px',
-                            borderRadius: '12px',
-                          }}>
-                            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
-                          </Typography>
-                        </Box>
-                      ) : null;
-                    }}
-                  />
-                  <Box sx={{ mt: 4 }}>
-                    <Typography variant="h6" gutterBottom sx={{ 
-                      fontWeight: 600,
-                      color: 'primary.main',
-                      mb: 2,
-                    }}>
-                      Existing Schedules
-                    </Typography>
-                    {renderScheduleTable()}
-                  </Box>
-                </StyledPaper>
-                {renderMealPlanSection()}
+                          <Schedule sx={{ fontSize: 28 }} />
+                          Schedule for {selectedMember.name}
+                        </Typography>
+                      </Box>
+                      <StyledCalendar
+                        onChange={handleDateChange}
+                        value={selectedDate}
+                        defaultView="month"
+                        minDate={new Date()}
+                        tileDisabled={({ date }) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
+                        tileContent={({ date }) => {
+                          const memberSchedule = memberSchedules[selectedMember._id];
+                          if (!memberSchedule) return null;
+
+                          const allSessions = memberSchedule.reduce((acc, schedule) => {
+                            if (schedule.sessions && Array.isArray(schedule.sessions)) {
+                              return [...acc, ...schedule.sessions];
+                            }
+                            return acc;
+                          }, []);
+
+                          const sessions = allSessions.filter(
+                            session => new Date(session.date).toDateString() === date.toDateString()
+                          );
+
+                          return sessions?.length > 0 ? (
+                            <Box sx={{ 
+                              position: "relative", 
+                              height: "100%",
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 0.5,
+                            }}>
+                              <Typography variant="caption" sx={{ 
+                                fontWeight: 600,
+                                color: 'primary.main',
+                                backgroundColor: 'primary.light',
+                                padding: '2px 6px',
+                                borderRadius: '12px',
+                              }}>
+                                {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+                              </Typography>
+                            </Box>
+                          ) : null;
+                        }}
+                      />
+                      <Box sx={{ mt: 4 }}>
+                        <Typography variant="h6" gutterBottom sx={{ 
+                          fontWeight: 600,
+                          color: 'primary.main',
+                          mb: 2,
+                        }}>
+                          Existing Schedules
+                        </Typography>
+                        {renderScheduleTable()}
+                      </Box>
+                    </StyledPaper>
+                    {renderMealPlanSection()}
+                  </>
+                )}
               </>
             ) : (
               <StyledPaper>
@@ -1416,6 +1467,7 @@ const InstructorSchedule = () => {
                     value={selectedDate.toISOString().split('T')[0]}
                     onChange={(e) => setSelectedDate(new Date(e.target.value))}
                     InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: new Date().toISOString().split('T')[0] }}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                   />
                 </Grid>
@@ -1643,6 +1695,7 @@ const InstructorSchedule = () => {
                 value={newDate}
                 onChange={(e) => setNewDate(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: new Date().toISOString().split('T')[0] }}
                 sx={{ mb: 2 }}
               />
               <TextField

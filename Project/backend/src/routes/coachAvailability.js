@@ -5,9 +5,10 @@ const checkRole = require('../middleware/checkRole');
 const coachAvailabilityController = require('../controllers/coachAvailabilityController');
 
 // Get all assigned members (coach only)
-router.get('/assigned-members', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
-  console.log('GET /coach-availability/assigned-members - Request received');
+router.get('/assigned-members/:coachId', auth, checkRole(['coach', 'instructor', 'trainer']), (req, res, next) => {
+  console.log('GET /coach-availability/assigned-members/:coachId - Request received');
   console.log('User:', req.user);
+  console.log('Coach ID:', req.params.coachId);
   next();
 }, coachAvailabilityController.getAssignedMembers);
 

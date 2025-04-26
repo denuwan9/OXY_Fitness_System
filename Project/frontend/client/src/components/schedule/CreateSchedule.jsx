@@ -164,6 +164,7 @@ const CreateSchedule = ({ userId, membershipType, onSuccess }) => {
                       value={session.date}
                       onChange={(newValue) => handleSessionChange(index, 'date', newValue)}
                       renderInput={(params) => <TextField {...params} fullWidth />}
+                      minDate={new Date()}
                     />
                   </LocalizationProvider>
                 </Grid>

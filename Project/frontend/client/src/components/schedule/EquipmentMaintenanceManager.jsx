@@ -293,6 +293,7 @@ const EquipmentMaintenanceManager = ({
                 value={scheduleData.lastMaintenance}
                 onChange={(e) => setScheduleData({ ...scheduleData, lastMaintenance: e.target.value })}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: new Date().toISOString().split('T')[0] }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -303,6 +304,7 @@ const EquipmentMaintenanceManager = ({
                 value={scheduleData.nextMaintenance}
                 onChange={(e) => setScheduleData({ ...scheduleData, nextMaintenance: e.target.value })}
                 InputLabelProps={{ shrink: true }}
+                inputProps={{ min: new Date().toISOString().split('T')[0] }}
               />
             </Grid>
             <Grid item xs={12} sm={6}>

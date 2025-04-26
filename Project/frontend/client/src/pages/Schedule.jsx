@@ -343,6 +343,9 @@ const SchedulePage = () => {
             <StyledCalendar
               onChange={setSelectedDate}
               value={selectedDate}
+              defaultView="month"
+              minDate={new Date()}
+              tileDisabled={({ date }) => date < new Date(new Date().setHours(0, 0, 0, 0))}
               tileContent={({ date }) => {
                 const sessions = getSessionsForDate(date);
                 return sessions.length > 0 ? (

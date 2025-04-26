@@ -7,6 +7,7 @@ const authRoutes = require('./routes/auth');
 const scheduleRoutes = require('./routes/schedules');
 const coachAvailabilityRoutes = require('./routes/coachAvailability');
 const userRoutes = require('./routes/userRoutes');
+const exerciseRoutes = require('./routes/exerciseRoutes');
 require('dotenv').config();
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/coach-availability', coachAvailabilityRoutes);
+app.use('/api/exercises', exerciseRoutes);
 
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {

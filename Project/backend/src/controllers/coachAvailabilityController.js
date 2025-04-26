@@ -86,18 +86,39 @@ exports.assignMember = async (req, res) => {
     
     const { memberId, coachId } = req.body;
     
+    if (!memberId) {
+      return res.status(400).json({ message: 'Member ID is required' });
+    }
+
     // If coachId is provided (manager assigning), use it; otherwise use the logged-in user's ID
     const targetCoachId = coachId || req.user.userId;
     
     console.log('Target coach ID:', targetCoachId);
     console.log('Member ID:', memberId);
     
+    // Add more detailed logging for member lookup
+    console.log('Looking up member with ID:', memberId);
     const member = await User.findById(memberId);
-    console.log('Found member:', member);
+    console.log('Member lookup result:', member ? {
+      id: member._id,
+      name: member.name,
+      role: member.role,
+      isActive: member.isActive
+    } : 'Not found');
     
-    if (!member || member.role !== 'user') {
-      console.log('Member not found or not a user');
+    if (!member) {
+      console.log('Member not found in database');
       return res.status(404).json({ message: 'Member not found' });
+    }
+    
+    if (member.role !== 'user') {
+      console.log('Member found but has incorrect role:', member.role);
+      return res.status(400).json({ message: 'Member must have role "user"' });
+    }
+    
+    if (!member.isActive) {
+      console.log('Member found but is not active');
+      return res.status(400).json({ message: 'Member account is not active' });
     }
     
     let coachAvailability = await CoachAvailability.findOne({ coachId: targetCoachId });
@@ -122,7 +143,12 @@ exports.assignMember = async (req, res) => {
       return res.status(400).json({ message: 'Member is already assigned to this coach' });
     }
     
-    coachAvailability.assignedMembers.push({ memberId });
+    // Add member to assigned members with timestamp
+    coachAvailability.assignedMembers.push({ 
+      memberId,
+      assignedAt: new Date()
+    });
+    
     await coachAvailability.save();
     console.log('Updated coach availability:', coachAvailability);
     
@@ -186,24 +212,36 @@ exports.removeMember = async (req, res) => {
   }
 };
 
-// Get all assigned members
+// Get assigned members
 exports.getAssignedMembers = async (req, res) => {
   try {
-    console.log('Getting assigned members for coach:', req.user.userId);
+    console.log('Getting assigned members for coachId:', req.params.coachId);
     
-    const coachAvailability = await CoachAvailability.findOne({ coachId: req.user.userId })
-      .populate('assignedMembers.memberId', 'name email membershipType');
+    const coachAvailability = await CoachAvailability.findOne({ 
+      coachId: req.params.coachId 
+    }).populate('assignedMembers.memberId', 'name email membershipType');
     
     console.log('Found coach availability:', coachAvailability);
     
     if (!coachAvailability) {
-      console.log('Coach availability not found');
+      console.log('No coach availability found');
       return res.status(404).json({ message: 'Coach availability not found' });
     }
     
-    res.json(coachAvailability.assignedMembers);
+    // Extract and format the assigned members
+    const assignedMembers = coachAvailability.assignedMembers.map(assignment => ({
+      memberId: assignment.memberId,
+      assignedAt: assignment.assignedAt
+    }));
+    
+    console.log('Returning assigned members:', assignedMembers);
+    res.json(assignedMembers);
   } catch (error) {
     console.error('Error in getAssignedMembers:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: 'Error getting assigned members',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }; 

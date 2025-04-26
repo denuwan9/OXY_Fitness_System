@@ -62,10 +62,17 @@ const coachAvailabilityService = {
   },
 
   // Assign member to coach
-  assignMember: async (data) => {
+  assignMember: async (memberId) => {
     try {
-      console.log('Assigning member to coach:', data);
-      const response = await axios.post(`${API_URL}/assign-member`, data);
+      console.log('Assigning member to coach:', memberId);
+      const coachId = getAuthUserId();
+      if (!coachId) {
+        throw new Error('No coach ID found. Please log in again.');
+      }
+      const response = await axios.post(`${API_URL}/assign-member`, {
+        memberId,
+        coachId
+      });
       console.log('Member assigned successfully:', response.data);
       return response.data;
     } catch (error) {
@@ -91,7 +98,11 @@ const coachAvailabilityService = {
   getAssignedMembers: async () => {
     console.log('Fetching assigned members');
     try {
-      const response = await axios.get(`${API_URL}/assigned-members`);
+      const coachId = getAuthUserId();
+      if (!coachId) {
+        throw new Error('No coach ID found. Please log in again.');
+      }
+      const response = await axios.get(`${API_URL}/assigned-members/${coachId}`);
       console.log('Assigned members response:', response.data);
       return response.data;
     } catch (error) {
