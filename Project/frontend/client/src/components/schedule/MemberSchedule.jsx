@@ -306,10 +306,22 @@ const MemberSchedule = () => {
   const [coachAvailability, setCoachAvailability] = useState(null);
   const [exerciseProgress, setExerciseProgress] = useState({});
 
+  // Set initial date and session when component mounts
   useEffect(() => {
-    // Set the selected date to current date when component mounts
-    setSelectedDate(new Date());
+    const today = new Date();
+    setSelectedDate(today);
   }, []);
+
+  // Update selected session when schedule data is loaded
+  useEffect(() => {
+    if (schedule) {
+      const today = new Date();
+      const sessionsForToday = getSessionsForDate(today);
+      if (sessionsForToday.length > 0) {
+        setSelectedSession(sessionsForToday[0]);
+      }
+    }
+  }, [schedule]);
 
   useEffect(() => {
     if (user?.id && selectedSession) {
@@ -536,8 +548,6 @@ const MemberSchedule = () => {
     const sessionsForDate = getSessionsForDate(date);
     if (sessionsForDate.length > 0) {
       setSelectedSession(sessionsForDate[0]);
-      // Switch to Exercise Plan tab if there are sessions
-      setActiveTab(1);
     } else {
       setSelectedSession(null);
     }
@@ -668,9 +678,9 @@ const MemberSchedule = () => {
           <Grid container spacing={3}>
             {/* Header Section */}
             <Grid item xs={12}>
-                <GlassCard>
+              <GlassCard>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h3" component="h1" sx={{ fontWeight: 800, letterSpacing: 1, color: 'primary.main' }}>
+                  <Typography variant="h3" component="h1" sx={{ fontWeight: 800, letterSpacing: 1, color: 'primary.main' }}>
                     My Schedule
                   </Typography>
                   <Button
@@ -678,43 +688,43 @@ const MemberSchedule = () => {
                     color="primary"
                     startIcon={<Download />}
                     onClick={handleDownloadReport}
-                      sx={{ borderRadius: 20, fontWeight: 600 }}
+                    sx={{ borderRadius: 20, fontWeight: 600 }}
                   >
                     Download Report
                   </Button>
                 </Box>
-                  <Typography variant="subtitle1" color="text.secondary" sx={{ fontSize: '1.1rem', fontWeight: 500 }}>
+                <Typography variant="subtitle1" color="text.secondary" sx={{ fontSize: '1.1rem', fontWeight: 500 }}>
                   {user?.name} - {schedule?.[0]?.membershipType} Member
                 </Typography>
-                </GlassCard>
+              </GlassCard>
             </Grid>
 
-              {/* Tabs Section */}
-              <Grid item xs={12}>
-                <GlassCard>
-                  <Tabs
-                    value={activeTab}
-                    onChange={(e, newValue) => setActiveTab(newValue)}
-                    variant="fullWidth"
-                    sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, '& .MuiTab-root': { fontWeight: 700, fontSize: '1.1rem' } }}
-                  >
-                    <Tab icon={<CalendarToday />} label="Calendar" />
-                    <Tab icon={<FitnessCenter />} label="Exercise Plan" />
-                    <Tab icon={<Restaurant />} label="Meal Plan" />
-                    <Tab icon={<Schedule />} label="Sessions" />
-                  </Tabs>
+            {/* Tabs Section */}
+            <Grid item xs={12}>
+              <GlassCard>
+                <Tabs
+                  value={activeTab}
+                  onChange={(e, newValue) => setActiveTab(newValue)}
+                  variant="fullWidth"
+                  sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, '& .MuiTab-root': { fontWeight: 700, fontSize: '1.1rem' } }}
+                >
+                  <Tab icon={<CalendarToday />} label="Calendar" />
+                  <Tab icon={<FitnessCenter />} label="Exercise Plan" />
+                  <Tab icon={<Restaurant />} label="Meal Plan" />
+                  <Tab icon={<Schedule />} label="Sessions" />
+                </Tabs>
 
-                  {/* Calendar Tab */}
-                  {activeTab === 0 && (
-                    <Box sx={{ p: { xs: 1, md: 3 } }}>
-                      <Grid container spacing={3}>
-            <Grid item xs={12} md={8}>
+                {/* Calendar Tab */}
+                {activeTab === 0 && (
+                  <Box sx={{ p: { xs: 1, md: 3 } }}>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} md={8}>
                         <ModernCalendarWrapper>
-              <StyledCalendar
-                onChange={handleDateClick}
-                value={selectedDate}
-                defaultView="month"
-                minDate={new Date()}
+                          <StyledCalendar
+                            onChange={handleDateClick}
+                            value={selectedDate}
+                            defaultView="month"
+                            minDate={new Date()}
                             navigationLabel={({ date, label, locale, view }) => {
                               return (
                                 <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: 1, color: 'primary.main', mb: 1 }}>
@@ -729,12 +739,12 @@ const MemberSchedule = () => {
                             formatShortWeekday={(locale, date) =>
                               date.toLocaleDateString(locale, { weekday: 'short' }).toUpperCase()
                             }
-                  tileContent={({ date }) => {
-                    const sessions = getSessionsForDate(date);
-                    return sessions.length > 0 ? (
-                              <span className="modern-cal-dot" />
-                    ) : null;
-                  }}
+                            tileContent={({ date }) => {
+                              const sessions = getSessionsForDate(date);
+                              return sessions.length > 0 ? (
+                                <span className="modern-cal-dot" />
+                              ) : null;
+                            }}
                             tileClassName={({ date, view }) => {
                               let classes = 'modern-cal-tile';
                               if (date.toDateString() === new Date().toDateString() && view === 'month') {
@@ -830,8 +840,8 @@ const MemberSchedule = () => {
                             </Paper>
                           )}
                         </Box>
-              </Grid>
-                <Grid item xs={12} md={4}>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
                         {coachInfo && (
                           <ModernCoachCard>
                             <ModernCoachAvatar src={coachInfo.profileImage} />
@@ -862,7 +872,7 @@ const MemberSchedule = () => {
                             </ContactButton>
                           </ModernCoachCard>
                         )}
-                </Grid>
+                      </Grid>
                     </Grid>
                   </Box>
                 )}
@@ -1187,15 +1197,15 @@ const MemberSchedule = () => {
                 )}
               </GlassCard>
             </Grid>
-        </Grid>
+          </Grid>
 
-        {/* Reschedule Dialog */}
+          {/* Reschedule Dialog */}
           <Dialog
             open={openRescheduleDialog}
             onClose={() => setOpenRescheduleDialog(false)}
             PaperComponent={ModernDialogPaper}
             maxWidth="xs"
-              fullWidth
+            fullWidth
           >
             <DialogTitle sx={{
               background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)',
@@ -1228,7 +1238,7 @@ const MemberSchedule = () => {
                   <FormControl fullWidth sx={{ mb: 3 }}>
                     <InputLabel><CalendarToday sx={{ fontSize: 18, mr: 1, color: 'primary.main' }} />Day</InputLabel>
                     <Select
-              value={newDate}
+                      value={newDate}
                       label="Day"
                       onChange={(e) => {
                         setNewDate(e.target.value);
@@ -1246,9 +1256,9 @@ const MemberSchedule = () => {
                   <FormControl fullWidth sx={{ mb: 3 }}>
                     <InputLabel><AccessTime sx={{ fontSize: 18, mr: 1, color: 'secondary.main' }} />Time Range</InputLabel>
                     <Select
-              value={newTime}
+                      value={newTime}
                       label="Time Range"
-              onChange={(e) => setNewTime(e.target.value)}
+                      onChange={(e) => setNewTime(e.target.value)}
                       disabled={!newDate}
                       sx={{ borderRadius: 2 }}
                     >
@@ -1260,14 +1270,14 @@ const MemberSchedule = () => {
                         )) || []}
                     </Select>
                   </FormControl>
-            <TextField
+                  <TextField
                     label="Reason for Reschedule"
-              multiline
-              rows={4}
-              fullWidth
-              margin="normal"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
+                    multiline
+                    rows={4}
+                    fullWidth
+                    margin="normal"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
                     sx={{ borderRadius: 2, mb: 2 }}
                   />
                 </>
@@ -1277,7 +1287,7 @@ const MemberSchedule = () => {
               {error && (
                 <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
               )}
-          </DialogContent>
+            </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2 }}>
               <Button onClick={() => setOpenRescheduleDialog(false)} sx={{ borderRadius: 20, fontWeight: 600 }}>
                 Cancel
@@ -1290,11 +1300,11 @@ const MemberSchedule = () => {
                 startIcon={<Schedule />}
                 sx={{ borderRadius: 20, fontWeight: 700, background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)', color: '#fff', boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }}
               >
-              Submit Request
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Container>
+                Submit Request
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </Container>
       </DashboardBackground>
       <Footer />
     </>
