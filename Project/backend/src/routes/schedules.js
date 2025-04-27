@@ -6,6 +6,7 @@ const { checkRole } = require('../middleware/roleCheck');
 const PDFDocument = require('pdfkit');
 const Schedule = require('../models/Schedule');
 const RescheduleRequest = require('../models/RescheduleRequest');
+const User = require('../models/User');
 
 // Create a new schedule
 router.post('/', auth, checkRole(['coach', 'trainer']), scheduleController.createSchedule);
@@ -180,5 +181,54 @@ router.get('/change-requests', auth, checkRole(['manager']), async (req, res) =>
 
 // Get all reschedule requests (Manager only)
 router.get('/reschedule-requests', auth, checkRole(['manager']), scheduleController.getAllRescheduleRequests);
+
+// Get meal plan preferences
+router.get('/meal-plan-preferences/:userId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const preferences = {
+      dietaryRestrictions: user.dietType ? [user.dietType] : [],
+      allergies: user.allergies || [],
+      specialGuidelines: user.specialGuidelines ? [user.specialGuidelines] : [],
+      specialScheduleRequest: user.specialScheduleRequest || ''
+    };
+    res.json(preferences);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update meal plan preferences
+router.put('/meal-plan-preferences/:userId', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (req.body.dietaryRestrictions && req.body.dietaryRestrictions.length > 0) {
+      user.dietType = req.body.dietaryRestrictions[0];
+    }
+    if (req.body.allergies) {
+      user.allergies = req.body.allergies;
+    }
+    if (req.body.specialGuidelines && req.body.specialGuidelines.length > 0) {
+      user.specialGuidelines = req.body.specialGuidelines[0];
+    }
+    if (typeof req.body.specialScheduleRequest === 'string') {
+      user.specialScheduleRequest = req.body.specialScheduleRequest;
+    }
+    await user.save();
+
+    res.json({
+      dietaryRestrictions: user.dietType ? [user.dietType] : [],
+      allergies: user.allergies || [],
+      specialGuidelines: user.specialGuidelines ? [user.specialGuidelines] : [],
+      specialScheduleRequest: user.specialScheduleRequest || ''
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 module.exports = router; 

@@ -62,6 +62,15 @@ const userSchema = new mongoose.Schema({
   specialGuidelines: {
     type: String,
     trim: true
+  },
+  schedulePreferences: {
+    type: [String],
+    default: []
+  },
+  specialScheduleRequest: {
+    type: String,
+    trim: true,
+    default: ''
   }
 }, {
   timestamps: true

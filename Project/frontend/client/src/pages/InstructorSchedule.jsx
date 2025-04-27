@@ -232,6 +232,7 @@ const InstructorSchedule = () => {
   const [success, setSuccess] = useState('');
   const [showExerciseManagement, setShowExerciseManagement] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [preferences, setPreferences] = useState(null);
 
   const {
     register,
@@ -524,12 +525,18 @@ const InstructorSchedule = () => {
     );
   };
 
-  const handleOpenScheduleDialog = () => {
+  const handleOpenScheduleDialog = async () => {
     if (!selectedMember) {
       setError('Please select a member first');
       return;
     }
-    
+    // Fetch preferences for the selected member
+    try {
+      const prefs = await scheduleService.getMealPlanPreferences(selectedMember._id);
+      setPreferences(prefs);
+    } catch {
+      setPreferences(null);
+    }
     // Reset form with default values
     reset({
       day: '',
@@ -538,7 +545,6 @@ const InstructorSchedule = () => {
       duration: '',
       notes: ''
     });
-    
     setSelectedDate(new Date());
     setOpenScheduleDialog(true);
   };
@@ -1752,6 +1758,19 @@ const InstructorSchedule = () => {
             Add Schedule
           </DialogTitle>
           <DialogContent sx={{ p: 4 }}>
+            {/* Show member preferences at the top */}
+            {preferences && (
+              <Paper sx={{ p: 2, mb: 3, background: '#f5f5f5' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                  Special Schedule Request
+                </Typography>
+                <div>
+                  {preferences.specialScheduleRequest
+                    ? preferences.specialScheduleRequest
+                    : 'None'}
+                </div>
+              </Paper>
+            )}
             <form onSubmit={handleSubmit(onSubmit)}>
               <Grid container spacing={3}>
                 <Grid item xs={12}>
@@ -1969,6 +1988,19 @@ const InstructorSchedule = () => {
             Reschedule Session
           </DialogTitle>
           <DialogContent sx={{ p: 4 }}>
+            {/* Show special schedule request at the top */}
+            {preferences && (
+              <Paper sx={{ p: 2, mb: 3, background: '#f5f5f5' }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                  Special Schedule Request
+                </Typography>
+                <div>
+                  {preferences.specialScheduleRequest
+                    ? preferences.specialScheduleRequest
+                    : 'None'}
+                </div>
+              </Paper>
+            )}
             <Box sx={{ pt: 2 }}>
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <InputLabel>Day</InputLabel>

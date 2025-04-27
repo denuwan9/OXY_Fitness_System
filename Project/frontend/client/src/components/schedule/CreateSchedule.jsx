@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -44,6 +44,15 @@ const CreateSchedule = ({ userId, membershipType, onSuccess }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [preferences, setPreferences] = useState(null);
+
+  useEffect(() => {
+    if (userId) {
+      scheduleService.getMealPlanPreferences(userId)
+        .then(setPreferences)
+        .catch(() => setPreferences(null));
+    }
+  }, [userId]);
 
   const handleAddSession = () => {
     setSessions([...sessions, {
@@ -157,6 +166,19 @@ const CreateSchedule = ({ userId, membershipType, onSuccess }) => {
         <Typography variant="h5" gutterBottom>
           Create New Schedule
         </Typography>
+
+        {/* Show user preferences for reference */}
+        {preferences && (
+          <Paper sx={{ p: 2, mb: 3, background: '#f5f5f5' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+              Member Preferences
+            </Typography>
+            <div><b>Diet Type:</b> {preferences.dietaryRestrictions?.join(', ') || 'None'}</div>
+            <div><b>Allergies:</b> {preferences.allergies?.join(', ') || 'None'}</div>
+            <div><b>Special Guidelines:</b> {preferences.specialGuidelines?.join(', ') || 'None'}</div>
+            <div><b>Special Schedule Request:</b> {preferences.specialScheduleRequest || 'None'}</div>
+          </Paper>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>

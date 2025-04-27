@@ -43,6 +43,9 @@ import {
   LinearProgress,
   Checkbox,
   FormControlLabel,
+  Switch,
+  Radio,
+  RadioGroup,
 } from '@mui/material';
 import {
   CalendarToday,
@@ -74,6 +77,19 @@ import {
   LocalBar,
   LocalDiningOutlined,
   Repeat,
+  Edit,
+  Save,
+  Notifications,
+  Settings,
+  Security,
+  Language,
+  Palette,
+  Height,
+  MonitorWeight,
+  Favorite,
+  Bloodtype,
+  MedicalServices,
+  RestaurantMenu as RestaurantMenuIcon,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
@@ -306,6 +322,29 @@ const MemberSchedule = () => {
   const [mealPlan, setMealPlan] = useState(null);
   const [coachAvailability, setCoachAvailability] = useState(null);
   const [exerciseProgress, setExerciseProgress] = useState({});
+  const [profileData, setProfileData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    height: user?.height || '',
+    weight: user?.weight || '',
+    bloodType: user?.bloodType || '',
+    medicalConditions: user?.medicalConditions || '',
+    fitnessGoals: user?.fitnessGoals || '',
+    dietaryRestrictions: user?.dietaryRestrictions || '',
+    preferredWorkoutTime: user?.preferredWorkoutTime || '',
+  });
+  const [mealPlanPreferences, setMealPlanPreferences] = useState({
+    dietaryRestrictions: [],
+    allergies: [],
+    specialGuidelines: [],
+    specialScheduleRequest: '',
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(null);
+  const [profileError, setProfileError] = useState(null);
+  const [loadingPreferences, setLoadingPreferences] = useState(false);
+  const [customDietType, setCustomDietType] = useState('');
 
   // Set initial date and session when component mounts
   useEffect(() => {
@@ -446,6 +485,35 @@ const MemberSchedule = () => {
           return [...acc, ...rescheduledSessions];
         }, []);
         setRescheduledSessions(rescheduled);
+
+        // Fetch meal plan preferences
+        try {
+          setLoadingPreferences(true);
+          const preferences = await scheduleService.getMealPlanPreferences(user.id);
+          const dietType = Array.isArray(preferences.dietaryRestrictions)
+            ? preferences.dietaryRestrictions[0] || ''
+            : (preferences.dietaryRestrictions || '').split(',').map(s => s.trim()).filter(Boolean)[0] || '';
+          setMealPlanPreferences({
+            dietaryRestrictions: dietType ? [dietType] : [],
+            allergies: Array.isArray(preferences.allergies)
+              ? preferences.allergies
+              : (preferences.allergies || '').split(',').map(s => s.trim()).filter(Boolean),
+            specialGuidelines: Array.isArray(preferences.specialGuidelines)
+              ? preferences.specialGuidelines
+              : (preferences.specialGuidelines || '').split(',').map(s => s.trim()).filter(Boolean),
+            specialScheduleRequest: preferences.specialScheduleRequest || '',
+          });
+          if (dietType && dietType !== 'None' && !['Vegetarian', 'Vegan', 'Pescatarian', 'Non-Vegetarian', 'Other'].includes(dietType)) {
+            setCustomDietType(dietType);
+            setMealPlanPreferences(prev => ({ ...prev, dietaryRestrictions: ['Other'] }));
+          } else {
+            setCustomDietType('');
+          }
+        } catch (prefError) {
+          console.error('Error fetching meal plan preferences:', prefError);
+        } finally {
+          setLoadingPreferences(false);
+        }
 
         setLoading(false);
       } catch (error) {
@@ -691,6 +759,27 @@ const MemberSchedule = () => {
     }
   };
 
+  const handleProfileUpdate = async () => {
+    try {
+      await scheduleService.updateMealPlanPreferences(user.id, {
+        dietaryRestrictions: [
+          mealPlanPreferences.dietaryRestrictions[0] === 'Other'
+            ? customDietType
+            : mealPlanPreferences.dietaryRestrictions[0]
+        ],
+        allergies: mealPlanPreferences.allergies,
+        specialGuidelines: mealPlanPreferences.specialGuidelines,
+        specialScheduleRequest: mealPlanPreferences.specialScheduleRequest,
+      });
+      setIsEditing(false);
+      setProfileSuccess('Preferences updated successfully');
+      setTimeout(() => setProfileSuccess(null), 3000);
+    } catch (error) {
+      setProfileError('Failed to update preferences');
+      setTimeout(() => setProfileError(null), 3000);
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -765,6 +854,7 @@ const MemberSchedule = () => {
                   <Tab icon={<FitnessCenter />} label="Exercise Plan" />
                   <Tab icon={<Restaurant />} label="Meal Plan" />
                   <Tab icon={<Schedule />} label="Sessions" />
+                  <Tab icon={<Settings />} label="Preferences" />
                 </Tabs>
 
                 {/* Calendar Tab */}
@@ -1273,6 +1363,194 @@ const MemberSchedule = () => {
                           </TableBody>
                         </Table>
                       </TableContainer>
+                    </GlassCard>
+                  </Box>
+                )}
+
+                {/* Preferences Tab */}
+                {activeTab === 4 && (
+                  <Box sx={{ p: { xs: 1, md: 3 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                        Member Preferences & Guidelines
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        startIcon={isEditing ? <Save /> : <Edit />}
+                        onClick={() => isEditing ? handleProfileUpdate() : setIsEditing(true)}
+                        sx={{
+                          borderRadius: 20,
+                          fontWeight: 600,
+                          background: isEditing ? 'linear-gradient(90deg, #4caf50 60%, #81c784 100%)' : 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)',
+                          color: '#fff',
+                          boxShadow: '0 2px 8px rgba(33,150,243,0.15)',
+                        }}
+                      >
+                        {isEditing ? 'Save Changes' : 'Edit Preferences'}
+                      </Button>
+                    </Box>
+
+                    {profileSuccess && (
+                      <Alert severity="success" sx={{ mb: 2 }}>{profileSuccess}</Alert>
+                    )}
+                    {profileError && (
+                      <Alert severity="error" sx={{ mb: 2 }}>{profileError}</Alert>
+                    )}
+
+                    <GlassCard sx={{ p: 3, background: '#fffde7', border: '1px solid #ffe082' }}>
+                      {loadingPreferences ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                          <CircularProgress />
+                        </Box>
+                      ) : (
+                        <Grid container spacing={3}>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                              <Warning sx={{ color: '#ff9800', mr: 1 }} />
+                              <Typography variant="h6" sx={{ color: '#ff9800', fontWeight: 700 }}>
+                                Member Preferences & Guidelines
+                              </Typography>
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <span style={{ color: '#43a047', marginRight: 8 }}>
+                                <span role="img" aria-label="leaf">🌱</span>
+                              </span>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 700, mr: 1, minWidth: 100 }}>Diet Type:</Typography>
+                              {isEditing ? (
+                                <Box sx={{ display: 'flex', flex: 1, gap: 2 }}>
+                                  <FormControl size="small" sx={{ flex: 1 }}>
+                                    <InputLabel id="diet-type-label">Diet Type</InputLabel>
+                                    <Select
+                                      labelId="diet-type-label"
+                                      value={mealPlanPreferences.dietaryRestrictions[0] || 'None'}
+                                      label="Diet Type"
+                                      onChange={e => {
+                                        const value = e.target.value;
+                                        setMealPlanPreferences({
+                                          ...mealPlanPreferences,
+                                          dietaryRestrictions: [value]
+                                        });
+                                        if (value !== 'Other') setCustomDietType('');
+                                      }}
+                                    >
+                                      <MenuItem value="None">None</MenuItem>
+                                      <MenuItem value="Vegetarian">Vegetarian</MenuItem>
+                                      <MenuItem value="Vegan">Vegan</MenuItem>
+                                      <MenuItem value="Pescatarian">Pescatarian</MenuItem>
+                                      <MenuItem value="Non-Vegetarian">Non-Vegetarian</MenuItem>
+                                      <MenuItem value="Other">Other</MenuItem>
+                                    </Select>
+                                  </FormControl>
+                                  {mealPlanPreferences.dietaryRestrictions[0] === 'Other' && (
+                                    <TextField
+                                      size="small"
+                                      sx={{ flex: 1 }}
+                                      label="Please specify"
+                                      value={customDietType}
+                                      onChange={e => setCustomDietType(e.target.value)}
+                                    />
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="body1" sx={{ ml: 1 }}>
+                                  {mealPlanPreferences.dietaryRestrictions.length > 0 && mealPlanPreferences.dietaryRestrictions[0] !== ''
+                                    ? mealPlanPreferences.dietaryRestrictions[0] === 'Other'
+                                      ? customDietType || 'Other'
+                                      : mealPlanPreferences.dietaryRestrictions[0]
+                                    : 'None'}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <span style={{ color: '#bdbdbd', marginRight: 8 }}>
+                                <span role="img" aria-label="allergy">⚪</span>
+                              </span>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 700, mr: 1 }}>Allergies:</Typography>
+                              {isEditing ? (
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  value={mealPlanPreferences.allergies.join(', ')}
+                                  onChange={e => setMealPlanPreferences({
+                                    ...mealPlanPreferences,
+                                    allergies: e.target.value.split(',').map(item => item.trim())
+                                  })}
+                                  placeholder="e.g., Nuts, Shellfish"
+                                  sx={{ ml: 1 }}
+                                />
+                              ) : (
+                                <Typography variant="body1" sx={{ ml: 1 }}>
+                                  {mealPlanPreferences.allergies.length > 0 && mealPlanPreferences.allergies[0] !== ''
+                                    ? mealPlanPreferences.allergies.join(', ')
+                                    : 'None'}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <span style={{ color: '#1976d2', marginRight: 8 }}>
+                                <span role="img" aria-label="info">ℹ️</span>
+                              </span>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 700, mr: 1 }}>Special Guidelines:</Typography>
+                              {isEditing ? (
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  multiline
+                                  minRows={2}
+                                  value={mealPlanPreferences.specialGuidelines.join(', ')}
+                                  onChange={e => setMealPlanPreferences({
+                                    ...mealPlanPreferences,
+                                    specialGuidelines: e.target.value.split(',').map(item => item.trim())
+                                  })}
+                                  placeholder="e.g., No spicy food, low sodium, etc."
+                                  sx={{ ml: 1 }}
+                                />
+                              ) : (
+                                <Typography variant="body1" sx={{ ml: 1 }}>
+                                  {mealPlanPreferences.specialGuidelines.length > 0 && mealPlanPreferences.specialGuidelines[0] !== ''
+                                    ? mealPlanPreferences.specialGuidelines.join(', ')
+                                    : 'None'}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Grid>
+                          <Grid item xs={12}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                              <span style={{ color: '#1976d2', marginRight: 8 }}>
+                                <span role="img" aria-label="request">📝</span>
+                              </span>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 700, mr: 1 }}>Special Schedule Request:</Typography>
+                              {isEditing ? (
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  multiline
+                                  minRows={2}
+                                  value={mealPlanPreferences.specialScheduleRequest || ''}
+                                  onChange={e => setMealPlanPreferences({
+                                    ...mealPlanPreferences,
+                                    specialScheduleRequest: e.target.value
+                                  })}
+                                  placeholder="Describe any special schedule needs (e.g., only evenings, weekends, rotating shifts, etc.)"
+                                  sx={{ ml: 1 }}
+                                />
+                              ) : (
+                                <Typography variant="body1" sx={{ ml: 1 }}>
+                                  {mealPlanPreferences.specialScheduleRequest
+                                    ? mealPlanPreferences.specialScheduleRequest
+                                    : 'None'}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Grid>
+                        </Grid>
+                      )}
                     </GlassCard>
                   </Box>
                 )}

@@ -304,6 +304,32 @@ const scheduleService = {
       console.error('Error fetching reschedule requests:', error);
       throw error;
     }
+  },
+
+  // Get meal plan preferences
+  getMealPlanPreferences: async (userId) => {
+    try {
+      console.log('Fetching meal plan preferences for user:', userId);
+      const response = await axiosInstance.get(`/schedules/meal-plan-preferences/${userId}`);
+      console.log('Received meal plan preferences:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching meal plan preferences:', error);
+      throw error;
+    }
+  },
+
+  // Update meal plan preferences
+  updateMealPlanPreferences: async (userId, preferences) => {
+    try {
+      console.log('Updating meal plan preferences for user:', userId, preferences);
+      const response = await axiosInstance.put(`/schedules/meal-plan-preferences/${userId}`, preferences);
+      console.log('Updated meal plan preferences:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating meal plan preferences:', error);
+      throw error;
+    }
   }
 };
 

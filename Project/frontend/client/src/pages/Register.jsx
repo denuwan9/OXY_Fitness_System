@@ -11,10 +11,7 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'user', // Default role
-    dietType: 'None',
-    allergies: '',
-    specialGuidelines: ''
+    role: 'user' // Default role
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -26,6 +23,14 @@ const Register = () => {
     { value: 'manager', label: 'Manager' },
     { value: 'admin', label: 'Admin' },
     { value: 'supplier', label: 'Supplier' }
+  ];
+
+  // Schedule options for preferences
+  const scheduleOptions = [
+    'Breakfast',
+    'Lunch',
+    'Dinner',
+    'Snacks'
   ];
 
   const handleChange = (e) => {
@@ -67,11 +72,7 @@ const Register = () => {
       setLoading(true);
       try {
         // Remove confirmPassword before sending to API
-        const { confirmPassword, allergies, ...registrationData } = formData;
-        // Convert allergies to array if not empty
-        registrationData.allergies = allergies
-          ? allergies.split(',').map(a => a.trim()).filter(Boolean)
-          : [];
+        const { confirmPassword, ...registrationData } = formData;
         const response = await api.post('/auth/register', registrationData);
         
         // Store token
@@ -176,48 +177,7 @@ const Register = () => {
                 {errors.role && <span className="error-message">{errors.role}</span>}
               </div>
               {formData.role === 'user' && (
-                <>
-                  <div className="form-group">
-                    <label htmlFor="dietType">Diet Type</label>
-                    <select
-                      id="dietType"
-                      name="dietType"
-                      value={formData.dietType}
-                      onChange={handleChange}
-                      disabled={loading}
-                    >
-                      <option value="None">None</option>
-                      <option value="Vegetarian">Vegetarian</option>
-                      <option value="Vegan">Vegan</option>
-                      <option value="Pescatarian">Pescatarian</option>
-                      <option value="Non-Vegetarian">Non-Vegetarian</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="allergies">Allergies (comma-separated)</label>
-                    <input
-                      type="text"
-                      id="allergies"
-                      name="allergies"
-                      value={formData.allergies}
-                      onChange={handleChange}
-                      disabled={loading}
-                      placeholder="e.g. Mushroom, Peanuts, Dairy"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="specialGuidelines">Special Guidelines</label>
-                    <textarea
-                      id="specialGuidelines"
-                      name="specialGuidelines"
-                      value={formData.specialGuidelines}
-                      onChange={handleChange}
-                      disabled={loading}
-                      placeholder="e.g. No spicy food, low sodium, etc."
-                    />
-                  </div>
-                </>
+                <></>
               )}
               <button 
                 type="submit" 
