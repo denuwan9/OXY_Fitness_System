@@ -426,7 +426,14 @@ const ManagerSchedule = () => {
       // Use the request's _id for the API call
       await scheduleService.approveScheduleChange(scheduleId, request._id);
       setSuccess('Schedule change approved successfully');
-      loadData();
+      
+      // Remove the approved request from the local state
+      setChangeRequests(prevRequests => 
+        prevRequests.filter(req => req._id !== requestId)
+      );
+      
+      // Refresh the data
+      await loadData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to approve schedule change');
       console.error('Error approving change:', err);

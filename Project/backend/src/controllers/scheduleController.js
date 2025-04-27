@@ -225,11 +225,15 @@ exports.approveScheduleChange = async (req, res) => {
     }
 
     // Update the schedule with the new date and time
-    const session = schedule.sessions.find(s => s._id.toString() === request.scheduleId.toString());
+    const session = schedule.sessions.find(s => s._id.toString() === request.sessionId.toString());
     if (session) {
       session.date = request.newDate;
       session.time = request.newTime;
       session.status = 'scheduled';
+      session.rescheduled = false;
+      session.newDate = undefined;
+      session.newTime = undefined;
+      session.reason = undefined;
     }
 
     // Update the request status

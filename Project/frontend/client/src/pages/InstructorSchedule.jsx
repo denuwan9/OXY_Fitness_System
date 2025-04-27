@@ -326,7 +326,10 @@ const InstructorSchedule = () => {
                 newDate: session.newDate || session.date,
                 newTime: session.newTime || session.time,
                 status: session.status || 'scheduled' // Ensure status is set
-              }))
+              })).filter(session => 
+                session.status !== 'approved' && 
+                session.status !== 'rejected'
+              )
             }));
             memberSchedulesData[member._id] = processedSchedules;
             console.log(`Processed schedules for member ${member._id}:`, processedSchedules);
