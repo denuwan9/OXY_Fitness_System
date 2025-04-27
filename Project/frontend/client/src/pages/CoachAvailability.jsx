@@ -19,19 +19,16 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Checkbox,
-  FormGroup,
-  FormControlLabel,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Chip,
   Alert,
   Snackbar,
   CircularProgress,
   Tooltip,
-  Divider
+  Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Add,
@@ -49,9 +46,7 @@ import {
   Star
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { mockUsers } from '../mockData/scheduleData';
 import coachAvailabilityService from '../services/coachAvailabilityService';
-import userService from '../services/userService';
 
 /**
  * CoachAvailability Component
@@ -125,18 +120,15 @@ const CoachAvailability = () => {
   });
   const [assignedMembers, setAssignedMembers] = useState([]);
   const [openTimeDialog, setOpenTimeDialog] = useState(false);
-  const [openMemberDialog, setOpenMemberDialog] = useState(false);
   const [newTimeRange, setNewTimeRange] = useState({
     startTime: '',
     endTime: '',
     day: '',
     capacity: 1
   });
-  const [selectedMember, setSelectedMember] = useState(null);
-  const [isFirstTime, setIsFirstTime] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [loading, setLoading] = useState(false);
-  const [members, setMembers] = useState([]);
 
   const days = [
     'Monday',
@@ -182,7 +174,6 @@ const CoachAvailability = () => {
           ),
         });
 
-        // Extract member data from assignedMembers array
         const memberData = data.assignedMembers?.map(assignment => ({
           _id: assignment.memberId._id,
           name: assignment.memberId.name,
@@ -191,11 +182,8 @@ const CoachAvailability = () => {
         })) || [];
 
         setAssignedMembers(memberData);
-        setIsFirstTime(false);
       } else {
-        // If no data is found, show first-time setup
-        console.log('No availability data found, showing first-time setup');
-        setIsFirstTime(true);
+        console.log('No availability data found');
         setAvailability({
           days: [],
           timeRanges: [],
@@ -209,8 +197,6 @@ const CoachAvailability = () => {
         message: 'Failed to load availability: ' + (error.response?.data?.message || error.message),
         severity: 'error'
       });
-      // Show first-time setup on error
-      setIsFirstTime(true);
       setAvailability({
         days: [],
         timeRanges: [],
@@ -248,50 +234,6 @@ const CoachAvailability = () => {
     }));
   };
 
-  const handleAssignMember = async () => {
-    if (selectedMember) {
-      try {
-        const coachId = user?.id || user?._id;
-        if (!coachId) {
-          throw new Error('No coach ID found. Please log in again.');
-        }
-        await coachAvailabilityService.assignMember(selectedMember._id, coachId);
-        setAssignedMembers(prev => [...prev, selectedMember]);
-        setSelectedMember(null);
-        setOpenMemberDialog(false);
-        setSnackbar({
-          open: true,
-          message: 'Member assigned successfully',
-          severity: 'success'
-        });
-      } catch (error) {
-        setSnackbar({
-          open: true,
-          message: 'Failed to assign member: ' + (error.message || 'Unknown error'),
-          severity: 'error'
-        });
-      }
-    }
-  };
-
-  const handleRemoveMember = async (memberId) => {
-    try {
-      await coachAvailabilityService.removeMember(memberId);
-      setAssignedMembers(prev => prev.filter(member => member._id !== memberId));
-      setSnackbar({
-        open: true,
-        message: 'Member removed successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to remove member',
-        severity: 'error'
-      });
-    }
-  };
-
   const handleSaveAvailability = async () => {
     try {
       setLoading(true);
@@ -306,7 +248,7 @@ const CoachAvailability = () => {
         formattedAvailability
       );
       
-      setIsFirstTime(false);
+      setIsEditing(false);
       setSnackbar({
         open: true,
         message: 'Availability saved successfully',
@@ -322,26 +264,6 @@ const CoachAvailability = () => {
       setLoading(false);
     }
   };
-
-  const loadMembers = async () => {
-    try {
-      const membersData = await userService.getMembers();
-      setMembers(membersData);
-    } catch (error) {
-      console.error('Error loading members:', error);
-      setSnackbar({
-        open: true,
-        message: 'Failed to load members',
-        severity: 'error'
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (openMemberDialog) {
-      loadMembers();
-    }
-  }, [openMemberDialog]);
 
   if (!user || (user.role !== 'coach' && user.role !== 'instructor')) {
     return (
@@ -385,263 +307,236 @@ const CoachAvailability = () => {
                     Coach Availability Management
                   </Typography>
                   <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 400 }}>
-                    Set your working hours and manage member assignments
+                    Set your working hours and view assigned members
                   </Typography>
                 </Box>
               </Box>
             </StyledPaper>
           </Grid>
 
-          {isFirstTime ? (
-            // First-time setup view
-            <Grid item xs={12}>
-              <StyledPaper>
-                <Alert 
-                  severity="info" 
-                  sx={{ 
-                    mb: 3,
-                    borderRadius: 2,
-                    '& .MuiAlert-icon': {
-                      fontSize: 32,
-                    },
-                  }}
-                >
-                  Welcome! Please set up your availability to start managing member schedules.
-                </Alert>
-                
-                {/* Days Selection */}
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h5" gutterBottom sx={{ 
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                  }}>
-                    <CalendarToday sx={{ fontSize: 28 }} />
-                    Select Working Days
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-                    {days.map(day => (
-                      <DayChip
-                        key={day}
-                        label={day}
-                        selected={availability.days.includes(day)}
-                        onClick={() => handleDayToggle(day)}
-                        sx={{ cursor: 'pointer' }}
-                      />
+          {/* Assigned Members Section */}
+          <Grid item xs={12}>
+            <StyledPaper>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" sx={{ 
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}>
+                  <Person sx={{ fontSize: 28 }} />
+                  Assigned Members
+                </Typography>
+              </Box>
+              <TableContainer 
+                component={Paper} 
+                sx={{ 
+                  borderRadius: 3,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                  overflow: 'hidden',
+                }}
+              >
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <StyledTableCell>Name</StyledTableCell>
+                      <StyledTableCell>Email</StyledTableCell>
+                      <StyledTableCell>Membership</StyledTableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {assignedMembers.map((member) => (
+                      <StyledTableRow key={member._id}>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Person sx={{ color: 'primary.main' }} />
+                            {member.name}
+                          </Box>
+                        </TableCell>
+                        <TableCell>{member.email}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={member.membershipType}
+                            color={member.membershipType === 'Platinum' ? 'primary' : 
+                                   member.membershipType === 'Gold' ? 'secondary' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                      </StyledTableRow>
                     ))}
-                  </Box>
-                </Box>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </StyledPaper>
+          </Grid>
 
-                {/* Time Ranges */}
-                <Box sx={{ mb: 4 }}>
-                  <Typography variant="h5" gutterBottom sx={{ 
-                    fontWeight: 600,
-                    color: 'primary.main',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                  }}>
-                    <AccessTime sx={{ fontSize: 28 }} />
-                    Add Time Ranges
-                  </Typography>
-                  <StyledButton
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={() => setOpenTimeDialog(true)}
-                    sx={{ mb: 3 }}
-                  >
-                    Add Time Range
-                  </StyledButton>
+          {/* Current Availability Section */}
+          <Grid item xs={12}>
+            <StyledPaper>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h5" sx={{ 
+                  fontWeight: 600,
+                  color: 'primary.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                }}>
+                  <Schedule sx={{ fontSize: 28 }} />
+                  Current Availability
+                </Typography>
+                <StyledButton
+                  variant="outlined"
+                  startIcon={<Edit />}
+                  onClick={() => setIsEditing(true)}
+                >
+                  Edit Availability
+                </StyledButton>
+              </Box>
 
-                  <TableContainer 
-                    component={Paper} 
-                    sx={{ 
-                      borderRadius: 3,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <StyledTableCell>Day</StyledTableCell>
-                          <StyledTableCell>Start Time</StyledTableCell>
-                          <StyledTableCell>End Time</StyledTableCell>
-                          <StyledTableCell>Capacity</StyledTableCell>
-                          <StyledTableCell>Actions</StyledTableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {availability.timeRanges.map((range) => (
-                          <StyledTableRow key={range.id}>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <CalendarToday sx={{ color: 'primary.main' }} />
-                                {range.day}
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <AccessTime sx={{ color: 'primary.main' }} />
-                                {range.startTime}
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <AccessTime sx={{ color: 'primary.main' }} />
-                                {range.endTime}
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Group sx={{ color: 'primary.main' }} />
-                                {range.capacity || 1}
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Tooltip title="Remove Time Range">
-                                <IconButton
-                                  size="small"
-                                  onClick={() => handleRemoveTimeRange(range.id)}
-                                  sx={{
-                                    color: 'error.main',
-                                    '&:hover': {
-                                      backgroundColor: 'error.light',
-                                      color: 'error.contrastText',
-                                    },
-                                  }}
-                                >
-                                  <Delete />
-                                </IconButton>
-                              </Tooltip>
-                            </TableCell>
-                          </StyledTableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </Box>
-
-                {/* Save Button */}
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <StyledButton
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSaveAvailability}
-                    disabled={loading || availability.days.length === 0 || availability.timeRanges.length === 0}
-                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
-                  >
-                    {loading ? 'Saving...' : 'Save Availability'}
-                  </StyledButton>
-                </Box>
-              </StyledPaper>
-            </Grid>
-          ) : (
-            <>
-              {/* Assigned Members Section */}
-              <Grid item xs={12} md={6}>
-                <StyledPaper>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h5" sx={{ 
+              {isEditing ? (
+                <>
+                  {/* Days Selection */}
+                  <Box sx={{ mb: 4 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ 
                       fontWeight: 600,
-                      color: 'primary.main',
+                      color: 'text.secondary',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 1,
                     }}>
-                      <Person sx={{ fontSize: 28 }} />
-                      Assigned Members
+                      <CalendarToday sx={{ fontSize: 20 }} />
+                      Select Working Days
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                      {days.map(day => (
+                        <DayChip
+                          key={day}
+                          label={day}
+                          selected={availability.days.includes(day)}
+                          onClick={() => handleDayToggle(day)}
+                          sx={{ cursor: 'pointer' }}
+                        />
+                      ))}
+                    </Box>
+                  </Box>
+
+                  {/* Time Ranges */}
+                  <Box sx={{ mb: 4 }}>
+                    <Typography variant="subtitle1" gutterBottom sx={{ 
+                      fontWeight: 600,
+                      color: 'text.secondary',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}>
+                      <AccessTime sx={{ fontSize: 20 }} />
+                      Add Time Ranges
                     </Typography>
                     <StyledButton
                       variant="contained"
                       startIcon={<Add />}
-                      onClick={() => setOpenMemberDialog(true)}
+                      onClick={() => setOpenTimeDialog(true)}
+                      sx={{ mb: 3 }}
                     >
-                      Assign Member
+                      Add Time Range
                     </StyledButton>
-                  </Box>
-                  <TableContainer 
-                    component={Paper} 
-                    sx={{ 
-                      borderRadius: 3,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <StyledTableCell>Name</StyledTableCell>
-                          <StyledTableCell>Email</StyledTableCell>
-                          <StyledTableCell>Membership</StyledTableCell>
-                          <StyledTableCell>Actions</StyledTableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {assignedMembers.map((member) => (
-                          <StyledTableRow key={member._id}>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Person sx={{ color: 'primary.main' }} />
-                                {member.name}
-                              </Box>
-                            </TableCell>
-                            <TableCell>{member.email}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                label={member.membershipType}
-                                color={member.membershipType === 'Platinum' ? 'primary' : 
-                                       member.membershipType === 'Gold' ? 'secondary' : 'default'}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleRemoveMember(member._id)}
-                                sx={{
-                                  color: 'error.main',
-                                  '&:hover': {
-                                    backgroundColor: 'error.light',
-                                    color: 'error.contrastText',
-                                  },
-                                }}
-                              >
-                                <Delete />
-                              </IconButton>
-                            </TableCell>
-                          </StyledTableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </StyledPaper>
-              </Grid>
 
-              {/* Current Availability Section */}
-              <Grid item xs={12} md={6}>
-                <StyledPaper>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h5" sx={{ 
-                      fontWeight: 600,
-                      color: 'primary.main',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                    }}>
-                      <Schedule sx={{ fontSize: 28 }} />
-                      Current Availability
-                    </Typography>
-                    <StyledButton
-                      variant="outlined"
-                      startIcon={<Edit />}
-                      onClick={() => setIsFirstTime(true)}
+                    <TableContainer 
+                      component={Paper} 
+                      sx={{ 
+                        borderRadius: 3,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                        overflow: 'hidden',
+                      }}
                     >
-                      Edit Availability
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <StyledTableCell>Day</StyledTableCell>
+                            <StyledTableCell>Start Time</StyledTableCell>
+                            <StyledTableCell>End Time</StyledTableCell>
+                            <StyledTableCell>Capacity</StyledTableCell>
+                            <StyledTableCell>Actions</StyledTableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {availability.timeRanges.map((range) => (
+                            <StyledTableRow key={range.id}>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <CalendarToday sx={{ color: 'primary.main' }} />
+                                  {range.day}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <AccessTime sx={{ color: 'primary.main' }} />
+                                  {range.startTime}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <AccessTime sx={{ color: 'primary.main' }} />
+                                  {range.endTime}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Group sx={{ color: 'primary.main' }} />
+                                  {range.capacity || 1}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Tooltip title="Remove Time Range">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleRemoveTimeRange(range.id)}
+                                    sx={{
+                                      color: 'error.main',
+                                      '&:hover': {
+                                        backgroundColor: 'error.light',
+                                        color: 'error.contrastText',
+                                      },
+                                    }}
+                                  >
+                                    <Delete />
+                                  </IconButton>
+                                </Tooltip>
+                              </TableCell>
+                            </StyledTableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+
+                  {/* Save Button */}
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setIsEditing(false)}
+                      sx={{ 
+                        borderRadius: 2,
+                        textTransform: 'none',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <StyledButton
+                      variant="contained"
+                      color="primary"
+                      onClick={handleSaveAvailability}
+                      disabled={loading || availability.days.length === 0 || availability.timeRanges.length === 0}
+                      startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CheckCircle />}
+                    >
+                      {loading ? 'Saving...' : 'Save Availability'}
                     </StyledButton>
                   </Box>
+                </>
+              ) : (
+                <>
                   <Box sx={{ mb: 3 }}>
                     <Typography variant="subtitle1" gutterBottom sx={{ 
                       fontWeight: 600,
@@ -714,10 +609,10 @@ const CoachAvailability = () => {
                       </Table>
                     </TableContainer>
                   </Box>
-                </StyledPaper>
-              </Grid>
-            </>
-          )}
+                </>
+              )}
+            </StyledPaper>
+          </Grid>
         </Grid>
 
         {/* Time Range Dialog */}
@@ -829,71 +724,6 @@ const CoachAvailability = () => {
               }}
             >
               Add Time Range
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Member Assignment Dialog */}
-        <Dialog 
-          open={openMemberDialog} 
-          onClose={() => setOpenMemberDialog(false)}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 3,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.15)',
-            }
-          }}
-        >
-          <DialogTitle sx={{ 
-            bgcolor: 'secondary.main',
-            color: 'secondary.contrastText',
-            fontWeight: 600,
-          }}>
-            Assign Member
-          </DialogTitle>
-          <DialogContent sx={{ p: 4 }}>
-            <FormControl fullWidth>
-              <InputLabel>Select Member</InputLabel>
-              <Select
-                value={selectedMember?._id || ''}
-                label="Select Member"
-                onChange={(e) => setSelectedMember(members.find(m => m._id === e.target.value))}
-                sx={{ borderRadius: 2 }}
-              >
-                {members.map((member) => (
-                  <MenuItem key={member._id} value={member._id}>
-                    {member.name} - {member.membershipType}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </DialogContent>
-          <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
-            <Button 
-              onClick={() => setOpenMemberDialog(false)}
-              sx={{ 
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleAssignMember}
-              variant="contained"
-              color="secondary"
-              disabled={!selectedMember}
-              sx={{ 
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              }}
-            >
-              Assign Member
             </Button>
           </DialogActions>
         </Dialog>
