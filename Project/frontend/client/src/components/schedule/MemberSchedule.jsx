@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
+import './ModernCalendar.css';
 import {
   Box,
   Container,
@@ -32,6 +33,13 @@ import {
   TableRow,
   Badge,
   CardMedia,
+  List,
+  ListItem,
+  ListItemText,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   CalendarToday,
@@ -48,11 +56,26 @@ import {
   CheckCircle,
   Warning,
   Info,
+  EmojiFoodBeverage,
+  LunchDining,
+  DinnerDining,
+  Fastfood,
+  LocalDining,
+  LocalCafe,
+  LocalPizza,
+  Cake,
+  RestaurantMenu,
+  Egg,
+  Icecream,
+  LocalDrink,
+  LocalBar,
+  LocalDiningOutlined,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
 import scheduleService from '../../services/scheduleService';
 import exerciseService from '../../services/exerciseService';
+import coachAvailabilityService from '../../services/coachAvailabilityService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -106,6 +129,155 @@ const ExerciseImage = styled(CardMedia)(({ theme }) => ({
   backgroundPosition: 'center',
 }));
 
+const CoachCard = styled(Card)(({ theme }) => ({
+  background: `linear-gradient(135deg, ${theme.palette.primary.light} 60%, ${theme.palette.secondary.light} 100%)`,
+  color: theme.palette.getContrastText(theme.palette.primary.light),
+  borderRadius: theme.spacing(2),
+  boxShadow: theme.shadows[4],
+  padding: theme.spacing(3),
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+}));
+
+const CoachAvatar = styled(Avatar)(({ theme }) => ({
+  width: 100,
+  height: 100,
+  marginBottom: theme.spacing(2),
+  border: `4px solid ${theme.palette.primary.main}`,
+  boxShadow: theme.shadows[2],
+}));
+
+const ModernCalendarWrapper = styled(Box)(({ theme }) => ({
+  background: theme.palette.background.paper,
+  borderRadius: theme.spacing(2),
+  boxShadow: theme.shadows[3],
+  padding: theme.spacing(3),
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+}));
+
+const TodayTile = {
+  border: '2px solid #1976d2',
+  borderRadius: '50%',
+  background: '#e3f2fd',
+  color: '#1976d2',
+  fontWeight: 700,
+};
+
+// Modern glassmorphism/gradient background for main area
+const DashboardBackground = styled(Box)(({ theme }) => ({
+  minHeight: '100vh',
+  width: '100%',
+  background: 'linear-gradient(120deg, #f5f7fa 0%, #c3cfe2 100%)',
+  padding: theme.spacing(4, 0),
+}));
+
+// Glassmorphism card
+const GlassCard = styled(Paper)(({ theme }) => ({
+  background: 'rgba(255,255,255,0.7)',
+  backdropFilter: 'blur(8px)',
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)',
+  padding: theme.spacing(4),
+}));
+
+// Floating session badge
+const FloatingBadge = styled(Badge)(({ theme }) => ({
+  '& .MuiBadge-badge': {
+    top: 8,
+    right: 8,
+    borderRadius: '50%',
+    boxShadow: '0 2px 8px rgba(33,150,243,0.25)',
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    padding: '8px',
+    background: theme.palette.primary.main,
+    color: '#fff',
+  },
+}));
+
+// Modern Coach Card with floating effect
+const ModernCoachCard = styled(Card)(({ theme }) => ({
+  background: 'linear-gradient(135deg, #e3f0ff 60%, #f9f9f9 100%)',
+  borderRadius: theme.spacing(3),
+  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.18)',
+  padding: theme.spacing(4, 2),
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  position: 'relative',
+  overflow: 'hidden',
+}));
+
+const ModernCoachAvatar = styled(Avatar)(({ theme }) => ({
+  width: 110,
+  height: 110,
+  marginBottom: theme.spacing(2),
+  border: `4px solid ${theme.palette.primary.main}`,
+  boxShadow: theme.shadows[3],
+}));
+
+const ContactButton = styled(Button)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  borderRadius: 20,
+  fontWeight: 600,
+  background: `linear-gradient(90deg, ${theme.palette.primary.main} 60%, ${theme.palette.secondary.main} 100%)`,
+  color: '#fff',
+  boxShadow: '0 2px 8px rgba(33,150,243,0.15)',
+  '&:hover': {
+    background: `linear-gradient(90deg, ${theme.palette.primary.dark} 60%, ${theme.palette.secondary.dark} 100%)`,
+  },
+}));
+
+// Helper: Convert day name to next date string
+function getNextDateForDay(dayName) {
+  const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const today = new Date();
+  const todayIndex = today.getDay();
+  const targetIndex = daysOfWeek.indexOf(dayName);
+  let diff = targetIndex - todayIndex;
+  if (diff <= 0) diff += 7;
+  const nextDate = new Date(today);
+  nextDate.setDate(today.getDate() + diff);
+  return nextDate.toISOString().split('T')[0];
+}
+
+// Modern meal chip with icon
+const MealChip = ({ label, color, icon }) => (
+  <Chip
+    icon={icon}
+    label={label}
+    size="medium"
+    sx={{
+      bgcolor: color,
+      color: '#fff',
+      fontWeight: 600,
+      fontSize: '1rem',
+      px: 1.5,
+      py: 0.5,
+      mb: 0.5,
+      boxShadow: '0 2px 8px rgba(33,150,243,0.10)',
+      '& .MuiChip-icon': { color: '#fff', fontSize: 22 }
+    }}
+  />
+);
+
+// Modern dialog Paper
+const ModernDialogPaper = (props) => (
+  <Paper
+    elevation={8}
+    sx={{
+      borderRadius: 4,
+      background: 'linear-gradient(120deg, #f5f7fa 0%, #e3f0ff 100%)',
+      boxShadow: '0 12px 48px rgba(33,150,243,0.15)',
+      p: 0
+    }}
+    {...props}
+  />
+);
+
 const MemberSchedule = () => {
   const { user } = useAuth();
   const [schedule, setSchedule] = useState(null);
@@ -123,6 +295,7 @@ const MemberSchedule = () => {
   const [exercisePlans, setExercisePlans] = useState({});
   const [rescheduledSessions, setRescheduledSessions] = useState([]);
   const [mealPlan, setMealPlan] = useState(null);
+  const [coachAvailability, setCoachAvailability] = useState(null);
 
   useEffect(() => {
     // Set the selected date to current date when component mounts
@@ -329,9 +502,13 @@ const MemberSchedule = () => {
 
       console.log('Parent schedule found:', parentSchedule);
 
+      // Convert day name to next date string
+      const isoDate = getNextDateForDay(newDate);
+
       await scheduleService.requestReschedule({
         scheduleId: parentSchedule._id, // Use the parent schedule's ID
-        newDate,
+        sessionId: selectedSession._id, // Add sessionId for backend
+        newDate: isoDate, // Send as YYYY-MM-DD
         newTime,
         reason,
       });
@@ -400,6 +577,31 @@ const MemberSchedule = () => {
     }
   };
 
+  const handleOpenRescheduleDialog = async (session) => {
+    setSelectedSession(session);
+    setOpenRescheduleDialog(true);
+    setNewDate('');
+    setNewTime('');
+    setReason('');
+    setError(null);
+    // Fetch coach availability for the session's coach
+    let coachId = null;
+    if (session && session.coachId) {
+      coachId = typeof session.coachId === 'object' ? session.coachId._id : session.coachId;
+    } else if (coachInfo && coachInfo._id) {
+      coachId = coachInfo._id;
+    }
+    if (coachId) {
+      try {
+        const availability = await coachAvailabilityService.getCoachAvailability(coachId);
+        setCoachAvailability(availability);
+      } catch (err) {
+        setCoachAvailability(null);
+        setError('Failed to load coach availability.');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -423,409 +625,536 @@ const MemberSchedule = () => {
   const selectedDateSessions = getSessionsForDate(selectedDate);
 
   return (
-    <Container>
-      {error && (
-        <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      {success && (
-        <Alert severity="success" sx={{ mt: 2, mb: 2 }}>
-          {success}
-        </Alert>
-      )}
-      <Grid container spacing={3}>
-        {/* Header Section */}
-        <Grid item xs={12}>
-          <StyledPaper>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h4" component="h1">
-                My Schedule
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<Download />}
-                onClick={handleDownloadReport}
-              >
-                Download Report
-              </Button>
-            </Box>
-            <Typography variant="subtitle1" color="text.secondary">
-              {user?.name} - {schedule?.[0]?.membershipType} Member
-            </Typography>
-          </StyledPaper>
-        </Grid>
-
-        {/* Tabs Section */}
-        <Grid item xs={12}>
-          <StyledPaper>
-            <Tabs
-              value={activeTab}
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              variant="fullWidth"
-              sx={{ borderBottom: 1, borderColor: 'divider' }}
-            >
-              <Tab icon={<CalendarToday />} label="Calendar" />
-              <Tab icon={<FitnessCenter />} label="Exercise Plan" />
-              <Tab icon={<Restaurant />} label="Meal Plan" />
-              <Tab icon={<Schedule />} label="Sessions" />
-            </Tabs>
-
-            {/* Calendar Tab */}
-            {activeTab === 0 && (
-              <Box sx={{ p: 3 }}>
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={8}>
-            <StyledCalendar
-              onChange={setSelectedDate}
-              value={selectedDate}
-              defaultView="month"
-              minDate={new Date()}
-              tileDisabled={({ date }) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-              tileContent={({ date }) => {
-                const sessions = getSessionsForDate(date);
-                return sessions.length > 0 ? (
-                  <Box sx={{ position: "relative", height: "100%" }}>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
-                        position: "absolute", 
-                        bottom: 2, 
-                        left: 2,
-                        backgroundColor: 'primary.main',
-                        color: 'white',
-                        padding: '2px 6px',
-                        borderRadius: '12px',
-                        fontSize: '0.7rem'
-                      }}
-                    >
-                      {sessions.length} session(s)
-                    </Typography>
-                  </Box>
-                ) : null;
-              }}
-            />
-        </Grid>
-                  <Grid item xs={12} md={4}>
-        {coachInfo && (
-                      <Box>
-              <Typography variant="h6" gutterBottom>
-                My Coach
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Avatar
-                  src={coachInfo.profileImage}
-                  sx={{ width: 80, height: 80, mr: 2 }}
-                />
-                <Box>
-                  <Typography variant="h6">{coachInfo.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {coachInfo.specialization || 'Personal Trainer'}
-                  </Typography>
-                </Box>
+    <DashboardBackground>
+      <Container maxWidth={false} disableGutters>
+        {error && (
+          <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+            {error}
+          </Alert>
+        )}
+        {success && (
+          <Alert severity="success" sx={{ mt: 2, mb: 2 }}>
+            {success}
+          </Alert>
+        )}
+        <Grid container spacing={3}>
+          {/* Header Section */}
+          <Grid item xs={12}>
+            <GlassCard>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h3" component="h1" sx={{ fontWeight: 800, letterSpacing: 1, color: 'primary.main' }}>
+                  My Schedule
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<Download />}
+                  onClick={handleDownloadReport}
+                  sx={{ borderRadius: 20, fontWeight: 600 }}
+                >
+                  Download Report
+                </Button>
               </Box>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Email fontSize="small" color="action" />
-                  <Typography variant="body2">{coachInfo.email}</Typography>
-                </Box>
-                {coachInfo.phone && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Phone fontSize="small" color="action" />
-                    <Typography variant="body2">{coachInfo.phone}</Typography>
-                  </Box>
-                )}
-              </Box>
-                      </Box>
-                    )}
-                  </Grid>
+              <Typography variant="subtitle1" color="text.secondary" sx={{ fontSize: '1.1rem', fontWeight: 500 }}>
+                {user?.name} - {schedule?.[0]?.membershipType} Member
+              </Typography>
+            </GlassCard>
           </Grid>
-              </Box>
-            )}
 
-            {/* Exercise Plan Tab */}
-            {activeTab === 1 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Exercise Plan
-                </Typography>
-                <Grid container spacing={3}>
-                  {schedule?.[0]?.exercisePlan?.exercises?.map((exercise, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                      <ExerciseCard>
-                        <ExerciseImage
-                          image={exercise.imageUrl}
-                          title={exercise.name}
-                        />
-                        <CardContent>
-                          <Typography variant="h6" gutterBottom>
-                            {exercise.name}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" paragraph>
-                            {exercise.description}
-                          </Typography>
-                          <Box sx={{ mb: 2 }}>
-                            <Typography variant="subtitle2" gutterBottom>
-                              Workout Details:
-                            </Typography>
-                            <Typography variant="body2">
-                              Sets: {exercise.sets}
-                            </Typography>
-                            <Typography variant="body2">
-                              Reps: {exercise.reps}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Chip
-                              label={exercise.difficulty}
-                              color={exercise.difficulty === 'beginner' ? 'success' : 'warning'}
-                              size="small"
-                            />
-                            <Chip
-                              label={exercise.category}
-                              color="primary"
-                              size="small"
-                            />
-                          </Box>
-                        </CardContent>
-                      </ExerciseCard>
-                    </Grid>
-                  ))}
-                  {(!schedule?.[0]?.exercisePlan?.exercises?.length) && (
-                    <Grid item xs={12}>
-                      <Alert severity="info" sx={{ mt: 2 }}>
-                        No exercise plan available. Please contact your coach to set up an exercise plan.
-                      </Alert>
-                    </Grid>
-                  )}
-                </Grid>
-              </Box>
-            )}
+          {/* Tabs Section */}
+          <Grid item xs={12}>
+            <GlassCard>
+              <Tabs
+                value={activeTab}
+                onChange={(e, newValue) => setActiveTab(newValue)}
+                variant="fullWidth"
+                sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, '& .MuiTab-root': { fontWeight: 700, fontSize: '1.1rem' } }}
+              >
+                <Tab icon={<CalendarToday />} label="Calendar" />
+                <Tab icon={<FitnessCenter />} label="Exercise Plan" />
+                <Tab icon={<Restaurant />} label="Meal Plan" />
+                <Tab icon={<Schedule />} label="Sessions" />
+              </Tabs>
 
-            {/* Meal Plan Tab */}
-            {activeTab === 2 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Weekly Meal Plan
-                </Typography>
-                {mealPlan ? (
-                  <TableContainer component={Paper} sx={{ mt: 2 }}>
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Day</TableCell>
-                          <TableCell>Breakfast</TableCell>
-                          <TableCell>Lunch</TableCell>
-                          <TableCell>Dinner</TableCell>
-                          <TableCell>Snacks</TableCell>
-                          <TableCell>Nutritional Info</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {mealPlan.meals.map((meal) => (
-                          <TableRow key={meal.day}>
-                            <TableCell>
-                              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
-                                {meal.day}
+              {/* Calendar Tab */}
+              {activeTab === 0 && (
+                <Box sx={{ p: { xs: 1, md: 3 } }}>
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={8}>
+                      <ModernCalendarWrapper>
+                        <StyledCalendar
+                          onChange={setSelectedDate}
+                          value={selectedDate}
+                          defaultView="month"
+                          minDate={new Date()}
+                          navigationLabel={({ date, label, locale, view }) => {
+                            return (
+                              <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: 1, color: 'primary.main', mb: 1 }}>
+                                {label}
                               </Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {Array.isArray(meal.breakfast) ? (
-                                  meal.breakfast.map((item, idx) => (
-                                    <Chip
-                                      key={idx}
-                                      label={item}
-                                      size="small"
-                                      sx={{ bgcolor: 'primary.light', color: 'white' }}
-                                    />
-                                  ))
-                                ) : (
-                                  <Typography variant="body2">{meal.breakfast || 'Not specified'}</Typography>
-                                )}
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {Array.isArray(meal.lunch) ? (
-                                  meal.lunch.map((item, idx) => (
-                                    <Chip
-                                      key={idx}
-                                      label={item}
-                                      size="small"
-                                      sx={{ bgcolor: 'secondary.light', color: 'white' }}
-                                    />
-                                  ))
-                                ) : (
-                                  <Typography variant="body2">{meal.lunch || 'Not specified'}</Typography>
-                                )}
+                            );
+                          }}
+                          nextLabel={<span className="modern-cal-arrow">›</span>}
+                          prevLabel={<span className="modern-cal-arrow">‹</span>}
+                          next2Label={null}
+                          prev2Label={null}
+                          formatShortWeekday={(locale, date) =>
+                            date.toLocaleDateString(locale, { weekday: 'short' }).toUpperCase()
+                          }
+                          tileContent={({ date }) => {
+                            const sessions = getSessionsForDate(date);
+                            return sessions.length > 0 ? (
+                              <span className="modern-cal-dot" />
+                            ) : null;
+                          }}
+                          tileClassName={({ date, view }) => {
+                            let classes = 'modern-cal-tile';
+                            if (date.toDateString() === new Date().toDateString() && view === 'month') {
+                              classes += ' modern-cal-today';
+                            }
+                            if (selectedDate && date.toDateString() === selectedDate.toDateString()) {
+                              classes += ' modern-cal-selected';
+                            }
+                            return classes;
+                          }}
+                        />
+                      </ModernCalendarWrapper>
+                      {/* Session List Below Calendar */}
+                      <Box sx={{ mt: 4 }}>
+                        {getSessionsForDate(selectedDate).length > 0 ? (
+                          <Paper elevation={2} sx={{ p: 2, borderRadius: 3 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: 'primary.main' }}>
+                              Sessions on {selectedDate.toLocaleDateString()}
+                            </Typography>
+                            <List>
+                              {getSessionsForDate(selectedDate).map((session, idx) => (
+                                <ListItem key={session._id || idx} alignItems="flex-start" sx={{ mb: 1, borderRadius: 2, boxShadow: 1, background: '#f5f7fa' }}>
+                                  <ListItemText
+                                    primary={
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Event sx={{ color: 'primary.main', mr: 1 }} />
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                          {session.workoutType}
+                                        </Typography>
+                                      </Box>
+                                    }
+                                    secondary={
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
+                                        <Typography variant="body2" color="text.secondary">
+                                          Time: {session.time}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                          Status: <Chip label={session.status} color={getStatusColor(session.status)} size="small" />
+                                        </Typography>
+                                      </Box>
+                                    }
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Paper>
+                        ) : (
+                          <Paper elevation={0} sx={{ p: 2, borderRadius: 3, textAlign: 'center', background: '#f9f9f9' }}>
+                            <Typography variant="body1" color="text.secondary">
+                              No sessions for this day.
+                            </Typography>
+                          </Paper>
+                        )}
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      {coachInfo && (
+                        <ModernCoachCard>
+                          <ModernCoachAvatar src={coachInfo.profileImage} />
+                          <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5, color: 'primary.main' }}>
+                            {coachInfo.name}
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: 'text.secondary', mb: 2, fontWeight: 500 }}>
+                            {coachInfo.specialization || 'Personal Trainer'}
+                          </Typography>
+                          <Divider sx={{ width: '100%', my: 2, bgcolor: 'rgba(33,150,243,0.15)' }} />
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Email fontSize="small" color="primary" />
+                              <Typography variant="body2" sx={{ wordBreak: 'break-all', fontWeight: 500 }}>{coachInfo.email}</Typography>
                             </Box>
-                            </TableCell>
-                            <TableCell>
-                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {Array.isArray(meal.dinner) ? (
-                                  meal.dinner.map((item, idx) => (
-                                    <Chip
-                                      key={idx}
-                                      label={item}
-                                      size="small"
-                                      sx={{ bgcolor: 'error.light', color: 'white' }}
-                                    />
-                                  ))
-                                ) : (
-                                  <Typography variant="body2">{meal.dinner || 'Not specified'}</Typography>
-                                )}
+                            {coachInfo.phone && (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Phone fontSize="small" color="primary" />
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>{coachInfo.phone}</Typography>
                               </Box>
-                            </TableCell>
-                            <TableCell>
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {Array.isArray(meal.snacks) ? (
-                                  meal.snacks.map((snack, idx) => (
-                                    <Chip
-                                      key={idx}
-                                      label={snack}
-                                      size="small"
-                                      sx={{ bgcolor: 'info.light', color: 'white' }}
-                                    />
-                                  ))
-                                ) : (
-                                  <Typography variant="body2">{meal.snacks || 'No snacks'}</Typography>
-                                )}
-                              </Box>
-                            </TableCell>
-                            <TableCell>
-                              {meal.nutritionalInfo && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                  <Typography variant="body2">
-                                    Calories: {meal.nutritionalInfo.calories || 0}
-                                  </Typography>
-                                  <Typography variant="body2">
-                                    Protein: {meal.nutritionalInfo.protein || 0}g
-                                  </Typography>
-                                  <Typography variant="body2">
-                                    Carbs: {meal.nutritionalInfo.carbs || 0}g
-                                  </Typography>
-                                  <Typography variant="body2">
-                                    Fats: {meal.nutritionalInfo.fats || 0}g
-                                  </Typography>
-                                </Box>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Alert severity="info" sx={{ mt: 2 }}>
-                    No meal plan available. Please contact your coach to set up a meal plan.
-                  </Alert>
-                )}
-              </Box>
-            )}
+                            )}
+                          </Box>
+                          <ContactButton
+                            startIcon={<Email />}
+                            href={`mailto:${coachInfo.email}`}
+                          >
+                            Contact Coach
+                          </ContactButton>
+                        </ModernCoachCard>
+                      )}
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
 
-            {/* Sessions Tab */}
-            {activeTab === 3 && (
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  All Sessions
-                                </Typography>
-                <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Date</TableCell>
-                        <TableCell>Time</TableCell>
-                        <TableCell>Workout Type</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {schedule?.map((scheduleItem) =>
-                        scheduleItem.sessions?.map((session) => (
-                          <TableRow key={session._id}>
-                            <TableCell>
-                              {new Date(session.date).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>{session.time}</TableCell>
-                            <TableCell>{session.workoutType}</TableCell>
-                            <TableCell>
+              {/* Exercise Plan Tab */}
+              {activeTab === 1 && (
+                <Box sx={{ p: 3 }}>
+                  <Typography variant="h6" gutterBottom>
+                    Exercise Plan
+                  </Typography>
+                  <Grid container spacing={3}>
+                    {schedule?.[0]?.exercisePlan?.exercises?.map((exercise, index) => (
+                      <Grid item xs={12} sm={6} md={4} key={index}>
+                        <ExerciseCard>
+                          <ExerciseImage
+                            image={exercise.imageUrl}
+                            title={exercise.name}
+                          />
+                          <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                              {exercise.name}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" paragraph>
+                              {exercise.description}
+                            </Typography>
+                            <Box sx={{ mb: 2 }}>
+                              <Typography variant="subtitle2" gutterBottom>
+                                Workout Details:
+                              </Typography>
+                              <Typography variant="body2">
+                                Sets: {exercise.sets}
+                              </Typography>
+                              <Typography variant="body2">
+                                Reps: {exercise.reps}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Chip
-                                icon={getStatusIcon(session.status)}
-                                label={session.status}
-                                color={getStatusColor(session.status)}
+                                label={exercise.difficulty}
+                                color={exercise.difficulty === 'beginner' ? 'success' : 'warning'}
                                 size="small"
                               />
-                            </TableCell>
-                            <TableCell>
-                              {session.status === 'scheduled' && (
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  onClick={() => {
-                                    setSelectedSession(session);
-                                    setOpenRescheduleDialog(true);
-                                  }}
-                                >
-                                  Request Reschedule
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                              <Chip
+                                label={exercise.category}
+                                color="primary"
+                                size="small"
+                              />
                             </Box>
-            )}
-            </StyledPaper>
-          </Grid>
-      </Grid>
+                          </CardContent>
+                        </ExerciseCard>
+                      </Grid>
+                    ))}
+                    {(!schedule?.[0]?.exercisePlan?.exercises?.length) && (
+                      <Grid item xs={12}>
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                          No exercise plan available. Please contact your coach to set up an exercise plan.
+                        </Alert>
+                      </Grid>
+                    )}
+                  </Grid>
+                </Box>
+              )}
 
-      {/* Reschedule Dialog */}
-      <Dialog open={openRescheduleDialog} onClose={() => setOpenRescheduleDialog(false)}>
-        <DialogTitle>Request Reschedule</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="New Date"
-            type="date"
-            fullWidth
-            margin="normal"
-            value={newDate}
-            onChange={(e) => setNewDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="New Time"
-            type="time"
-            fullWidth
-            margin="normal"
-            value={newTime}
-            onChange={(e) => setNewTime(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="Reason"
-            multiline
-            rows={4}
-            fullWidth
-            margin="normal"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenRescheduleDialog(false)}>Cancel</Button>
-          <Button onClick={handleRescheduleRequest} variant="contained" color="primary">
-            Submit Request
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Container>
+              {/* Meal Plan Tab */}
+              {activeTab === 2 && (
+                <Box sx={{ p: 3 }}>
+                  <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
+                    Weekly Meal Plan
+                  </Typography>
+                  {mealPlan ? (
+                    <GlassCard sx={{ mt: 2, p: 0, overflow: 'auto', width: '100%' }}>
+                      <TableContainer component={Box} sx={{ width: '100%' }}>
+                        <Table sx={{ minWidth: 700, width: '100%' }}>
+                          <TableHead>
+                            <TableRow sx={{ background: 'rgba(33,150,243,0.07)' }}>
+                              <TableCell sx={{ fontWeight: 700, fontSize: '1.1rem', color: 'primary.main' }}>Day</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Breakfast</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Lunch</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Dinner</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Snacks</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Nutritional Info</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {mealPlan.meals.map((meal) => (
+                              <TableRow key={meal.day} hover sx={{ borderBottom: '2px solid #e3eafc' }}>
+                                <TableCell sx={{ fontWeight: 800, color: 'primary.main', fontSize: '1.1rem' }}>
+                                  {meal.day}
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {Array.isArray(meal.breakfast) ? (
+                                      meal.breakfast.map((item, idx) => (
+                                        <MealChip
+                                          key={idx}
+                                          label={item}
+                                          color={'#2196f3'}
+                                          icon={<EmojiFoodBeverage />}
+                                        />
+                                      ))
+                                    ) : (
+                                      <Typography variant="body2">{meal.breakfast || 'Not specified'}</Typography>
+                                    )}
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {Array.isArray(meal.lunch) ? (
+                                      meal.lunch.map((item, idx) => (
+                                        <MealChip
+                                          key={idx}
+                                          label={item}
+                                          color={'#ab47bc'}
+                                          icon={<LunchDining />}
+                                        />
+                                      ))
+                                    ) : (
+                                      <Typography variant="body2">{meal.lunch || 'Not specified'}</Typography>
+                                    )}
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    {Array.isArray(meal.dinner) ? (
+                                      meal.dinner.map((item, idx) => (
+                                        <MealChip
+                                          key={idx}
+                                          label={item}
+                                          color={'#e53935'}
+                                          icon={<DinnerDining />}
+                                        />
+                                      ))
+                                    ) : (
+                                      <Typography variant="body2">{meal.dinner || 'Not specified'}</Typography>
+                                    )}
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                    {Array.isArray(meal.snacks) ? (
+                                      meal.snacks.map((snack, idx) => (
+                                        <MealChip
+                                          key={idx}
+                                          label={snack}
+                                          color={'#00bcd4'}
+                                          icon={<Fastfood />}
+                                        />
+                                      ))
+                                    ) : (
+                                      <Typography variant="body2">{meal.snacks || 'No snacks'}</Typography>
+                                    )}
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  {meal.nutritionalInfo && (
+                                    <Card elevation={0} sx={{ p: 1.5, borderRadius: 2, background: 'linear-gradient(90deg,#e3f2fd 60%,#fff 100%)', minWidth: 150 }}>
+                                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <LocalDining sx={{ fontSize: 18, color: 'primary.main' }} /> Calories: {meal.nutritionalInfo.calories || 0}
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <Egg sx={{ fontSize: 18, color: '#ab47bc' }} /> Protein: {meal.nutritionalInfo.protein || 0}g
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <LocalPizza sx={{ fontSize: 18, color: '#ff9800' }} /> Carbs: {meal.nutritionalInfo.carbs || 0}g
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                          <LocalBar sx={{ fontSize: 18, color: '#e53935' }} /> Fats: {meal.nutritionalInfo.fats || 0}g
+                                        </Typography>
+                                      </Box>
+                                    </Card>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </GlassCard>
+                  ) : (
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      No meal plan available. Please contact your coach to set up a meal plan.
+                    </Alert>
+                  )}
+                </Box>
+              )}
+
+              {/* Sessions Tab */}
+              {activeTab === 3 && (
+                <Box sx={{ p: 3 }}>
+                  <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
+                    All Sessions
+                  </Typography>
+                  <GlassCard sx={{ mt: 2, p: 0, overflow: 'auto', width: '100%' }}>
+                    <TableContainer component={Box} sx={{ width: '100%' }}>
+                      <Table sx={{ minWidth: 700, width: '100%' }}>
+                        <TableHead>
+                          <TableRow sx={{ background: 'rgba(33,150,243,0.07)' }}>
+                            <TableCell sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.1rem' }}>Date</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Time</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Workout Type</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {schedule?.map((scheduleItem) =>
+                            scheduleItem.sessions?.map((session) => (
+                              <TableRow key={session._id} hover sx={{ borderBottom: '2px solid #e3eafc', transition: 'background 0.2s' }}>
+                                <TableCell sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.05rem' }}>
+                                  {new Date(session.date).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 600, color: 'secondary.main' }}>{session.time}</TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <FitnessCenter sx={{ color: 'primary.main' }} />
+                                    <Typography variant="body1" sx={{ fontWeight: 600 }}>{session.workoutType}</Typography>
+                                  </Box>
+                                </TableCell>
+                                <TableCell>
+                                  <Chip
+                                    icon={getStatusIcon(session.status)}
+                                    label={session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                                    color={getStatusColor(session.status)}
+                                    size="medium"
+                                    sx={{ fontWeight: 700, fontSize: '1rem', px: 1.5, py: 0.5 }}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  {session.status === 'scheduled' && (
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      startIcon={<Schedule />}
+                                      sx={{ borderRadius: 20, fontWeight: 600, background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)', color: '#fff', boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }}
+                                      onClick={() => handleOpenRescheduleDialog(session)}
+                                    >
+                                      Request Reschedule
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </GlassCard>
+                </Box>
+              )}
+            </GlassCard>
+          </Grid>
+        </Grid>
+
+        {/* Reschedule Dialog */}
+        <Dialog
+          open={openRescheduleDialog}
+          onClose={() => setOpenRescheduleDialog(false)}
+          PaperComponent={ModernDialogPaper}
+          maxWidth="xs"
+          fullWidth
+        >
+          <DialogTitle sx={{
+            background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: '1.3rem',
+            borderRadius: '16px 16px 0 0',
+            pb: 2,
+            mb: 1
+          }}>
+            Request Reschedule
+          </DialogTitle>
+          <DialogContent sx={{ p: 4 }}>
+            {selectedSession && (
+              <Box sx={{ mb: 3, p: 2, borderRadius: 2, background: 'rgba(33,150,243,0.07)', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <Typography variant="subtitle2" sx={{ color: 'primary.main', fontWeight: 700 }}>
+                  Current Session
+                </Typography>
+                <Typography variant="body2">
+                  <CalendarToday sx={{ fontSize: 18, mr: 0.5, color: 'primary.main' }} /> {new Date(selectedSession.date).toLocaleDateString()} &nbsp; | &nbsp;
+                  <AccessTime sx={{ fontSize: 18, mr: 0.5, color: 'secondary.main' }} /> {selectedSession.time}
+                </Typography>
+                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <FitnessCenter sx={{ fontSize: 18, color: 'primary.main' }} /> {selectedSession.workoutType}
+                </Typography>
+              </Box>
+            )}
+            {coachAvailability && coachAvailability.availability && coachAvailability.availability.length > 0 ? (
+              <>
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel><CalendarToday sx={{ fontSize: 18, mr: 1, color: 'primary.main' }} />Day</InputLabel>
+                  <Select
+                    value={newDate}
+                    label="Day"
+                    onChange={(e) => {
+                      setNewDate(e.target.value);
+                      setNewTime('');
+                    }}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    {coachAvailability.availability.map((day) => (
+                      <MenuItem key={day.day} value={day.day}>
+                        <CalendarToday sx={{ fontSize: 18, mr: 1, color: 'primary.main' }} /> {day.day}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth sx={{ mb: 3 }}>
+                  <InputLabel><AccessTime sx={{ fontSize: 18, mr: 1, color: 'secondary.main' }} />Time Range</InputLabel>
+                  <Select
+                    value={newTime}
+                    label="Time Range"
+                    onChange={(e) => setNewTime(e.target.value)}
+                    disabled={!newDate}
+                    sx={{ borderRadius: 2 }}
+                  >
+                    {coachAvailability.availability
+                      .find(day => day.day === newDate)?.timeRanges.map((range) => (
+                        <MenuItem key={`${range.startTime}-${range.endTime}`} value={`${range.startTime}-${range.endTime}`}>
+                          <AccessTime sx={{ fontSize: 18, mr: 1, color: 'secondary.main' }} /> {`${range.startTime} - ${range.endTime}`}
+                        </MenuItem>
+                      )) || []}
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Reason for Reschedule"
+                  multiline
+                  rows={4}
+                  fullWidth
+                  margin="normal"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  sx={{ borderRadius: 2, mb: 2 }}
+                />
+              </>
+            ) : (
+              <Alert severity="info">Coach availability not set or unavailable.</Alert>
+            )}
+            {error && (
+              <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setOpenRescheduleDialog(false)} sx={{ borderRadius: 20, fontWeight: 600 }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRescheduleRequest}
+              variant="contained"
+              color="primary"
+              disabled={!newDate || !newTime || !reason}
+              startIcon={<Schedule />}
+              sx={{ borderRadius: 20, fontWeight: 700, background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)', color: '#fff', boxShadow: '0 2px 8px rgba(33,150,243,0.10)' }}
+            >
+              Submit Request
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Container>
+    </DashboardBackground>
   );
 };
 

@@ -1,0 +1,97 @@
+/* Modern Calendar Custom Styles */
+.react-calendar {
+  border: none !important;
+  background: transparent !important;
+  font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.react-calendar__navigation {
+  margin-bottom: 0.5rem;
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modern-cal-arrow {
+  font-size: 2rem;
+  color: #1976d2;
+  font-weight: 900;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.modern-cal-arrow:hover {
+  color: #1565c0;
+}
+
+.react-calendar__month-view__weekdays {
+  text-align: center;
+  background: transparent;
+  margin-bottom: 0.5rem;
+}
+.react-calendar__month-view__weekdays__weekday {
+  padding: 0.5rem 0;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #1976d2;
+  font-size: 1rem;
+  background: transparent;
+  border-radius: 8px;
+}
+
+.modern-cal-tile {
+  position: relative;
+  border-radius: 16px !important;
+  background: transparent !important;
+  color: #222 !important;
+  font-size: 1.1rem;
+  font-weight: 500;
+  transition: box-shadow 0.2s, transform 0.2s, background 0.2s;
+  margin: 2px;
+  z-index: 1;
+}
+
+.modern-cal-tile:hover {
+  background: #e3f2fd !important;
+  box-shadow: 0 2px 8px rgba(33,150,243,0.10);
+  transform: scale(1.06);
+  z-index: 2;
+}
+
+.modern-cal-today {
+  border: 2px solid #1976d2 !important;
+  background: linear-gradient(120deg, #e3f2fd 60%, #bbdefb 100%) !important;
+  color: #1976d2 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 8px rgba(33,150,243,0.15);
+}
+
+.modern-cal-selected {
+  border: 2px solid #ff9800 !important;
+  background: linear-gradient(120deg, #fff3e0 60%, #ffe0b2 100%) !important;
+  color: #e65100 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 12px rgba(255,152,0,0.15);
+  z-index: 3;
+}
+
+.modern-cal-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1976d2;
+  margin: 0 auto;
+  margin-top: 4px;
+  box-shadow: 0 1px 4px rgba(33,150,243,0.18);
+}
+
+.react-calendar__tile--now {
+  /* Remove default today style */
+  background: none !important;
+}
+
+.react-calendar__tile--active {
+  /* Remove default selected style */
+  background: none !important;
+} 
