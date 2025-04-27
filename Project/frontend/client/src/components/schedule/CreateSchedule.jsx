@@ -20,6 +20,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import scheduleService from '../../services/scheduleService';
+import coachAvailabilityService from '../../services/coachAvailabilityService';
 
 const workoutTypes = [
   'Personal Training',
@@ -59,13 +60,57 @@ const CreateSchedule = ({ userId, membershipType, onSuccess }) => {
     setSessions(sessions.filter((_, i) => i !== index));
   };
 
-  const handleSessionChange = (index, field, value) => {
-    const newSessions = [...sessions];
-    newSessions[index] = {
-      ...newSessions[index],
+  const handleSessionChange = async (index, field, value) => {
+    const updatedSessions = [...sessions];
+    updatedSessions[index] = {
+      ...updatedSessions[index],
       [field]: value
     };
-    setSessions(newSessions);
+
+    // If date or time is changed, check capacity
+    if (field === 'date' || field === 'time') {
+      try {
+        const selectedDate = value;
+        const selectedTime = updatedSessions[index].time;
+        
+        // Get coach availability for the selected date
+        const dayOfWeek = selectedDate.toLocaleDateString('en-US', { weekday: 'long' });
+        const coachAvailability = await coachAvailabilityService.getCoachAvailability(coachId);
+        
+        const selectedDayAvailability = coachAvailability.availability.find(day => day.day === dayOfWeek);
+        if (!selectedDayAvailability) {
+          setError('Selected day is not available');
+          return;
+        }
+
+        const selectedTimeRange = selectedDayAvailability.timeRanges.find(
+          range => range.startTime === selectedTime
+        );
+
+        if (!selectedTimeRange) {
+          setError('Selected time is not available');
+          return;
+        }
+
+        // Get current sessions for the selected time slot
+        const currentSessions = await scheduleService.getSessionsByDateAndTime(
+          selectedDate.toISOString().split('T')[0],
+          selectedTime
+        );
+
+        // Check if the time slot has available capacity
+        if (currentSessions.length >= selectedTimeRange.capacity) {
+          setError('This time slot has reached its maximum capacity');
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking capacity:', error);
+        setError('Failed to check session capacity');
+        return;
+      }
+    }
+
+    setSessions(updatedSessions);
   };
 
   const handleSubmit = async (e) => {

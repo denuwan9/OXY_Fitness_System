@@ -129,6 +129,7 @@ const CoachAvailability = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [loading, setLoading] = useState(false);
+  const [editingTimeRange, setEditingTimeRange] = useState(null);
 
   const days = [
     'Monday',
@@ -216,15 +217,46 @@ const CoachAvailability = () => {
     }));
   };
 
+  const handleEditTimeRange = (range) => {
+    setEditingTimeRange(range);
+    setNewTimeRange({
+      startTime: range.startTime,
+      endTime: range.endTime,
+      day: range.day,
+      capacity: range.capacity || 1
+    });
+    setOpenTimeDialog(true);
+  };
+
   const handleAddTimeRange = () => {
     if (newTimeRange.startTime && newTimeRange.endTime && newTimeRange.day) {
-      setAvailability(prev => ({
-        ...prev,
-        timeRanges: [...prev.timeRanges, { ...newTimeRange, id: Date.now() }]
-      }));
+      if (editingTimeRange) {
+        // Update existing time range
+        setAvailability(prev => ({
+          ...prev,
+          timeRanges: prev.timeRanges.map(range => 
+            range.id === editingTimeRange.id 
+              ? { ...newTimeRange, id: range.id }
+              : range
+          )
+        }));
+        setEditingTimeRange(null);
+      } else {
+        // Add new time range
+        setAvailability(prev => ({
+          ...prev,
+          timeRanges: [...prev.timeRanges, { ...newTimeRange, id: Date.now() }]
+        }));
+      }
       setNewTimeRange({ startTime: '', endTime: '', day: '', capacity: 1 });
       setOpenTimeDialog(false);
     }
+  };
+
+  const handleCloseTimeDialog = () => {
+    setOpenTimeDialog(false);
+    setEditingTimeRange(null);
+    setNewTimeRange({ startTime: '', endTime: '', day: '', capacity: 1 });
   };
 
   const handleRemoveTimeRange = (id) => {
@@ -488,21 +520,38 @@ const CoachAvailability = () => {
                                 </Box>
                               </TableCell>
                               <TableCell>
-                                <Tooltip title="Remove Time Range">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleRemoveTimeRange(range.id)}
-                                    sx={{
-                                      color: 'error.main',
-                                      '&:hover': {
-                                        backgroundColor: 'error.light',
-                                        color: 'error.contrastText',
-                                      },
-                                    }}
-                                  >
-                                    <Delete />
-                                  </IconButton>
-                                </Tooltip>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Tooltip title="Edit Time Range">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => handleEditTimeRange(range)}
+                                      sx={{
+                                        color: 'primary.main',
+                                        '&:hover': {
+                                          backgroundColor: 'primary.light',
+                                          color: 'primary.contrastText',
+                                        },
+                                      }}
+                                    >
+                                      <Edit />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Remove Time Range">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => handleRemoveTimeRange(range.id)}
+                                      sx={{
+                                        color: 'error.main',
+                                        '&:hover': {
+                                          backgroundColor: 'error.light',
+                                          color: 'error.contrastText',
+                                        },
+                                      }}
+                                    >
+                                      <Delete />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
                               </TableCell>
                             </StyledTableRow>
                           ))}
@@ -618,7 +667,7 @@ const CoachAvailability = () => {
         {/* Time Range Dialog */}
         <Dialog 
           open={openTimeDialog} 
-          onClose={() => setOpenTimeDialog(false)}
+          onClose={handleCloseTimeDialog}
           maxWidth="sm"
           fullWidth
           PaperProps={{
@@ -633,7 +682,7 @@ const CoachAvailability = () => {
             color: 'primary.contrastText',
             fontWeight: 600,
           }}>
-            Add Time Range
+            {editingTimeRange ? 'Edit Time Range' : 'Add Time Range'}
           </DialogTitle>
           <DialogContent sx={{ p: 4 }}>
             <Grid container spacing={3}>
@@ -703,7 +752,7 @@ const CoachAvailability = () => {
           </DialogContent>
           <DialogActions sx={{ p: 3, bgcolor: 'background.default' }}>
             <Button 
-              onClick={() => setOpenTimeDialog(false)}
+              onClick={handleCloseTimeDialog}
               sx={{ 
                 borderRadius: 2,
                 textTransform: 'none',
@@ -723,7 +772,7 @@ const CoachAvailability = () => {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
               }}
             >
-              Add Time Range
+              {editingTimeRange ? 'Update Time Range' : 'Add Time Range'}
             </Button>
           </DialogActions>
         </Dialog>

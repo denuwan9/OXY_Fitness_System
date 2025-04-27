@@ -30,6 +30,24 @@ exports.createSchedule = async (req, res) => {
       });
     }
 
+    // Check for existing sessions at the same time
+    for (const session of sessions) {
+      const existingSession = await Schedule.findOne({
+        userId: userId,
+        'sessions.date': new Date(session.date),
+        'sessions.time': session.time,
+        'sessions.status': { $nin: ['cancelled', 'pending_reschedule'] }
+      });
+
+      if (existingSession) {
+        return res.status(400).json({
+          message: 'Member already has a session scheduled at this time',
+          date: session.date,
+          time: session.time
+        });
+      }
+    }
+
     // Create new schedule
     const schedule = new Schedule({
       userId,
@@ -55,14 +73,8 @@ exports.createSchedule = async (req, res) => {
     
     res.status(201).json(schedule);
   } catch (error) {
-    console.error('=== Create Schedule Error ===');
-    console.error('Error details:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ 
-      message: 'Error creating schedule', 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    console.error('Error creating schedule:', error);
+    res.status(500).json({ message: 'Error creating schedule', error: error.message });
   }
 };
 

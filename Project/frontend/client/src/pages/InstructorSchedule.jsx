@@ -200,6 +200,7 @@ const InstructorSchedule = () => {
   const [memberSchedules, setMemberSchedules] = useState({});
   const [instructorAvailability, setInstructorAvailability] = useState(null);
   const [scheduleData, setScheduleData] = useState({
+    day: '',
     time: '',
     workoutType: '',
     duration: '',
@@ -237,6 +238,7 @@ const InstructorSchedule = () => {
   } = useForm({
     resolver: yupResolver(scheduleSchema),
     defaultValues: {
+      day: '',
       time: '',
       workoutType: '',
       duration: '',
@@ -308,6 +310,8 @@ const InstructorSchedule = () => {
       for (const member of relevantMembers) {
         try {
           const schedules = await scheduleService.getUserSchedule(member._id);
+          console.log(`Schedules for member ${member._id}:`, schedules);
+          
           if (Array.isArray(schedules)) {
             // Process each schedule to include rescheduled information
             const processedSchedules = schedules.map(schedule => ({
@@ -316,16 +320,19 @@ const InstructorSchedule = () => {
                 ...session,
                 rescheduled: session.status === 'pending_reschedule',
                 newDate: session.newDate || session.date,
-                newTime: session.newTime || session.time
+                newTime: session.newTime || session.time,
+                status: session.status || 'scheduled' // Ensure status is set
               }))
             }));
             memberSchedulesData[member._id] = processedSchedules;
+            console.log(`Processed schedules for member ${member._id}:`, processedSchedules);
           }
         } catch (error) {
           console.error(`Error loading schedules for member ${member._id}:`, error);
         }
       }
       
+      console.log('Final memberSchedulesData:', memberSchedulesData);
       setMemberSchedules(memberSchedulesData);
     } catch (err) {
       setError('Failed to load assigned members. Please try again later.');
@@ -385,6 +392,7 @@ const InstructorSchedule = () => {
 
       // Reset form data
       setScheduleData({
+        day: '',
         time: '',
         workoutType: '',
         duration: '',
@@ -428,6 +436,101 @@ const InstructorSchedule = () => {
     }
   };
 
+  const getCurrentSessionsForTimeSlot = (date, time) => {
+    console.log('Checking capacity for:', { date, time });
+    console.log('Current memberSchedules:', memberSchedules);
+
+    // Get all sessions from all members for the selected time slot
+    const allSessions = Object.values(memberSchedules).reduce((acc, schedules) => {
+      if (Array.isArray(schedules)) {
+        const memberSessions = schedules.reduce((sessionAcc, schedule) => {
+          if (schedule.sessions && Array.isArray(schedule.sessions)) {
+            const filteredSessions = schedule.sessions.filter(session => {
+              // Convert session date to YYYY-MM-DD format
+              const sessionDate = new Date(session.date).toISOString().split('T')[0];
+              
+              // Get start time from session time range
+              const sessionTime = session.time.split('-')[0].trim();
+              
+              // Get start time from target time range
+              const targetTime = time.split('-')[0].trim();
+              
+              // Log the comparison details
+              console.log('Comparing session:', {
+                sessionDate,
+                sessionTime,
+                targetDate: date,
+                targetTime,
+                matches: sessionDate === date && 
+                        sessionTime === targetTime && 
+                        session.status !== 'cancelled' &&
+                        session.status !== 'pending_reschedule'
+              });
+              
+              // Only count active sessions
+              return sessionDate === date && 
+                     sessionTime === targetTime && 
+                     session.status !== 'cancelled' &&
+                     session.status !== 'pending_reschedule';
+            });
+            
+            // Log found sessions for this schedule
+            if (filteredSessions.length > 0) {
+              console.log('Found sessions for schedule:', { 
+                scheduleId: schedule._id, 
+                sessions: filteredSessions,
+                scheduleDetails: schedule
+              });
+            }
+            
+            return [...sessionAcc, ...filteredSessions];
+          }
+          return sessionAcc;
+        }, []);
+        return [...acc, ...memberSessions];
+      }
+      return acc;
+    }, []);
+
+    // Log total sessions found
+    console.log('Total sessions found:', allSessions.length);
+    console.log('Sessions details:', allSessions);
+    
+    return allSessions;
+  };
+
+  // Add a new function to check if a member has a session at a specific time
+  const hasMemberSessionAtTime = (memberId, date, time) => {
+    const memberSessions = memberSchedules[memberId] || [];
+    return memberSessions.some(schedule => 
+      schedule.sessions.some(session => 
+        new Date(session.date).toISOString().split('T')[0] === date &&
+        session.time.split('-')[0].trim() === time.split('-')[0].trim() &&
+        session.status !== 'cancelled' &&
+        session.status !== 'pending_reschedule'
+      )
+    );
+  };
+
+  const handleOpenScheduleDialog = () => {
+    if (!selectedMember) {
+      setError('Please select a member first');
+      return;
+    }
+    
+    // Reset form with default values
+    reset({
+      day: '',
+      time: '',
+      workoutType: '',
+      duration: '',
+      notes: ''
+    });
+    
+    setSelectedDate(new Date());
+    setOpenScheduleDialog(true);
+  };
+
   const onSubmit = async (data) => {
     try {
       setLoading(true);
@@ -439,9 +542,62 @@ const InstructorSchedule = () => {
       const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(selectedDay);
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
+      const formattedDate = targetDate.toISOString().split('T')[0];
 
       // Split the time range into start and end times
       const [startTime, endTime] = data.time.split('-');
+
+      // Check if the selected time slot has available capacity
+      const selectedDayAvailability = instructorAvailability?.availability.find(day => day.day === selectedDay);
+      if (!selectedDayAvailability) {
+        setError('Selected day is not available');
+        return;
+      }
+
+      const selectedTimeRange = selectedDayAvailability.timeRanges.find(
+        range => range.startTime === startTime.trim() && range.endTime === endTime.trim()
+      );
+
+      if (!selectedTimeRange) {
+        setError('Selected time range is not available');
+        return;
+      }
+
+      // Check if member already has a session at this time
+      const memberSessions = memberSchedules[selectedMember._id] || [];
+      const hasExistingSession = memberSessions.some(schedule => 
+        schedule.sessions.some(session => 
+          session.date === formattedDate && 
+          session.time === startTime.trim() &&
+          session.status !== 'cancelled' &&
+          session.status !== 'pending_reschedule'
+        )
+      );
+
+      if (hasExistingSession) {
+        setError('Member already has a session scheduled at this time');
+        return;
+      }
+
+      // Get current sessions for the selected time slot across all members
+      const currentSessions = getCurrentSessionsForTimeSlot(
+        formattedDate,
+        startTime.trim()
+      );
+
+      console.log('Capacity check:', {
+        date: formattedDate,
+        time: startTime.trim(),
+        capacity: selectedTimeRange.capacity,
+        currentSessions: currentSessions.length,
+        hasExistingSession
+      });
+
+      // Check if the time slot has available capacity
+      if (currentSessions.length >= selectedTimeRange.capacity) {
+        setError('This time slot has reached its maximum capacity');
+        return;
+      }
 
       // Get the workout type name from mockWorkoutTypes
       const selectedWorkoutType = mockWorkoutTypes.find(type => type.id === parseInt(data.workoutType));
@@ -451,14 +607,16 @@ const InstructorSchedule = () => {
 
       const scheduleData = {
         memberId: selectedMember._id,
-        date: targetDate.toISOString().split('T')[0],
+        date: formattedDate,
         time: startTime.trim(),
         endTime: endTime.trim(),
-        workoutType: selectedWorkoutType.name, // Use the name instead of ID
+        workoutType: selectedWorkoutType.name,
         duration: data.duration,
-        notes: data.notes
+        notes: data.notes,
+        status: 'scheduled'
       };
 
+      console.log('Creating new schedule:', scheduleData);
       const response = await scheduleService.createSchedule(scheduleData);
       
       // Update the local state with the new schedule
@@ -1042,21 +1200,6 @@ const InstructorSchedule = () => {
     );
   };
 
-  const handleOpenScheduleDialog = () => {
-    if (!selectedMember) {
-      setError('Please select a member first');
-      return;
-    }
-    setScheduleData({
-      time: '',
-      workoutType: '',
-      duration: '',
-      notes: ''
-    });
-    setSelectedDate(new Date());
-    setOpenScheduleDialog(true);
-  };
-
   const handleRescheduleRequest = async () => {
     try {
       if (!selectedSession || !newDate || !newTime || !reason) {
@@ -1072,6 +1215,34 @@ const InstructorSchedule = () => {
 
       // Split the time range into start and end times
       const [startTime, endTime] = newTime.split('-');
+
+      // Check if the selected time slot has available capacity
+      const selectedDayAvailability = instructorAvailability?.availability.find(day => day.day === newDate);
+      if (!selectedDayAvailability) {
+        setError('Selected day is not available');
+        return;
+      }
+
+      const selectedTimeRange = selectedDayAvailability.timeRanges.find(
+        range => range.startTime === startTime.trim() && range.endTime === endTime.trim()
+      );
+
+      if (!selectedTimeRange) {
+        setError('Selected time range is not available');
+        return;
+      }
+
+      // Get current sessions for the selected time slot
+      const currentSessions = getCurrentSessionsForTimeSlot(
+        targetDate.toISOString().split('T')[0],
+        startTime.trim()
+      );
+
+      // Check if the time slot has available capacity
+      if (currentSessions.length >= selectedTimeRange.capacity) {
+        setError('This time slot has reached its maximum capacity');
+        return;
+      }
 
       const rescheduleData = {
         scheduleId: selectedSession.scheduleId,
@@ -1587,11 +1758,67 @@ const InstructorSchedule = () => {
                       }}
                     >
                       {instructorAvailability?.availability
-                        .find(day => day.day === watch('day'))?.timeRanges.map((range) => (
-                          <MenuItem key={`${range.startTime}-${range.endTime}`} value={`${range.startTime}-${range.endTime}`}>
-                            {`${range.startTime} - ${range.endTime}`}
-                          </MenuItem>
-                        ))}
+                        .find(day => day.day === watch('day'))?.timeRanges
+                        .filter(range => {
+                          // Get the target date based on the selected day
+                          const today = new Date();
+                          const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(watch('day'));
+                          const targetDate = new Date(today);
+                          targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
+                          const formattedDate = targetDate.toISOString().split('T')[0];
+
+                          // Check if member already has a session at this time
+                          if (hasMemberSessionAtTime(selectedMember._id, formattedDate, range.startTime)) {
+                            console.log('Member has existing session at:', {
+                              date: formattedDate,
+                              time: range.startTime
+                            });
+                            return false;
+                          }
+
+                          // Calculate current sessions for this time slot across all members
+                          const currentSessions = getCurrentSessionsForTimeSlot(formattedDate, range.startTime);
+                          const availableCapacity = range.capacity - currentSessions.length;
+                          
+                          // Log the capacity check
+                          console.log('Time range capacity check:', {
+                            date: formattedDate,
+                            range: `${range.startTime}-${range.endTime}`,
+                            capacity: range.capacity,
+                            currentSessions: currentSessions.length,
+                            availableCapacity,
+                            hasExistingSession: hasMemberSessionAtTime(selectedMember._id, formattedDate, range.startTime),
+                            sessions: currentSessions
+                          });
+                          
+                          // Only show time slots that have available capacity
+                          return availableCapacity > 0;
+                        })
+                        .map((range) => {
+                          // Get the target date based on the selected day
+                          const today = new Date();
+                          const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(watch('day'));
+                          const targetDate = new Date(today);
+                          targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
+                          const formattedDate = targetDate.toISOString().split('T')[0];
+
+                          // Calculate current sessions for this time slot across all members
+                          const currentSessions = getCurrentSessionsForTimeSlot(formattedDate, range.startTime);
+                          const availableCapacity = range.capacity - currentSessions.length;
+
+                          // Check if member already has a session at this time
+                          const hasExistingSession = hasMemberSessionAtTime(selectedMember._id, formattedDate, range.startTime);
+
+                          return (
+                            <MenuItem 
+                              key={`${range.startTime}-${range.endTime}`} 
+                              value={`${range.startTime}-${range.endTime}`}
+                              disabled={hasExistingSession || availableCapacity <= 0}
+                            >
+                              {`${range.startTime} - ${range.endTime} (${availableCapacity} slots available)`}
+                            </MenuItem>
+                          );
+                        }) || []}
                     </Select>
                     <FormHelperText>{errors.time?.message}</FormHelperText>
                   </FormControl>
@@ -1749,11 +1976,35 @@ const InstructorSchedule = () => {
                   }}
                 >
                   {instructorAvailability?.availability
-                    .find(day => day.day === newDate)?.timeRanges.map((range) => (
-                      <MenuItem key={`${range.startTime}-${range.endTime}`} value={`${range.startTime}-${range.endTime}`}>
-                        {`${range.startTime} - ${range.endTime}`}
-                      </MenuItem>
-                    )) || []}
+                    .find(day => day.day === newDate)?.timeRanges
+                    .filter(range => {
+                      // Calculate current sessions for this time slot across all members
+                      const currentDate = new Date().toISOString().split('T')[0];
+                      const currentSessions = getCurrentSessionsForTimeSlot(currentDate, range.startTime);
+                      const availableCapacity = range.capacity - currentSessions.length;
+                      console.log('Reschedule time range capacity check:', {
+                        range: `${range.startTime}-${range.endTime}`,
+                        capacity: range.capacity,
+                        currentSessions: currentSessions.length,
+                        availableCapacity
+                      });
+                      return availableCapacity > 0;
+                    })
+                    .map((range) => {
+                      // Calculate current sessions for this time slot across all members
+                      const currentDate = new Date().toISOString().split('T')[0];
+                      const currentSessions = getCurrentSessionsForTimeSlot(currentDate, range.startTime);
+                      const availableCapacity = range.capacity - currentSessions.length;
+
+                      return (
+                        <MenuItem 
+                          key={`${range.startTime}-${range.endTime}`} 
+                          value={`${range.startTime}-${range.endTime}`}
+                        >
+                          {`${range.startTime} - ${range.endTime} (${availableCapacity} slots available)`}
+                        </MenuItem>
+                      );
+                    }) || []}
                 </Select>
                 {!newDate && (
                   <FormHelperText>Please select a day first</FormHelperText>
