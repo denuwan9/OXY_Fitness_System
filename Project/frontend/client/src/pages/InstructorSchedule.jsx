@@ -70,6 +70,8 @@ import scheduleService from '../services/scheduleService';
 import ExerciseManagement from '../components/ExerciseManagement';
 import exerciseService from '../services/exerciseService';
 import MealPlanManager from '../components/schedule/MealPlanManager';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
@@ -227,6 +229,7 @@ const InstructorSchedule = () => {
   const [reason, setReason] = useState('');
   const [success, setSuccess] = useState('');
   const [showExerciseManagement, setShowExerciseManagement] = useState(false);
+  const [showError, setShowError] = useState(false);
 
   const {
     register,
@@ -275,6 +278,7 @@ const InstructorSchedule = () => {
     } catch (error) {
       console.error('Error fetching meal plan:', error);
       setError(`Failed to load meal plan: ${error.message || 'Unknown error'}`);
+      setShowError(true);
       throw error; // Re-throw to be handled by caller
     }
   };
@@ -337,6 +341,7 @@ const InstructorSchedule = () => {
     } catch (err) {
       setError('Failed to load assigned members. Please try again later.');
       console.error('Error loading assigned members:', err);
+      setShowError(true);
     } finally {
       setLoading(false);
     }
@@ -353,6 +358,7 @@ const InstructorSchedule = () => {
     } catch (error) {
       console.error('Error loading instructor availability:', error);
       setError('Failed to load instructor availability');
+      setShowError(true);
     }
   };
 
@@ -402,6 +408,7 @@ const InstructorSchedule = () => {
     } catch (error) {
       console.error('Error loading member schedules:', error);
       setError(`Failed to load member schedules: ${error.message || 'Unknown error'}`);
+      setShowError(true);
     } finally {
       setLoading(false);
     }
@@ -433,6 +440,7 @@ const InstructorSchedule = () => {
     } catch (error) {
       console.error('Error deleting schedule:', error);
       setError('Failed to delete schedule. Please try again.');
+      setShowError(true);
     }
   };
 
@@ -635,6 +643,7 @@ const InstructorSchedule = () => {
     } catch (error) {
       console.error('Error creating schedule:', error);
       setError(error.message || 'Failed to create schedule');
+      setShowError(true);
     } finally {
       setLoading(false);
     }
@@ -718,6 +727,7 @@ const InstructorSchedule = () => {
     } catch (error) {
       console.error('Error saving meal plan:', error);
       setError('Failed to save meal plan. Please try again.');
+      setShowError(true);
     }
   };
 
@@ -731,6 +741,7 @@ const InstructorSchedule = () => {
     } catch (error) {
       console.error('Error downloading report:', error);
       setError('Failed to download report. Please try again.');
+      setShowError(true);
     }
   };
 
@@ -1111,6 +1122,7 @@ const InstructorSchedule = () => {
       } catch (error) {
         console.error('Error saving meal plan:', error);
         setError(error.message || 'Failed to save meal plan. Please try again.');
+        setShowError(true);
       }
     };
 
@@ -1201,55 +1213,46 @@ const InstructorSchedule = () => {
   };
 
   const handleRescheduleRequest = async () => {
+    if (!newDate || !newTime || !reason) {
+      setError('Please fill in all fields');
+      setShowError(true);
+      return;
+    }
+
+    // Calculate the target date string
+    const today = new Date();
+    const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(newDate);
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
+    const formattedDate = targetDate.toISOString().split('T')[0];
+    const [startTime] = newTime.split('-');
+
+    // Find the selected time range and its capacity
+    const selectedDayAvailability = instructorAvailability?.availability.find(day => day.day === newDate);
+    const selectedTimeRange = selectedDayAvailability?.timeRanges.find(
+      range => range.startTime === startTime.trim()
+    );
+    if (!selectedTimeRange) {
+      setError('Selected time range is not available');
+      setShowError(true);
+      return;
+    }
+
+    // Get current sessions for this slot
+    const currentSessions = getCurrentSessionsForTimeSlot(formattedDate, startTime.trim());
+    if (currentSessions.length >= selectedTimeRange.capacity) {
+      setError('This time slot has reached its maximum capacity');
+      setShowError(true);
+      return;
+    }
+
     try {
-      if (!selectedSession || !newDate || !newTime || !reason) {
-        setError('Please fill in all fields');
-        return;
-      }
-
-      // Convert the selected day to a date
-      const today = new Date();
-      const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(newDate);
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
-
-      // Split the time range into start and end times
-      const [startTime, endTime] = newTime.split('-');
-
-      // Check if the selected time slot has available capacity
-      const selectedDayAvailability = instructorAvailability?.availability.find(day => day.day === newDate);
-      if (!selectedDayAvailability) {
-        setError('Selected day is not available');
-        return;
-      }
-
-      const selectedTimeRange = selectedDayAvailability.timeRanges.find(
-        range => range.startTime === startTime.trim() && range.endTime === endTime.trim()
-      );
-
-      if (!selectedTimeRange) {
-        setError('Selected time range is not available');
-        return;
-      }
-
-      // Get current sessions for the selected time slot
-      const currentSessions = getCurrentSessionsForTimeSlot(
-        targetDate.toISOString().split('T')[0],
-        startTime.trim()
-      );
-
-      // Check if the time slot has available capacity
-      if (currentSessions.length >= selectedTimeRange.capacity) {
-        setError('This time slot has reached its maximum capacity');
-        return;
-      }
-
       const rescheduleData = {
         scheduleId: selectedSession.scheduleId,
         sessionId: selectedSession._id,
         newDate: targetDate.toISOString().split('T')[0],
         newTime: startTime.trim(),
-        endTime: endTime.trim(),
+        endTime: selectedTimeRange.endTime,
         reason,
         status: 'pending_reschedule'
       };
@@ -1274,7 +1277,7 @@ const InstructorSchedule = () => {
                 rescheduled: true,
                 newDate: targetDate.toISOString().split('T')[0],
                 newTime: startTime.trim(),
-                endTime: endTime.trim(),
+                endTime: selectedTimeRange.endTime,
                 reason,
                 status: 'pending_reschedule'
               };
@@ -1295,6 +1298,7 @@ const InstructorSchedule = () => {
       setReason('');
     } catch (err) {
       setError('Failed to submit reschedule request');
+      setShowError(true);
     }
   };
 
@@ -1311,6 +1315,7 @@ const InstructorSchedule = () => {
       setShowExerciseManagement(false);
     } catch (error) {
       setError(error.response?.data?.message || 'Failed to assign exercises');
+      setShowError(true);
     }
   };
 
@@ -1637,6 +1642,28 @@ const InstructorSchedule = () => {
                             </Box>
                           ) : null;
                         }}
+                        tileClassName={({ date, view }) => {
+                          let classes = 'modern-cal-tile';
+                          if (date.toDateString() === new Date().toDateString() && view === 'month') {
+                            classes += ' modern-cal-today';
+                          }
+                          if (selectedDate && date.toDateString() === selectedDate.toDateString()) {
+                            classes += ' modern-cal-selected';
+                          }
+                          return classes;
+                        }}
+                        navigationLabel={({ date, label, locale, view }) => (
+                          <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: 1, color: 'primary.main', mb: 1 }}>
+                            {label}
+                          </Typography>
+                        )}
+                        nextLabel={<span className="modern-cal-arrow">›</span>}
+                        prevLabel={<span className="modern-cal-arrow">‹</span>}
+                        next2Label={null}
+                        prev2Label={null}
+                        formatShortWeekday={(locale, date) =>
+                          date.toLocaleDateString(locale, { weekday: 'short' }).toUpperCase()
+                        }
                       />
                       <Box sx={{ mt: 4 }}>
                         <Typography variant="h6" gutterBottom sx={{ 
@@ -2049,7 +2076,6 @@ const InstructorSchedule = () => {
               onClick={handleRescheduleRequest}
               variant="contained"
               color="primary"
-              disabled={!newDate || !newTime || !reason}
               sx={{ 
                 borderRadius: 2,
                 textTransform: 'none',
@@ -2064,6 +2090,22 @@ const InstructorSchedule = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <Snackbar
+          open={showError && !!error}
+          autoHideDuration={4000}
+          onClose={() => setShowError(false)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <MuiAlert 
+            onClose={() => setShowError(false)} 
+            severity="error" 
+            variant="filled"
+            sx={{ fontWeight: 600 }}
+          >
+            {error}
+          </MuiAlert>
+        </Snackbar>
       </Box>
     </Layout>
   );

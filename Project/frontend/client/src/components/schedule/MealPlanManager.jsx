@@ -374,12 +374,16 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
         type="number"
         value={value === 0 ? '' : value}
         onChange={e => {
-          const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+          const newValue = e.target.value === '' ? 0 : Math.max(0, Number(e.target.value) || 0);
           handleInputChange(day, field, newValue);
         }}
         size="small"
         fullWidth
         label={label}
+        inputProps={{
+          min: 0,
+          step: 0.1
+        }}
         InputProps={{
           endAdornment: <Typography variant="caption" color="text.secondary">g</Typography>
         }}
@@ -584,38 +588,21 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
           borderColor: 'divider'
         }}
       >
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Plan Name"
-              value={mealPlanData.name || ''}
-              onChange={e => setMealPlanData({ ...mealPlanData, name: e.target.value })}
-              fullWidth
-              variant="outlined"
-              InputProps={{
-                startAdornment: <Restaurant sx={{ mr: 1, color: 'primary.main' }} />
-              }}
-              sx={{ height: 56 }}
-              disabled={true} // Always disabled for existing plans
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <TextField
-              label="Description"
-              value={mealPlanData.description || ''}
-              onChange={e => setMealPlanData({ ...mealPlanData, description: e.target.value })}
-              fullWidth
-              variant="outlined"
-              multiline
-              rows={1}
-              InputProps={{
-                startAdornment: <Info sx={{ mr: 1, color: 'primary.main' }} />
-              }}
-              sx={{ height: 56 }}
-              disabled={true} // Always disabled for existing plans
-            />
-          </Grid>
-        </Grid>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          p: 2,
+          borderRadius: 2,
+          backgroundColor: 'primary.light',
+          color: 'primary.contrastText',
+          justifyContent: 'center'
+        }}>
+          <Restaurant sx={{ fontSize: 28 }} />
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            7-Day Meal Plan
+          </Typography>
+        </Box>
       </Card>
 
       {!isEditing ? (
