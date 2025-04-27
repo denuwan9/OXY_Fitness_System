@@ -32,10 +32,12 @@ import {
   Add,
   Delete,
   Schedule,
+  Download,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
 import scheduleService from '../../services/scheduleService';
+import pdfService from '../../services/pdfService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -168,6 +170,42 @@ const CoachSchedule = () => {
     setExercisePlan({ ...exercisePlan, exercises: newExercises });
   };
 
+  const handleDownloadSchedule = (schedule) => {
+    if (!schedule) return;
+    
+    try {
+      const doc = pdfService.generateSchedulePDF(schedule, schedule.user, user);
+      pdfService.downloadPDF(doc, `schedule_${schedule.user.name}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating schedule PDF:', error);
+      setError('Failed to generate schedule PDF');
+    }
+  };
+
+  const handleDownloadWorkoutPlan = (schedule) => {
+    if (!schedule || !schedule.exercisePlan) return;
+    
+    try {
+      const doc = pdfService.generateWorkoutPlanPDF(schedule.exercisePlan, schedule.user);
+      pdfService.downloadPDF(doc, `workout_plan_${schedule.user.name}_${schedule.exercisePlan.day}.pdf`);
+    } catch (error) {
+      console.error('Error generating workout plan PDF:', error);
+      setError('Failed to generate workout plan PDF');
+    }
+  };
+
+  const handleDownloadMealPlan = (schedule) => {
+    if (!schedule || !schedule.mealPlan) return;
+    
+    try {
+      const doc = pdfService.generateMealPlanPDF(schedule.mealPlan, schedule.user);
+      pdfService.downloadPDF(doc, `meal_plan_${schedule.user.name}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating meal plan PDF:', error);
+      setError('Failed to generate meal plan PDF');
+    }
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ py: 4 }}>
@@ -195,14 +233,10 @@ const CoachSchedule = () => {
             <Grid item xs={12} key={schedule._id}>
               <StyledCard>
                 <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h6">
-                      Member: {schedule.userId.name}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      {schedule.membershipType} Membership
-                    </Typography>
-                  </Box>
+                  <Typography variant="h6" gutterBottom>
+                    {schedule.user.name} - {schedule.membershipType} Membership
+                  </Typography>
+                  
                   <Grid container spacing={2}>
                     <Grid item xs={12} sm={4}>
                       <Button
@@ -245,6 +279,33 @@ const CoachSchedule = () => {
                       </Button>
                     </Grid>
                   </Grid>
+
+                  <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<Download />}
+                      onClick={() => handleDownloadSchedule(schedule)}
+                      size="small"
+                    >
+                      Download Schedule
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<Download />}
+                      onClick={() => handleDownloadWorkoutPlan(schedule)}
+                      size="small"
+                    >
+                      Download Workout Plan
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<Download />}
+                      onClick={() => handleDownloadMealPlan(schedule)}
+                      size="small"
+                    >
+                      Download Meal Plan
+                    </Button>
+                  </Box>
                 </CardContent>
               </StyledCard>
             </Grid>

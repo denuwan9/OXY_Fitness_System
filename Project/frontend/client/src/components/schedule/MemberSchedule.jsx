@@ -82,6 +82,7 @@ import exerciseService from '../../services/exerciseService';
 import coachAvailabilityService from '../../services/coachAvailabilityService';
 import Header from '../layout/Header';
 import Footer from '../layout/Footer';
+import pdfService from '../../services/pdfService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -638,6 +639,58 @@ const MemberSchedule = () => {
     localStorage.setItem(key, JSON.stringify(updated));
   };
 
+  const handleDownloadSchedule = () => {
+    if (!schedule || !coachInfo) {
+      setError('Schedule or coach information is missing');
+      return;
+    }
+    
+    try {
+      // Ensure schedule is an array and has at least one item
+      const scheduleData = Array.isArray(schedule) ? schedule[0] : schedule;
+      if (!scheduleData || !scheduleData.sessions) {
+        setError('No schedule data available');
+        return;
+      }
+
+      const doc = pdfService.generateSchedulePDF(scheduleData, user, coachInfo);
+      pdfService.downloadPDF(doc, `schedule_${user.name}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating schedule PDF:', error);
+      setError(error.message || 'Failed to generate schedule PDF');
+    }
+  };
+
+  const handleDownloadWorkoutPlan = () => {
+    if (!exercisePlans || !selectedSession) {
+      setError('Exercise plan or session information is missing');
+      return;
+    }
+    
+    try {
+      const doc = pdfService.generateWorkoutPlanPDF(exercisePlans, user);
+      pdfService.downloadPDF(doc, `workout_plan_${user.name}_${selectedSession.workoutType}.pdf`);
+    } catch (error) {
+      console.error('Error generating workout plan PDF:', error);
+      setError(error.message || 'Failed to generate workout plan PDF');
+    }
+  };
+
+  const handleDownloadMealPlan = () => {
+    if (!mealPlan) {
+      setError('Meal plan information is missing');
+      return;
+    }
+    
+    try {
+      const doc = pdfService.generateMealPlanPDF(mealPlan, user);
+      pdfService.downloadPDF(doc, `meal_plan_${user.name}_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating meal plan PDF:', error);
+      setError(error.message || 'Failed to generate meal plan PDF');
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -717,6 +770,16 @@ const MemberSchedule = () => {
                 {/* Calendar Tab */}
                 {activeTab === 0 && (
                   <Box sx={{ p: { xs: 1, md: 3 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<Download />}
+                        onClick={handleDownloadSchedule}
+                        sx={{ mr: 1 }}
+                      >
+                        Download Schedule
+                      </Button>
+                    </Box>
                     <Grid container spacing={3}>
                       <Grid item xs={12} md={8}>
                         <ModernCalendarWrapper>
@@ -879,7 +942,16 @@ const MemberSchedule = () => {
 
                 {/* Exercise Plan Tab */}
                 {activeTab === 1 && (
-                  <Box sx={{ p: 3 }}>
+                  <Box sx={{ p: { xs: 1, md: 3 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<Download />}
+                        onClick={handleDownloadWorkoutPlan}
+                      >
+                        Download Workout Plan
+                      </Button>
+                    </Box>
                     <GlassCard sx={{ mb: 3, p: 3, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap', background: 'rgba(33,150,243,0.07)' }}>
                       <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
@@ -1010,7 +1082,16 @@ const MemberSchedule = () => {
 
                 {/* Meal Plan Tab */}
                 {activeTab === 2 && (
-                  <Box sx={{ p: 3 }}>
+                  <Box sx={{ p: { xs: 1, md: 3 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                      <Button
+                        variant="contained"
+                        startIcon={<Download />}
+                        onClick={handleDownloadMealPlan}
+                      >
+                        Download Meal Plan
+                      </Button>
+                    </Box>
                     <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
                       Weekly Meal Plan
                     </Typography>
@@ -1134,7 +1215,7 @@ const MemberSchedule = () => {
 
                 {/* Sessions Tab */}
                 {activeTab === 3 && (
-                  <Box sx={{ p: 3 }}>
+                  <Box sx={{ p: { xs: 1, md: 3 } }}>
                     <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
                       All Sessions
                     </Typography>
