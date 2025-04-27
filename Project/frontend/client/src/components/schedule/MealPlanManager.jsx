@@ -345,7 +345,7 @@ const MealPlanManager = ({ mealPlans, onAddMealPlan, onUpdateMealPlan }) => {
           />
         )}
         renderTags={(value, getTagProps) =>
-          value.map((option, index) => (
+          value.filter(item => item && item.trim() !== '').map((option, index) => (
             <Chip
               label={option}
               {...getTagProps({ index })}
