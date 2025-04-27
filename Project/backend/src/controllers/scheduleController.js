@@ -459,26 +459,69 @@ exports.generatePDFReport = async (req, res) => {
     const coach = schedules[0].coachId;
     const mealPlan = schedules[0].mealPlan;
 
-    // --- Member Info ---
-    doc.font('Helvetica-Bold').fontSize(20).fillColor('#2196F3').text('Member Details');
-    doc.moveDown(0.7);
-    doc.font('Helvetica').fontSize(13).fillColor('#333')
-      .text(`Name: ${member.name}`)
-      .text(`Email: ${member.email}`)
-      .text(`Phone: ${member.phone || 'Not provided'}`)
-      .text(`Membership: ${member.membershipType}`)
-      .text(`Diet Type: ${member.dietType || 'Not specified'}`)
-      .text(`Allergies: ${member.allergies || 'None'}`)
-      .text(`Special Guidelines: ${member.specialGuidelines || 'None'}`);
-    doc.moveDown(1.2);
-    // --- Instructor Info ---
-    doc.font('Helvetica-Bold').fontSize(20).fillColor('#388E3C').text('Instructor Details');
-    doc.moveDown(0.7);
-    doc.font('Helvetica').fontSize(13).fillColor('#333')
-      .text(`Name: ${coach.name}`)
-      .text(`Email: ${coach.email}`)
-      .text(`Phone: ${coach.phone || 'Not provided'}`);
-    doc.moveDown(1.2);
+    // --- Title ---
+    doc.font('Helvetica-Bold').fontSize(24).fillColor('#2196F3').text('OXY FITNESS', { align: 'center' });
+    doc.moveDown(1);
+
+    // --- Member and Instructor Cards ---
+    const cardWidth = (doc.page.width - 100) / 2;
+    const cardHeight = 200;
+    const cardY = doc.y;
+    const cardX1 = 50;
+    const cardX2 = cardX1 + cardWidth + 20;
+
+    // Member Card
+    doc.save();
+    doc.rect(cardX1, cardY, cardWidth, cardHeight)
+      .fill('#E3F2FD')
+      .stroke('#2196F3');
+    
+    // Member Card Header
+    doc.fillColor('#2196F3')
+      .rect(cardX1, cardY, cardWidth, 30)
+      .fill();
+    doc.fillColor('#fff')
+      .font('Helvetica-Bold')
+      .fontSize(16)
+      .text('Member Details', cardX1 + 10, cardY + 8);
+    
+    // Member Card Content
+    doc.fillColor('#333')
+      .font('Helvetica')
+      .fontSize(12)
+      .text(`Name: ${member.name}`, cardX1 + 10, cardY + 45)
+      .text(`Email: ${member.email}`, cardX1 + 10, cardY + 65)
+      .text(`Membership: ${member.membershipType}`, cardX1 + 10, cardY + 85)
+      .text(`Diet Type: ${member.dietType || 'Not specified'}`, cardX1 + 10, cardY + 105)
+      .text(`Allergies: ${member.allergies || 'None'}`, cardX1 + 10, cardY + 125)
+      .text(`Special Guidelines: ${member.specialGuidelines || 'None'}`, cardX1 + 10, cardY + 145);
+    doc.restore();
+
+    // Instructor Card
+    doc.save();
+    doc.rect(cardX2, cardY, cardWidth, cardHeight)
+      .fill('#E8F5E9')
+      .stroke('#388E3C');
+    
+    // Instructor Card Header
+    doc.fillColor('#388E3C')
+      .rect(cardX2, cardY, cardWidth, 30)
+      .fill();
+    doc.fillColor('#fff')
+      .font('Helvetica-Bold')
+      .fontSize(16)
+      .text('Instructor Details', cardX2 + 10, cardY + 8);
+    
+    // Instructor Card Content
+    doc.fillColor('#333')
+      .font('Helvetica')
+      .fontSize(12)
+      .text(`Name: ${coach.name}`, cardX2 + 10, cardY + 45)
+      .text(`Email: ${coach.email}`, cardX2 + 10, cardY + 65);
+    doc.restore();
+
+    // Move to next section
+    doc.y = cardY + cardHeight + 30;
 
     // --- Helper functions for table headers ---
     function renderSessionHeader(y) {
@@ -495,6 +538,7 @@ exports.generatePDFReport = async (req, res) => {
       doc.restore();
       return y + 24;
     }
+
     function renderMealHeader(y) {
       doc.save();
       doc.font('Helvetica-Bold').fontSize(13);
@@ -508,6 +552,7 @@ exports.generatePDFReport = async (req, res) => {
       doc.restore();
       return y + 24;
     }
+
     function renderExerciseHeader(y) {
       doc.save();
       doc.font('Helvetica-Bold').fontSize(13);
@@ -555,6 +600,9 @@ exports.generatePDFReport = async (req, res) => {
       tableY += 20;
     }
     doc.y = tableY + 15;
+
+    // Add new page for meal plan and exercises
+    doc.addPage();
 
     // --- Meal Plan Table ---
     if (mealPlan) {

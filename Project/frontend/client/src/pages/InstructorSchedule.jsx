@@ -220,6 +220,8 @@ const InstructorSchedule = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [memberError, setMemberError] = useState(null);
+  const [scheduleError, setScheduleError] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [showMemberActions, setShowMemberActions] = useState(false);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -286,7 +288,7 @@ const InstructorSchedule = () => {
   const loadAssignedMembers = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setMemberError(null);
       const assignedMembers = await coachAvailabilityService.getAssignedMembers();
       const allMembers = await userService.getMembers();
       
@@ -342,9 +344,8 @@ const InstructorSchedule = () => {
       console.log('Final memberSchedulesData:', memberSchedulesData);
       setMemberSchedules(memberSchedulesData);
     } catch (err) {
-      setError('Failed to load assigned members. Please try again later.');
+      setMemberError('Failed to load assigned members. Please try again later.');
       console.error('Error loading assigned members:', err);
-      setShowError(true);
     } finally {
       setLoading(false);
     }
@@ -737,13 +738,13 @@ const InstructorSchedule = () => {
   const handleDownloadReport = async () => {
     try {
       if (!selectedMember) {
-        setError('Please select a member first');
+        setScheduleError('Please select a member first');
         return;
       }
       await scheduleService.downloadScheduleReport(selectedMember._id);
     } catch (error) {
       console.error('Error downloading report:', error);
-      setError('Failed to download report. Please try again.');
+      setScheduleError('Failed to download report. Please try again.');
       setShowError(true);
     }
   };
@@ -1394,20 +1395,7 @@ const InstructorSchedule = () => {
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 2 }}>
-                  <StyledButton
-                    variant="contained"
-                    color="primary"
-                    startIcon={<Download />}
-                    onClick={handleDownloadReport}
-                    sx={{
-                      background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                      '&:hover': {
-                        background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
-                      }
-                    }}
-                  >
-                    Download Report
-                  </StyledButton>
+                  {/* Removed download report button from here */}
                 </Box>
               </Box>
             </StyledPaper>
@@ -1442,9 +1430,9 @@ const InstructorSchedule = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
                   <CircularProgress size={40} sx={{ color: 'primary.main' }} />
                 </Box>
-              ) : error ? (
+              ) : memberError ? (
                 <Alert severity="error" sx={{ mt: 2, borderRadius: 2 }}>
-                  {error}
+                  {memberError}
                 </Alert>
               ) : members.length === 0 ? (
                 <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
@@ -1545,6 +1533,20 @@ const InstructorSchedule = () => {
                     }}
                   >
                     {showExerciseManagement ? 'Back to Schedule' : 'Manage Exercises'}
+                  </StyledButton>
+                  <StyledButton
+                    variant="contained"
+                    color="success"
+                    startIcon={<Download />}
+                    onClick={handleDownloadReport}
+                    sx={{
+                      background: 'linear-gradient(45deg, #4CAF50 30%, #8BC34A 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #388E3C 30%, #689F38 90%)',
+                      }
+                    }}
+                  >
+                    Download Report
                   </StyledButton>
                   <StyledButton
                     variant="outlined"
