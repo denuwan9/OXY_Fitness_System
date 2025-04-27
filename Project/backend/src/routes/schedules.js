@@ -142,64 +142,7 @@ router.post('/reschedule', auth, async (req, res) => {
 });
 
 // Generate report
-router.get('/report/:userId', auth, async (req, res) => {
-  try {
-    const schedules = await Schedule.find({ userId: req.params.userId })
-      .populate('coachId', 'name')
-      .populate('mealPlan')
-      .sort({ 'sessions.date': 1 });
-    
-    if (!schedules || schedules.length === 0) {
-      return res.status(404).json({ message: 'No schedules found for this user' });
-    }
-    
-    // Create PDF document
-    const doc = new PDFDocument();
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=fitness-report-${req.params.userId}.pdf`);
-    
-    doc.pipe(res);
-    
-    // Add content to PDF
-    doc.fontSize(20).text('Fitness Report', { align: 'center' });
-    doc.moveDown();
-    
-    // Add schedule information
-    schedules.forEach(schedule => {
-      doc.fontSize(16).text(`Schedule for ${new Date(schedule.sessions[0].date).toLocaleDateString()}`);
-      doc.moveDown();
-      
-      schedule.sessions.forEach(session => {
-        doc.fontSize(12).text(`Time: ${session.time}`);
-        doc.text(`Type: ${session.workoutType}`);
-        doc.text(`Duration: ${session.duration}`);
-        doc.moveDown();
-      });
-      
-      // Add meal plan if exists
-      if (schedule.mealPlan) {
-        doc.fontSize(14).text('Meal Plan');
-        schedule.mealPlan.meals.forEach(meal => {
-          doc.fontSize(12).text(`Day: ${meal.day}`);
-          doc.text(`Breakfast: ${meal.breakfast}`);
-          doc.text(`Lunch: ${meal.lunch}`);
-          doc.text(`Dinner: ${meal.dinner}`);
-          if (meal.snacks && meal.snacks.length > 0) {
-            doc.text(`Snacks: ${meal.snacks.join(', ')}`);
-          }
-          doc.moveDown();
-        });
-      }
-      
-      doc.moveDown();
-    });
-    
-    doc.end();
-  } catch (error) {
-    console.error('Generate report error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+router.get('/report/:userId', auth, scheduleController.generatePDFReport);
 
 // Get all change requests (Manager only)
 router.get('/change-requests', auth, checkRole(['manager']), async (req, res) => {

@@ -4,6 +4,7 @@ const ExercisePlan = require('../models/ExercisePlan');
 const User = require('../models/User');
 const PDFDocument = require('pdfkit');
 const RescheduleRequest = require('../models/RescheduleRequest');
+const Exercise = require('../models/Exercise');
 
 // Create a new schedule
 exports.createSchedule = async (req, res) => {
@@ -441,114 +442,189 @@ const getWorkoutTypeName = (type) => {
 // Generate PDF report
 exports.generatePDFReport = async (req, res) => {
   try {
-    // Fetch all schedules and sort them by the first session date
     const schedules = await Schedule.find({ userId: req.params.userId })
-      .populate('coachId', 'name email')
-      .populate('userId', 'name email')
+      .populate('coachId', 'name email phone')
+      .populate('userId', 'name email phone membershipType dietType allergies specialGuidelines')
       .populate('mealPlan')
-      .sort({ 'sessions.date': 1 }); // Sort by the first session date
-
-    if (!schedules || schedules.length === 0) {
+      .sort({ 'sessions.date': 1 });
+    if (!schedules.length) {
       return res.status(404).json({ message: 'No schedules found for this user' });
     }
-
-    const doc = new PDFDocument();
+    const ExercisePlan = require('../models/ExercisePlan');
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=schedule-report.pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=oxy-fitness-report.pdf');
     doc.pipe(res);
+    const member = schedules[0].userId;
+    const coach = schedules[0].coachId;
+    const mealPlan = schedules[0].mealPlan;
 
-    // Add header with logo and title
-    doc.fontSize(24)
-       .text('OXY FITNESS', { align: 'center' })
-       .moveDown();
-    
-    doc.fontSize(20)
-       .text('Schedule Report', { align: 'center' })
-       .moveDown();
+    // --- Member Info ---
+    doc.font('Helvetica-Bold').fontSize(20).fillColor('#2196F3').text('Member Details');
+    doc.moveDown(0.7);
+    doc.font('Helvetica').fontSize(13).fillColor('#333')
+      .text(`Name: ${member.name}`)
+      .text(`Email: ${member.email}`)
+      .text(`Phone: ${member.phone || 'Not provided'}`)
+      .text(`Membership: ${member.membershipType}`)
+      .text(`Diet Type: ${member.dietType || 'Not specified'}`)
+      .text(`Allergies: ${member.allergies || 'None'}`)
+      .text(`Special Guidelines: ${member.specialGuidelines || 'None'}`);
+    doc.moveDown(1.2);
+    // --- Instructor Info ---
+    doc.font('Helvetica-Bold').fontSize(20).fillColor('#388E3C').text('Instructor Details');
+    doc.moveDown(0.7);
+    doc.font('Helvetica').fontSize(13).fillColor('#333')
+      .text(`Name: ${coach.name}`)
+      .text(`Email: ${coach.email}`)
+      .text(`Phone: ${coach.phone || 'Not provided'}`);
+    doc.moveDown(1.2);
 
-    // Add member information
-    doc.fontSize(16)
-       .text('Member Information', { underline: true })
-       .moveDown();
-    
-    doc.fontSize(12)
-       .text(`Name: ${schedules[0].userId.name}`)
-       .text(`Email: ${schedules[0].userId.email}`)
-       .text(`Membership Type: ${schedules[0].membershipType}`)
-       .text(`Coach: ${schedules[0].coachId.name}`)
-       .moveDown();
+    // --- Helper functions for table headers ---
+    function renderSessionHeader(y) {
+      doc.save();
+      doc.font('Helvetica-Bold').fontSize(13);
+      doc.rect(50, y, doc.page.width - 100, 24).fill('#F57C00');
+      doc.fillColor('#fff');
+      doc.text('Date', 55, y + 6, { width: 70 });
+      doc.text('Time', 130, y + 6, { width: 60 });
+      doc.text('Workout', 200, y + 6, { width: 100 });
+      doc.text('Duration', 305, y + 6, { width: 60 });
+      doc.text('Status', 370, y + 6, { width: 60 });
+      doc.text('Notes', 435, y + 6, { width: 100 });
+      doc.restore();
+      return y + 24;
+    }
+    function renderMealHeader(y) {
+      doc.save();
+      doc.font('Helvetica-Bold').fontSize(13);
+      doc.rect(55, y, doc.page.width - 110, 24).fill('#8E24AA');
+      doc.fillColor('#fff');
+      doc.text('Day', 60, y + 6, { width: 60 });
+      doc.text('Breakfast', 125, y + 6, { width: 90 });
+      doc.text('Lunch', 220, y + 6, { width: 90 });
+      doc.text('Dinner', 315, y + 6, { width: 90 });
+      doc.text('Snacks', 410, y + 6, { width: 90 });
+      doc.restore();
+      return y + 24;
+    }
+    function renderExerciseHeader(y) {
+      doc.save();
+      doc.font('Helvetica-Bold').fontSize(13);
+      doc.rect(55, y, doc.page.width - 110, 24).fill('#00BCD4');
+      doc.fillColor('#fff');
+      doc.text('Name', 60, y + 6, { width: 80 });
+      doc.text('Category', 145, y + 6, { width: 70 });
+      doc.text('Description', 220, y + 6, { width: 120 });
+      doc.text('Sets', 345, y + 6, { width: 35 });
+      doc.text('Reps', 385, y + 6, { width: 35 });
+      doc.text('Difficulty', 425, y + 6, { width: 60 });
+      doc.restore();
+      return y + 24;
+    }
 
-    // Add summary section
-    doc.fontSize(16)
-       .text('Summary', { underline: true })
-       .moveDown();
-    
-    doc.fontSize(12)
-       .text(`Total Schedules: ${schedules.length}`)
-       .text(`Total Sessions: ${schedules.reduce((acc, schedule) => acc + schedule.sessions.length, 0)}`)
-       .text(`Schedule Types: ${[...new Set(schedules.map(s => s.scheduleType))].join(', ')}`)
-       .moveDown();
-
-    // Add all schedules
-    schedules.forEach((schedule, index) => {
-      // Add schedule section header with more details
-      doc.fontSize(16)
-         .text(`Schedule ${index + 1}`, { underline: true })
-         .moveDown();
-      
-      doc.fontSize(12)
-         .text(`Schedule Type: ${schedule.scheduleType}`)
-         .text(`Start Date: ${new Date(schedule.sessions[0].date).toLocaleDateString()}`)
-         .text(`End Date: ${new Date(schedule.sessions[schedule.sessions.length - 1].date).toLocaleDateString()}`)
-         .text(`Total Sessions: ${schedule.sessions.length}`)
-         .moveDown();
-
-      // Add schedule details
-      doc.fontSize(14)
-         .text('Training Sessions', { underline: true })
-         .moveDown();
-      
-      schedule.sessions.forEach(session => {
-        doc.fontSize(12)
-           .text(`Date: ${new Date(session.date).toLocaleDateString()}`)
-           .text(`Time: ${session.time}`)
-           .text(`Workout Type: ${getWorkoutTypeName(session.workoutType)}`)
-           .text(`Duration: ${session.duration}`)
-           .text(`Location: ${session.location || 'Main Gym'}`)
-           .text(`Status: ${session.status.charAt(0).toUpperCase() + session.status.slice(1)}`)
-           .text(`Notes: ${session.notes || 'No notes'}`)
-           .moveDown();
+    // --- Sessions Table ---
+    doc.font('Helvetica-Bold').fontSize(20).fillColor('#F57C00').text('Sessions');
+    let tableY = doc.y + 10; // Explicit gap after title
+    tableY = renderSessionHeader(tableY);
+    doc.font('Helvetica').fontSize(12);
+    let sessionCount = 0;
+    schedules.forEach(schedule => {
+      schedule.sessions.forEach((session, i) => {
+        doc.fillColor(sessionCount % 2 === 0 ? '#FFE0B2' : '#fff');
+        doc.rect(50, tableY, doc.page.width - 100, 20).fill();
+        doc.fillColor('#333');
+        doc.text(new Date(session.date).toLocaleDateString(), 55, tableY + 5, { width: 70 });
+        doc.text(session.time, 130, tableY + 5, { width: 60 });
+        doc.text(session.workoutType, 200, tableY + 5, { width: 100 });
+        doc.text(session.duration || '60 minutes', 305, tableY + 5, { width: 60 });
+        doc.text(session.status.charAt(0).toUpperCase() + session.status.slice(1), 370, tableY + 5, { width: 60 });
+        doc.text(session.notes || '-', 435, tableY + 5, { width: 100 });
+        tableY += 20;
+        sessionCount++;
+        if (tableY > doc.page.height - 100) {
+          doc.addPage();
+          tableY = 50;
+          tableY = renderSessionHeader(tableY);
+          doc.font('Helvetica').fontSize(12);
+        }
       });
+    });
+    if (sessionCount === 0) {
+      doc.font('Helvetica').fontSize(12).fillColor('#888').text('No sessions found.', 55, tableY + 5);
+      tableY += 20;
+    }
+    doc.y = tableY + 15;
 
-      // Add meal plan if available
-      if (schedule.mealPlan) {
-        doc.fontSize(14)
-           .text('Meal Plan', { underline: true })
-           .moveDown();
-
-        schedule.mealPlan.meals.forEach(meal => {
-          doc.fontSize(12)
-             .text(meal.day, { underline: true })
-             .moveDown()
-             .text(`Breakfast: ${meal.breakfast}`)
-             .text(`Lunch: ${meal.lunch}`)
-             .text(`Dinner: ${meal.dinner}`)
-             .text(`Snacks: ${meal.snacks.join(', ')}`)
-             .moveDown();
-        });
+    // --- Meal Plan Table ---
+    if (mealPlan) {
+      doc.font('Helvetica-Bold').fontSize(20).fillColor('#8E24AA').text('Meal Plan');
+      let mealY = doc.y + 10;
+      mealY = renderMealHeader(mealY);
+      doc.font('Helvetica').fontSize(11);
+      let mealCount = 0;
+      mealPlan.meals.forEach((meal, i) => {
+        doc.fillColor(i % 2 === 0 ? '#E1BEE7' : '#fff');
+        doc.rect(55, mealY, doc.page.width - 110, 18).fill();
+        doc.fillColor('#333');
+        doc.text(meal.day, 60, mealY + 4, { width: 60 });
+        doc.text(meal.breakfast, 125, mealY + 4, { width: 90 });
+        doc.text(meal.lunch, 220, mealY + 4, { width: 90 });
+        doc.text(meal.dinner, 315, mealY + 4, { width: 90 });
+        doc.text(meal.snacks?.join(', ') || '-', 410, mealY + 4, { width: 90 });
+        mealY += 18;
+        mealCount++;
+        if (mealY > doc.page.height - 100) {
+          doc.addPage();
+          mealY = 50;
+          mealY = renderMealHeader(mealY);
+          doc.font('Helvetica').fontSize(11);
+        }
+      });
+      if (mealCount === 0) {
+        doc.font('Helvetica').fontSize(11).fillColor('#888').text('No meal plan found.', 60, mealY + 4);
+        mealY += 18;
       }
+      doc.y = mealY + 15;
+    }
 
-      // Add a page break between schedules if not the last one
-      if (index < schedules.length - 1) {
+    // --- Exercises Table (gallery style) ---
+    const exercises = await Exercise.find({ 'assignedTo.memberId': member._id });
+    doc.font('Helvetica-Bold').fontSize(20).fillColor('#00BCD4').text('Exercises');
+    let exY = doc.y + 10;
+    exY = renderExerciseHeader(exY);
+    doc.font('Helvetica').fontSize(11);
+    let exCount = 0;
+    exercises.forEach((exercise, i) => {
+      doc.fillColor(i % 2 === 0 ? '#B2EBF2' : '#fff');
+      doc.rect(55, exY, doc.page.width - 110, 18).fill();
+      doc.fillColor('#333');
+      doc.text(exercise.name, 60, exY + 4, { width: 80 });
+      doc.text(exercise.category, 145, exY + 4, { width: 70 });
+      doc.text(exercise.description, 220, exY + 4, { width: 120 });
+      doc.text(exercise.sets?.toString() || '-', 345, exY + 4, { width: 35 });
+      doc.text(exercise.reps?.toString() || '-', 385, exY + 4, { width: 35 });
+      doc.text(exercise.difficulty || '-', 425, exY + 4, { width: 60 });
+      exY += 18;
+      exCount++;
+      if (exY > doc.page.height - 100) {
         doc.addPage();
+        exY = 50;
+        exY = renderExerciseHeader(exY);
+        doc.font('Helvetica').fontSize(11);
       }
     });
+    if (exCount === 0) {
+      doc.font('Helvetica').fontSize(11).fillColor('#888').text('No exercises found.', 60, exY + 4);
+      exY += 18;
+    }
+    doc.y = exY + 15;
 
-    // Add footer
-    doc.moveDown()
-       .fontSize(10)
-       .text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
-
+    // --- Footer ---
+    doc.moveDown(2);
+    doc.font('Helvetica').fontSize(10).fillColor('#999')
+      .text('Generated by OXY FITNESS SYSTEM', { align: 'center' })
+      .text('Confidential | For Personal Use Only', { align: 'center' });
     doc.end();
   } catch (error) {
     console.error('Error generating PDF report:', error);
