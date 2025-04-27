@@ -186,7 +186,21 @@ const scheduleService = {
     try {
       console.log('Fetching meal plan for schedule:', scheduleId);
       const response = await axiosInstance.get(`/schedules/meal-plan/${scheduleId}`);
-      return response.data;
+      console.log('Received meal plan data:', response.data);
+      
+      // Process the meal plan data
+      const mealPlan = response.data;
+      if (mealPlan && mealPlan.meals) {
+        mealPlan.meals = mealPlan.meals.map(meal => ({
+          ...meal,
+          breakfast: Array.isArray(meal.breakfast) ? meal.breakfast : meal.breakfast?.split(',').map(item => item.trim()) || [],
+          lunch: Array.isArray(meal.lunch) ? meal.lunch : meal.lunch?.split(',').map(item => item.trim()) || [],
+          dinner: Array.isArray(meal.dinner) ? meal.dinner : meal.dinner?.split(',').map(item => item.trim()) || [],
+          snacks: Array.isArray(meal.snacks) ? meal.snacks : meal.snacks?.split(',').map(item => item.trim()) || []
+        }));
+      }
+      
+      return mealPlan;
     } catch (error) {
       console.error('Error fetching meal plan:', error);
       throw error;

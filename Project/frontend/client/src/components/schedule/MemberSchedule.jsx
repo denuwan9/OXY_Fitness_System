@@ -22,6 +22,16 @@ import {
   Alert,
   CircularProgress,
   Chip,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Badge,
+  CardMedia,
 } from '@mui/material';
 import {
   CalendarToday,
@@ -33,10 +43,16 @@ import {
   Star,
   Email,
   Phone,
+  Event,
+  AccessTime,
+  CheckCircle,
+  Warning,
+  Info,
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../contexts/AuthContext';
 import scheduleService from '../../services/scheduleService';
+import exerciseService from '../../services/exerciseService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -74,6 +90,22 @@ const StyledCalendar = styled(Calendar)(({ theme }) => ({
   },
 }));
 
+const ExerciseCard = styled(Card)(({ theme }) => ({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  transition: 'transform 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-4px)',
+  },
+}));
+
+const ExerciseImage = styled(CardMedia)(({ theme }) => ({
+  height: 200,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+}));
+
 const MemberSchedule = () => {
   const { user } = useAuth();
   const [schedule, setSchedule] = useState(null);
@@ -87,6 +119,10 @@ const MemberSchedule = () => {
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
   const [reason, setReason] = useState('');
+  const [activeTab, setActiveTab] = useState(0);
+  const [exercisePlans, setExercisePlans] = useState({});
+  const [rescheduledSessions, setRescheduledSessions] = useState([]);
+  const [mealPlan, setMealPlan] = useState(null);
 
   useEffect(() => {
     // Set the selected date to current date when component mounts
@@ -117,11 +153,103 @@ const MemberSchedule = () => {
           return;
         }
 
-        setSchedule(scheduleData);
+        // Process the schedule data
+        const processedSchedule = scheduleData.map(schedule => {
+          console.log('Processing schedule:', schedule);
+          return {
+            ...schedule,
+            sessions: schedule.sessions.map(session => ({
+              ...session,
+              date: new Date(session.date),
+              rescheduled: session.status === 'pending_reschedule' || session.status === 'rescheduled'
+            }))
+          };
+        });
+
+        console.log('Processed schedule data:', processedSchedule);
+        setSchedule(processedSchedule);
+
+        // Fetch exercises assigned to the member
+        try {
+          console.log('Fetching exercises for member:', user.id);
+          const exercises = await exerciseService.getMemberExercises(user.id);
+          console.log('Received exercises:', exercises);
+          
+          if (!exercises || !Array.isArray(exercises)) {
+            console.error('Invalid exercises data received:', exercises);
+            return;
+          }
+
+          console.log('Number of exercises received:', exercises.length);
+          
+          // Update the schedule with the fetched exercises
+          const updatedSchedule = processedSchedule.map(schedule => {
+            // Get exercises for this specific schedule
+            const scheduleExercises = exercises.filter(exercise => {
+              // Check if the exercise is assigned to this schedule
+              const isAssigned = exercise.assignedTo?.some(assignment => 
+                assignment.memberId === user.id && 
+                (!assignment.scheduleId || assignment.scheduleId === schedule._id)
+              );
+              return isAssigned;
+            });
+
+            // If no exercises are specifically assigned to this schedule,
+            // use the first schedule's exercises as default
+            if (scheduleExercises.length === 0 && processedSchedule[0] === schedule) {
+              return {
+                ...schedule,
+                exercisePlan: {
+                  exercises: exercises
+                }
+              };
+            }
+
+            return {
+              ...schedule,
+              exercisePlan: {
+                exercises: scheduleExercises
+              }
+            };
+          });
+          
+          console.log('Updated schedule with exercises:', updatedSchedule);
+          setSchedule(updatedSchedule);
+        } catch (exerciseError) {
+          console.error('Error fetching exercises:', exerciseError);
+          console.error('Error details:', {
+            message: exerciseError.message,
+            response: exerciseError.response?.data,
+            status: exerciseError.response?.status
+          });
+        }
+
+        // Fetch meal plan data for all schedules that have mealPlan reference
+        const mealPlanPromises = processedSchedule
+          .filter(schedule => schedule.mealPlan)
+          .map(async schedule => {
+            try {
+              console.log('Fetching meal plan for schedule:', schedule._id);
+              const mealPlanData = await scheduleService.getMealPlan(schedule._id);
+              console.log('Received meal plan data for schedule:', schedule._id, mealPlanData);
+              return { scheduleId: schedule._id, mealPlan: mealPlanData };
+            } catch (mealPlanError) {
+              console.error('Error fetching meal plan for schedule:', schedule._id, mealPlanError);
+              return null;
+            }
+          });
+
+        const mealPlanResults = await Promise.all(mealPlanPromises);
+        const validMealPlans = mealPlanResults.filter(result => result !== null);
+        
+        if (validMealPlans.length > 0) {
+          // Use the most recent meal plan (assuming the first one in the array is the most recent)
+          setMealPlan(validMealPlans[0].mealPlan);
+        }
 
         // Handle coach data
-        if (scheduleData.length > 0) {
-          const firstSchedule = scheduleData[0];
+        if (processedSchedule.length > 0) {
+          const firstSchedule = processedSchedule[0];
           if (firstSchedule.coachId && typeof firstSchedule.coachId === 'object') {
             console.log('Coach data from schedule:', firstSchedule.coachId);
             setCoachInfo(firstSchedule.coachId);
@@ -139,6 +267,15 @@ const MemberSchedule = () => {
             console.log('No coach assigned to the schedule');
           }
         }
+
+        // Process rescheduled sessions
+        const rescheduled = processedSchedule.reduce((acc, schedule) => {
+          const rescheduledSessions = schedule.sessions.filter(
+            session => session.status === 'pending_reschedule' || session.status === 'rescheduled'
+          );
+          return [...acc, ...rescheduledSessions];
+        }, []);
+        setRescheduledSessions(rescheduled);
 
         setLoading(false);
       } catch (error) {
@@ -233,6 +370,36 @@ const MemberSchedule = () => {
     return sessions;
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'scheduled':
+        return 'success';
+      case 'rescheduled':
+        return 'warning';
+      case 'completed':
+        return 'info';
+      case 'cancelled':
+        return 'error';
+      default:
+        return 'default';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'scheduled':
+        return <CheckCircle />;
+      case 'rescheduled':
+        return <Warning />;
+      case 'completed':
+        return <Info />;
+      case 'cancelled':
+        return <Cancel />;
+      default:
+        return <Info />;
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -290,12 +457,26 @@ const MemberSchedule = () => {
           </StyledPaper>
         </Grid>
 
-        {/* Calendar Section */}
-        <Grid item xs={12} md={8}>
+        {/* Tabs Section */}
+        <Grid item xs={12}>
           <StyledPaper>
-            <Typography variant="h6" gutterBottom>
-              Calendar View
-            </Typography>
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              variant="fullWidth"
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab icon={<CalendarToday />} label="Calendar" />
+              <Tab icon={<FitnessCenter />} label="Exercise Plan" />
+              <Tab icon={<Restaurant />} label="Meal Plan" />
+              <Tab icon={<Schedule />} label="Sessions" />
+            </Tabs>
+
+            {/* Calendar Tab */}
+            {activeTab === 0 && (
+              <Box sx={{ p: 3 }}>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={8}>
             <StyledCalendar
               onChange={setSelectedDate}
               value={selectedDate}
@@ -325,57 +506,10 @@ const MemberSchedule = () => {
                 ) : null;
               }}
             />
-            
-            {/* Selected Date Sessions */}
-            {selectedDateSessions.length > 0 && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Sessions for {selectedDate.toLocaleDateString()}
-                </Typography>
-                {selectedDateSessions.map((session) => (
-                  <StyledCard key={session._id}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Box>
-                          <Typography variant="h6" color="primary">
-                            {session.workoutType}
-                          </Typography>
-                          <Typography variant="body1">
-                            Time: {session.time}
-                          </Typography>
-                          <Typography variant="body1">
-                            Duration: {session.duration} minutes
-                          </Typography>
-                          {session.notes && (
-                            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                              Notes: {session.notes}
-                            </Typography>
-                          )}
-                        </Box>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => {
-                            setSelectedSession(session);
-                            setOpenRescheduleDialog(true);
-                          }}
-                          sx={{ ml: 2 }}
-                        >
-                          Request Reschedule
-                        </Button>
-                      </Box>
-                    </CardContent>
-                  </StyledCard>
-                ))}
-              </Box>
-            )}
-          </StyledPaper>
         </Grid>
-
-        {/* Coach Information Section */}
+                  <Grid item xs={12} md={4}>
         {coachInfo && (
-          <Grid item xs={12} md={4}>
-            <StyledPaper>
+                      <Box>
               <Typography variant="h6" gutterBottom>
                 My Coach
               </Typography>
@@ -404,244 +538,252 @@ const MemberSchedule = () => {
                   </Box>
                 )}
               </Box>
-            </StyledPaper>
-          </Grid>
-        )}
-
-        {/* Meal Plan Section */}
-        {schedule?.[0]?.mealPlan && (
-          <Grid item xs={12}>
-            <StyledPaper>
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                mb: 3,
-                borderBottom: '2px solid',
-                borderColor: 'secondary.light',
-                pb: 2
-              }}>
-                <Typography variant="h5" sx={{ 
-                  fontWeight: 600,
-                  background: 'linear-gradient(45deg, #FF6B6B 30%, #FF8E53 90%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                }}>
-                  <Restaurant sx={{ fontSize: 28, color: '#FF6B6B' }} />
-                  My Meal Plan
-                </Typography>
-              </Box>
-              <Grid container spacing={3}>
-                {schedule[0].mealPlan.meals.map((meal, index) => (
-                  <Grid item xs={12} md={6} key={index}>
-                    <Card sx={{
-                      borderRadius: 4,
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                      overflow: 'visible',
-                      position: 'relative',
-                      transition: 'all 0.3s ease-in-out',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
-                      }
-                    }}>
-                      <Box sx={{
-                        position: 'absolute',
-                        top: -15,
-                        left: 20,
-                        bgcolor: 'secondary.main',
-                        color: 'white',
-                        px: 3,
-                        py: 1,
-                        borderRadius: '20px',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        zIndex: 1
-                      }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          {meal.day}
-                        </Typography>
                       </Box>
-                      <CardContent sx={{ pt: 4, pb: 3 }}>
-                        <Grid container spacing={2}>
-                          <Grid item xs={12}>
-                            <Box sx={{
-                              p: 2.5,
-                              bgcolor: 'background.paper',
-                              borderRadius: 3,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              transition: 'all 0.3s ease-in-out',
-                              '&:hover': {
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                borderColor: 'primary.main',
-                              }
-                            }}>
-                              <Box sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                mb: 2,
-                                pb: 1,
-                                borderBottom: '2px solid',
-                                borderColor: 'primary.light'
-                              }}>
-                                <Restaurant sx={{ color: 'primary.main' }} />
-                                <Typography variant="h6" color="primary.main" sx={{ fontWeight: 600 }}>
-                                  Breakfast
-                                </Typography>
-                              </Box>
-                              <Typography variant="body1" sx={{
-                                color: 'text.primary',
-                                fontSize: '1rem',
-                                lineHeight: 1.6
-                              }}>
-                                {meal.breakfast || 'No breakfast planned'}
+                    )}
+                  </Grid>
+          </Grid>
+              </Box>
+            )}
+
+            {/* Exercise Plan Tab */}
+            {activeTab === 1 && (
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Exercise Plan
+                </Typography>
+                <Grid container spacing={3}>
+                  {schedule?.[0]?.exercisePlan?.exercises?.map((exercise, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                      <ExerciseCard>
+                        <ExerciseImage
+                          image={exercise.imageUrl}
+                          title={exercise.name}
+                        />
+                        <CardContent>
+                          <Typography variant="h6" gutterBottom>
+                            {exercise.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" paragraph>
+                            {exercise.description}
+                          </Typography>
+                          <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Workout Details:
+                            </Typography>
+                            <Typography variant="body2">
+                              Sets: {exercise.sets}
+                            </Typography>
+                            <Typography variant="body2">
+                              Reps: {exercise.reps}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Chip
+                              label={exercise.difficulty}
+                              color={exercise.difficulty === 'beginner' ? 'success' : 'warning'}
+                              size="small"
+                            />
+                            <Chip
+                              label={exercise.category}
+                              color="primary"
+                              size="small"
+                            />
+                          </Box>
+                        </CardContent>
+                      </ExerciseCard>
+                    </Grid>
+                  ))}
+                  {(!schedule?.[0]?.exercisePlan?.exercises?.length) && (
+                    <Grid item xs={12}>
+                      <Alert severity="info" sx={{ mt: 2 }}>
+                        No exercise plan available. Please contact your coach to set up an exercise plan.
+                      </Alert>
+                    </Grid>
+                  )}
+                </Grid>
+              </Box>
+            )}
+
+            {/* Meal Plan Tab */}
+            {activeTab === 2 && (
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  Weekly Meal Plan
+                </Typography>
+                {mealPlan ? (
+                  <TableContainer component={Paper} sx={{ mt: 2 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Day</TableCell>
+                          <TableCell>Breakfast</TableCell>
+                          <TableCell>Lunch</TableCell>
+                          <TableCell>Dinner</TableCell>
+                          <TableCell>Snacks</TableCell>
+                          <TableCell>Nutritional Info</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {mealPlan.meals.map((meal) => (
+                          <TableRow key={meal.day}>
+                            <TableCell>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                                {meal.day}
                               </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid item xs={12}>
-                            <Box sx={{
-                              p: 2.5,
-                              bgcolor: 'background.paper',
-                              borderRadius: 3,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              transition: 'all 0.3s ease-in-out',
-                              '&:hover': {
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                borderColor: 'secondary.main',
-                              }
-                            }}>
-                              <Box sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                mb: 2,
-                                pb: 1,
-                                borderBottom: '2px solid',
-                                borderColor: 'secondary.light'
-                              }}>
-                                <Restaurant sx={{ color: 'secondary.main' }} />
-                                <Typography variant="h6" color="secondary.main" sx={{ fontWeight: 600 }}>
-                                  Lunch
-                                </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {Array.isArray(meal.breakfast) ? (
+                                  meal.breakfast.map((item, idx) => (
+                                    <Chip
+                                      key={idx}
+                                      label={item}
+                                      size="small"
+                                      sx={{ bgcolor: 'primary.light', color: 'white' }}
+                                    />
+                                  ))
+                                ) : (
+                                  <Typography variant="body2">{meal.breakfast || 'Not specified'}</Typography>
+                                )}
                               </Box>
-                              <Typography variant="body1" sx={{
-                                color: 'text.primary',
-                                fontSize: '1rem',
-                                lineHeight: 1.6
-                              }}>
-                                {meal.lunch || 'No lunch planned'}
-                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {Array.isArray(meal.lunch) ? (
+                                  meal.lunch.map((item, idx) => (
+                                    <Chip
+                                      key={idx}
+                                      label={item}
+                                      size="small"
+                                      sx={{ bgcolor: 'secondary.light', color: 'white' }}
+                                    />
+                                  ))
+                                ) : (
+                                  <Typography variant="body2">{meal.lunch || 'Not specified'}</Typography>
+                                )}
                             </Box>
-                          </Grid>
-                          <Grid item xs={12}>
-                            <Box sx={{
-                              p: 2.5,
-                              bgcolor: 'background.paper',
-                              borderRadius: 3,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              transition: 'all 0.3s ease-in-out',
-                              '&:hover': {
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                borderColor: 'error.main',
-                              }
-                            }}>
-                              <Box sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                mb: 2,
-                                pb: 1,
-                                borderBottom: '2px solid',
-                                borderColor: 'error.light'
-                              }}>
-                                <Restaurant sx={{ color: 'error.main' }} />
-                                <Typography variant="h6" color="error.main" sx={{ fontWeight: 600 }}>
-                                  Dinner
-                                </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {Array.isArray(meal.dinner) ? (
+                                  meal.dinner.map((item, idx) => (
+                                    <Chip
+                                      key={idx}
+                                      label={item}
+                                      size="small"
+                                      sx={{ bgcolor: 'error.light', color: 'white' }}
+                                    />
+                                  ))
+                                ) : (
+                                  <Typography variant="body2">{meal.dinner || 'Not specified'}</Typography>
+                                )}
                               </Box>
-                              <Typography variant="body1" sx={{
-                                color: 'text.primary',
-                                fontSize: '1rem',
-                                lineHeight: 1.6
-                              }}>
-                                {meal.dinner || 'No dinner planned'}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          <Grid item xs={12}>
-                            <Box sx={{
-                              p: 2.5,
-                              bgcolor: 'background.paper',
-                              borderRadius: 3,
-                              border: '1px solid',
-                              borderColor: 'divider',
-                              transition: 'all 0.3s ease-in-out',
-                              '&:hover': {
-                                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                                borderColor: 'info.main',
-                              }
-                            }}>
-                              <Box sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                mb: 2,
-                                pb: 1,
-                                borderBottom: '2px solid',
-                                borderColor: 'info.light'
-                              }}>
-                                <Restaurant sx={{ color: 'info.main' }} />
-                                <Typography variant="h6" color="info.main" sx={{ fontWeight: 600 }}>
-                                  Snacks
-                                </Typography>
-                              </Box>
-                              {Array.isArray(meal.snacks) && meal.snacks.length > 0 ? (
+                            </TableCell>
+                            <TableCell>
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                  {meal.snacks.map((snack, idx) => (
+                                {Array.isArray(meal.snacks) ? (
+                                  meal.snacks.map((snack, idx) => (
                                     <Chip
                                       key={idx}
                                       label={snack}
-                                      sx={{
-                                        bgcolor: 'info.light',
-                                        color: 'info.dark',
-                                        fontWeight: 500,
-                                        borderRadius: '16px',
-                                        '&:hover': {
-                                          bgcolor: 'info.main',
-                                          color: 'white',
-                                          transform: 'translateY(-2px)',
-                                        },
-                                        transition: 'all 0.3s ease-in-out',
-                                      }}
+                                      size="small"
+                                      sx={{ bgcolor: 'info.light', color: 'white' }}
                                     />
-                                  ))}
+                                  ))
+                                ) : (
+                                  <Typography variant="body2">{meal.snacks || 'No snacks'}</Typography>
+                                )}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              {meal.nutritionalInfo && (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  <Typography variant="body2">
+                                    Calories: {meal.nutritionalInfo.calories || 0}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    Protein: {meal.nutritionalInfo.protein || 0}g
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    Carbs: {meal.nutritionalInfo.carbs || 0}g
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    Fats: {meal.nutritionalInfo.fats || 0}g
+                                  </Typography>
                                 </Box>
-                              ) : (
-                                <Typography variant="body1" sx={{
-                                  color: 'text.primary',
-                                  fontSize: '1rem',
-                                  lineHeight: 1.6
-                                }}>
-                                  No snacks planned
-                                </Typography>
                               )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Alert severity="info" sx={{ mt: 2 }}>
+                    No meal plan available. Please contact your coach to set up a meal plan.
+                  </Alert>
+                )}
+              </Box>
+            )}
+
+            {/* Sessions Tab */}
+            {activeTab === 3 && (
+              <Box sx={{ p: 3 }}>
+                <Typography variant="h6" gutterBottom>
+                  All Sessions
+                                </Typography>
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Time</TableCell>
+                        <TableCell>Workout Type</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {schedule?.map((scheduleItem) =>
+                        scheduleItem.sessions?.map((session) => (
+                          <TableRow key={session._id}>
+                            <TableCell>
+                              {new Date(session.date).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>{session.time}</TableCell>
+                            <TableCell>{session.workoutType}</TableCell>
+                            <TableCell>
+                              <Chip
+                                icon={getStatusIcon(session.status)}
+                                label={session.status}
+                                color={getStatusColor(session.status)}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {session.status === 'scheduled' && (
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => {
+                                    setSelectedSession(session);
+                                    setOpenRescheduleDialog(true);
+                                  }}
+                                >
+                                  Request Reschedule
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
                             </Box>
-                          </Grid>
-                        </Grid>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
+            )}
             </StyledPaper>
           </Grid>
-        )}
       </Grid>
 
       {/* Reschedule Dialog */}

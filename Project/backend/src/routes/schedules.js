@@ -61,13 +61,16 @@ router.get('/exercise-plan/:scheduleId/:day', auth, checkRole(['coach', 'trainer
 router.post('/meal-plan', auth, checkRole(['coach', 'trainer']), scheduleController.assignMealPlan);
 router.get('/meal-plan/:scheduleId', auth, async (req, res) => {
   try {
+    console.log('Getting meal plan for schedule:', req.params.scheduleId);
     const schedule = await Schedule.findById(req.params.scheduleId)
       .populate('mealPlan');
     
     if (!schedule || !schedule.mealPlan) {
+      console.log('No meal plan found for schedule:', req.params.scheduleId);
       return res.status(404).json({ message: 'No meal plan found for this schedule' });
     }
     
+    console.log('Found meal plan:', schedule.mealPlan);
     res.json(schedule.mealPlan);
   } catch (error) {
     console.error('Get meal plan error:', error);
