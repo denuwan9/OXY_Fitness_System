@@ -284,7 +284,7 @@ const ModernDialogPaper = (props) => (
   />
 );
 
-const getExerciseProgressKey = (userId, dateStr) => `exerciseProgress_${userId}_${dateStr}`;
+const getExerciseProgressKey = (userId, sessionId) => `exerciseProgress_${userId}_${sessionId}`;
 
 const MemberSchedule = () => {
   const { user } = useAuth();
@@ -312,13 +312,12 @@ const MemberSchedule = () => {
   }, []);
 
   useEffect(() => {
-    if (user?.id) {
-      const dateStr = selectedDate.toISOString().split('T')[0];
-      const key = getExerciseProgressKey(user.id, dateStr);
+    if (user?.id && selectedSession) {
+      const key = getExerciseProgressKey(user.id, selectedSession._id);
       const stored = localStorage.getItem(key);
       setExerciseProgress(stored ? JSON.parse(stored) : {});
     }
-  }, [user, selectedDate]);
+  }, [user, selectedSession]);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -372,40 +371,7 @@ const MemberSchedule = () => {
           }
 
           console.log('Number of exercises received:', exercises.length);
-          
-          // Update the schedule with the fetched exercises
-          const updatedSchedule = processedSchedule.map(schedule => {
-            // Get exercises for this specific schedule
-            const scheduleExercises = exercises.filter(exercise => {
-              // Check if the exercise is assigned to this schedule
-              const isAssigned = exercise.assignedTo?.some(assignment => 
-                assignment.memberId === user.id && 
-                (!assignment.scheduleId || assignment.scheduleId === schedule._id)
-              );
-              return isAssigned;
-            });
-
-            // If no exercises are specifically assigned to this schedule,
-            // use the first schedule's exercises as default
-            if (scheduleExercises.length === 0 && processedSchedule[0] === schedule) {
-              return {
-                ...schedule,
-                exercisePlan: {
-                  exercises: exercises
-                }
-              };
-            }
-
-            return {
-              ...schedule,
-              exercisePlan: {
-                exercises: scheduleExercises
-              }
-            };
-          });
-          
-          console.log('Updated schedule with exercises:', updatedSchedule);
-          setSchedule(updatedSchedule);
+          setExercisePlans({ exercises });
         } catch (exerciseError) {
           console.error('Error fetching exercises:', exerciseError);
           console.error('Error details:', {
@@ -565,6 +531,18 @@ const MemberSchedule = () => {
     return sessions;
   };
 
+  const handleDateClick = (date) => {
+    setSelectedDate(date);
+    const sessionsForDate = getSessionsForDate(date);
+    if (sessionsForDate.length > 0) {
+      setSelectedSession(sessionsForDate[0]);
+      // Switch to Exercise Plan tab if there are sessions
+      setActiveTab(1);
+    } else {
+      setSelectedSession(null);
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'scheduled':
@@ -620,9 +598,31 @@ const MemberSchedule = () => {
     }
   };
 
+  const isExerciseAvailable = (exercise) => {
+    if (!selectedSession) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sessionDate = new Date(selectedSession.date);
+    sessionDate.setHours(0, 0, 0, 0);
+    return sessionDate.getTime() === today.getTime();
+  };
+
   const handleExerciseCheck = (exerciseId, checked) => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    const key = getExerciseProgressKey(user.id, dateStr);
+    if (!selectedSession) return;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sessionDate = new Date(selectedSession.date);
+    sessionDate.setHours(0, 0, 0, 0);
+
+    // Allow unchecking even for past sessions
+    const isUnchecking = !checked && exerciseProgress[exerciseId];
+    if (!isUnchecking && sessionDate.getTime() !== today.getTime()) {
+      setError('You can only complete exercises for today\'s sessions');
+      return;
+    }
+
+    const key = getExerciseProgressKey(user.id, selectedSession._id);
     const updated = { ...exerciseProgress, [exerciseId]: checked };
     setExerciseProgress(updated);
     localStorage.setItem(key, JSON.stringify(updated));
@@ -711,7 +711,7 @@ const MemberSchedule = () => {
             <Grid item xs={12} md={8}>
                         <ModernCalendarWrapper>
               <StyledCalendar
-                onChange={setSelectedDate}
+                onChange={handleDateClick}
                 value={selectedDate}
                 defaultView="month"
                 minDate={new Date()}
@@ -753,10 +753,30 @@ const MemberSchedule = () => {
                             <Paper elevation={2} sx={{ p: 2, borderRadius: 3 }}>
                               <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, color: 'primary.main' }}>
                                 Sessions on {selectedDate.toLocaleDateString()}
-                    </Typography>
+                              </Typography>
                               <List>
                                 {getSessionsForDate(selectedDate).map((session, idx) => (
-                                  <ListItem key={session._id || idx} alignItems="flex-start" sx={{ mb: 1, borderRadius: 2, boxShadow: 1, background: '#f5f7fa' }}>
+                                  <ListItem 
+                                    key={session._id || idx} 
+                                    alignItems="flex-start" 
+                                    button
+                                    onClick={() => {
+                                      setSelectedSession(session);
+                                      setActiveTab(1); // Switch to Exercise Plan tab
+                                    }}
+                                    sx={{ 
+                                      mb: 1, 
+                                      borderRadius: 2, 
+                                      boxShadow: 1, 
+                                      background: selectedSession?._id === session._id ? 'rgba(33,150,243,0.1)' : '#f5f7fa',
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        background: 'rgba(33,150,243,0.15)',
+                                        transform: 'translateY(-2px)',
+                                        transition: 'all 0.2s ease-in-out'
+                                      }
+                                    }}
+                                  >
                                     <ListItemText
                                       primary={
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -774,9 +794,30 @@ const MemberSchedule = () => {
                                           <Typography variant="body2" color="text.secondary">
                                             Status: <Chip label={session.status} color={getStatusColor(session.status)} size="small" />
                         </Typography>
-                                      </Box>
-                                    }
-                                  />
+                                        </Box>
+                                      }
+                                    />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<FitnessCenter />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedSession(session);
+                                          setActiveTab(1);
+                                        }}
+                                        sx={{ 
+                                          borderRadius: 20,
+                                          textTransform: 'none',
+                                          '&:hover': {
+                                            background: 'rgba(33,150,243,0.1)'
+                                          }
+                                        }}
+                                      >
+                                        View Exercises
+                                      </Button>
+                                    </Box>
                                   </ListItem>
                                 ))}
                               </List>
@@ -833,97 +874,123 @@ const MemberSchedule = () => {
                       <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
                           Exercise Plan Progress
-                  </Typography>
+                        </Typography>
                         <LinearProgress
                           variant="determinate"
                           value={
                             100 * (Object.values(exerciseProgress).filter(Boolean).length) /
-                            schedule[0].exercisePlan.exercises.length
+                            (exercisePlans?.exercises?.length || 0)
                           }
                           sx={{ height: 16, borderRadius: 8, background: '#e3f2fd', '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)' } }}
                         />
-                </Box>
+                      </Box>
                       <Box sx={{ minWidth: 120, textAlign: 'right' }}>
-                        <Typography variant="body1" sx={{ fontWeight: 700, color: Object.values(exerciseProgress).filter(Boolean).length === schedule[0].exercisePlan.exercises.length ? 'success.main' : 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {Object.values(exerciseProgress).filter(Boolean).length} / {schedule[0].exercisePlan.exercises.length} completed
-                          {Object.values(exerciseProgress).filter(Boolean).length === schedule[0].exercisePlan.exercises.length && <CheckCircle color="success" />}
+                        <Typography variant="body1" sx={{ fontWeight: 700, color: Object.values(exerciseProgress).filter(Boolean).length === (exercisePlans?.exercises?.length || 0) ? 'success.main' : 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {Object.values(exerciseProgress).filter(Boolean).length} / {exercisePlans?.exercises?.length || 0} completed
+                          {Object.values(exerciseProgress).filter(Boolean).length === (exercisePlans?.exercises?.length || 0) && <CheckCircle color="success" />}
                         </Typography>
                       </Box>
                     </GlassCard>
-                <Grid container spacing={3}>
-                      {schedule?.[0]?.exercisePlan?.exercises?.map((exercise, index) => {
+
+                    {selectedSession && (
+                      <Paper sx={{ p: 2, mb: 3, background: 'rgba(33,150,243,0.05)', borderRadius: 2 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
+                          Current Session: {selectedSession.workoutType}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Date: {new Date(selectedSession.date).toLocaleDateString()} | Time: {selectedSession.time}
+                        </Typography>
+                      </Paper>
+                    )}
+
+                    <Grid container spacing={3}>
+                      {exercisePlans?.exercises?.map((exercise, index) => {
                         const completed = !!exerciseProgress[exercise._id];
+                        const isAvailable = isExerciseAvailable(exercise);
                         return (
                           <Grid item xs={12} sm={6} md={4} key={index}>
                             <ExerciseCard
                               sx={{
-                        position: 'relative',
-                                  opacity: completed ? 0.7 : 1,
-                                  filter: completed ? 'grayscale(0.7)' : 'none',
-                                  border: completed ? '2px solid #4caf50' : '2px solid transparent',
-                                  boxShadow: completed ? '0 0 0 2px #4caf5033' : undefined,
-                                  transition: 'box-shadow 0.2s, border 0.2s, opacity 0.2s',
-                                  '&:hover': { boxShadow: '0 4px 24px rgba(33,150,243,0.12)', transform: 'translateY(-2px)' }
-                                }}
-                              >
-                                <Box sx={{ position: 'relative' }}>
-                                  <ExerciseImage
-                                    image={exercise.imageUrl}
-                                    title={exercise.name}
-                                    sx={{ filter: completed ? 'grayscale(0.7) brightness(0.8)' : 'none' }}
-                                  />
-                                  {completed && (
-                                    <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, bgcolor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}>
-                                      <CheckCircle color="success" sx={{ fontSize: 36 }} />
-                      </Box>
-                                  )}
+                                position: 'relative',
+                                opacity: !isAvailable ? 0.7 : 1,
+                                filter: !isAvailable ? 'grayscale(0.7)' : 'none',
+                                border: completed ? '2px solid #4caf50' : '2px solid transparent',
+                                boxShadow: completed ? '0 0 0 2px #4caf5033' : undefined,
+                                transition: 'box-shadow 0.2s, border 0.2s, opacity 0.2s',
+                                '&:hover': { boxShadow: '0 4px 24px rgba(33,150,243,0.12)', transform: 'translateY(-2px)' }
+                              }}
+                            >
+                              <Box sx={{ position: 'relative' }}>
+                                <ExerciseImage
+                                  image={exercise.imageUrl}
+                                  title={exercise.name}
+                                  sx={{ filter: !isAvailable ? 'grayscale(0.7) brightness(0.8)' : 'none' }}
+                                />
+                                {completed && (
+                                  <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, bgcolor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}>
+                                    <CheckCircle color="success" sx={{ fontSize: 36 }} />
                                   </Box>
-                                <CardContent>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-                                    <Checkbox
-                                      checked={completed}
-                                      onChange={e => handleExerciseCheck(exercise._id, e.target.checked)}
-                                      color="success"
-                                      sx={{ mr: 1, '& .MuiSvgIcon-root': { fontSize: 32 } }}
-                                    />
-                                    <Typography variant="h6" gutterBottom sx={{ textDecoration: completed ? 'line-through' : 'none', fontWeight: 700 }}>
-                                      {exercise.name}
+                                )}
+                                {!isAvailable && (
+                                  <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, bgcolor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}>
+                                    <Warning color="warning" sx={{ fontSize: 36 }} />
+                                  </Box>
+                                )}
+                              </Box>
+                              <CardContent>
+                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
+                                  <Checkbox
+                                    checked={completed}
+                                    onChange={e => handleExerciseCheck(exercise._id, e.target.checked)}
+                                    color="success"
+                                    disabled={!isAvailable && !completed}
+                                    sx={{ mr: 1, '& .MuiSvgIcon-root': { fontSize: 32 } }}
+                                  />
+                                  <Typography variant="h6" gutterBottom sx={{ textDecoration: completed ? 'line-through' : 'none', fontWeight: 700 }}>
+                                    {exercise.name}
                                   </Typography>
                                 </Box>
-                                  <Typography variant="body2" color="text.secondary" paragraph>
-                                    {exercise.description}
-                                    </Typography>
-                                  <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                      <FitnessCenter sx={{ fontSize: 18, color: 'primary.main' }} />
-                                      <Typography variant="body2">Sets: {exercise.sets}</Typography>
+                                <Typography variant="body2" color="text.secondary" paragraph>
+                                  {exercise.description}
+                                </Typography>
+                                <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <FitnessCenter sx={{ fontSize: 18, color: 'primary.main' }} />
+                                    <Typography variant="body2">Sets: {exercise.sets}</Typography>
                                   </Box>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                      <Repeat sx={{ fontSize: 18, color: 'secondary.main' }} />
-                                      <Typography variant="body2">Reps: {exercise.reps}</Typography>
-                                </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Repeat sx={{ fontSize: 18, color: 'secondary.main' }} />
+                                    <Typography variant="body2">Reps: {exercise.reps}</Typography>
                                   </Box>
-                                  <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1 }}>
-                                    <Chip
-                                      label={exercise.difficulty}
-                                      color={exercise.difficulty === 'beginner' ? 'success' : 'warning'}
-                                      size="small"
-                                    />
-                                    <Chip
-                                      label={exercise.category}
-                                      color="primary"
-                                      size="small"
-                                    />
                                 </Box>
-                                </CardContent>
-                              </ExerciseCard>
-                              </Grid>
-                          );
+                                <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1 }}>
+                                  <Chip
+                                    label={exercise.difficulty}
+                                    color={exercise.difficulty === 'beginner' ? 'success' : 'warning'}
+                                    size="small"
+                                  />
+                                  <Chip
+                                    label={exercise.category}
+                                    color="primary"
+                                    size="small"
+                                  />
+                                </Box>
+                                {!isAvailable && (
+                                  <Alert severity="warning" sx={{ mt: 2 }}>
+                                    {new Date(selectedSession.date) < new Date() 
+                                      ? 'This exercise is from a past session'
+                                      : 'This exercise is for a future session'}
+                                  </Alert>
+                                )}
+                              </CardContent>
+                            </ExerciseCard>
+                          </Grid>
+                        );
                       })}
-                      {(!schedule?.[0]?.exercisePlan?.exercises?.length) && (
-                            <Grid item xs={12}>
+                      {(!exercisePlans?.exercises?.length) && (
+                        <Grid item xs={12}>
                           <Alert severity="info" sx={{ mt: 2 }}>
-                            No exercise plan available. Please contact your coach to set up an exercise plan.
+                            No exercises assigned yet. Please contact your coach to set up your exercise plan.
                           </Alert>
                         </Grid>
                       )}
@@ -936,7 +1003,7 @@ const MemberSchedule = () => {
                   <Box sx={{ p: 3 }}>
                     <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
                       Weekly Meal Plan
-                              </Typography>
+                    </Typography>
                     {mealPlan ? (
                       <GlassCard sx={{ mt: 2, p: 0, overflow: 'auto', width: '100%' }}>
                         <TableContainer component={Box} sx={{ width: '100%' }}>
@@ -971,7 +1038,7 @@ const MemberSchedule = () => {
                                       ) : (
                                         <Typography variant="body2">{meal.breakfast || 'Not specified'}</Typography>
                                       )}
-                                </Box>
+                                    </Box>
                                   </TableCell>
                                   <TableCell>
                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -1006,20 +1073,20 @@ const MemberSchedule = () => {
                                     </Box>
                                   </TableCell>
                                   <TableCell>
-                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                       {Array.isArray(meal.snacks) ? (
                                         meal.snacks.map((snack, idx) => (
                                           <MealChip
-                                        key={idx}
-                                        label={snack}
+                                            key={idx}
+                                            label={snack}
                                             color={'#00bcd4'}
                                             icon={<Fastfood />}
                                           />
                                         ))
                                       ) : (
                                         <Typography variant="body2">{meal.snacks || 'No snacks'}</Typography>
-                                  )}
-                                </Box>
+                                      )}
+                                    </Box>
                                   </TableCell>
                                   <TableCell>
                                     {meal.nutritionalInfo && (
@@ -1038,7 +1105,7 @@ const MemberSchedule = () => {
                                             <LocalBar sx={{ fontSize: 18, color: '#e53935' }} /> Fats: {meal.nutritionalInfo.fats || 0}g
                                           </Typography>
                                         </Box>
-                      </Card>
+                                      </Card>
                                     )}
                                   </TableCell>
                                 </TableRow>

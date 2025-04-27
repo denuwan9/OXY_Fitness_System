@@ -42,11 +42,25 @@ exports.getInstructorExercises = async (req, res) => {
 exports.getMemberExercises = async (req, res) => {
   try {
     console.log('Getting exercises for member:', req.params.memberId);
+    
+    // Find exercises assigned to the member
     const exercises = await Exercise.find({ 
       'assignedTo.memberId': req.params.memberId 
     }).populate('createdBy', 'name');
     
     console.log(`Found ${exercises.length} exercises for member`);
+    
+    // Group exercises by workout type
+    const exercisesByWorkoutType = exercises.reduce((acc, exercise) => {
+      if (!acc[exercise.workoutType]) {
+        acc[exercise.workoutType] = [];
+      }
+      acc[exercise.workoutType].push(exercise);
+      return acc;
+    }, {});
+    
+    console.log('Exercises grouped by workout type:', exercisesByWorkoutType);
+    
     res.json(exercises);
   } catch (error) {
     console.error('Error in getMemberExercises:', error);
@@ -151,7 +165,7 @@ exports.deleteExercise = async (req, res) => {
 exports.assignExercises = async (req, res) => {
   try {
     console.log('Assigning exercises to members:', req.body);
-    const { exerciseIds, memberIds } = req.body;
+    const { exerciseIds, memberIds, workoutType } = req.body;
     
     if (!Array.isArray(exerciseIds) || !Array.isArray(memberIds)) {
       return res.status(400).json({ 
@@ -181,7 +195,8 @@ exports.assignExercises = async (req, res) => {
               memberId,
               assignedAt: new Date()
             }))
-          }
+          },
+          workoutType: workoutType // Set the workout type for the exercise
         },
         { new: true }
       )

@@ -33,6 +33,11 @@ const exerciseSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Number of reps is required']
   },
+  workoutType: {
+    type: String,
+    required: [true, 'Workout type is required'],
+    enum: ['Personal Training', 'Group Class', 'Cardio Session', 'Strength Training', 'HIIT Training', 'Yoga Session']
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -57,5 +62,6 @@ exerciseSchema.index({ name: 1 });
 exerciseSchema.index({ category: 1 });
 exerciseSchema.index({ difficulty: 1 });
 exerciseSchema.index({ createdBy: 1 });
+exerciseSchema.index({ workoutType: 1 });
 
 module.exports = mongoose.model('Exercise', exerciseSchema); 

@@ -60,10 +60,10 @@ const exerciseService = {
   },
 
   // Assign exercises to members
-  assignExercises: async (exerciseIds, memberIds) => {
+  assignExercises: async (exerciseIds, memberIds, workoutType) => {
     const response = await axios.post(
       `${API_URL}/exercises/assign`,
-      { exerciseIds, memberIds },
+      { exerciseIds, memberIds, workoutType },
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
