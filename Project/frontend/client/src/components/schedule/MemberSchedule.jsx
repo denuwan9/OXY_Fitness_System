@@ -345,6 +345,11 @@ const MemberSchedule = () => {
   const [profileError, setProfileError] = useState(null);
   const [loadingPreferences, setLoadingPreferences] = useState(false);
   const [customDietType, setCustomDietType] = useState('');
+  const [tempInput, setTempInput] = useState({
+    allergies: '',
+    specialGuidelines: '',
+    specialScheduleRequest: ''
+  });
 
   // Set initial date and session when component mounts
   useEffect(() => {
@@ -1474,11 +1479,16 @@ const MemberSchedule = () => {
                                 <TextField
                                   fullWidth
                                   size="small"
-                                  value={mealPlanPreferences.allergies.join(', ')}
-                                  onChange={e => setMealPlanPreferences({
-                                    ...mealPlanPreferences,
-                                    allergies: e.target.value.split(',').map(item => item.trim())
-                                  })}
+                                  value={tempInput.allergies}
+                                  onChange={e => {
+                                    setTempInput(prev => ({ ...prev, allergies: e.target.value }));
+                                  }}
+                                  onBlur={() => {
+                                    setMealPlanPreferences({
+                                      ...mealPlanPreferences,
+                                      allergies: tempInput.allergies.split(',').map(item => item.trim()).filter(Boolean)
+                                    });
+                                  }}
                                   placeholder="e.g., Nuts, Shellfish"
                                   sx={{ ml: 1 }}
                                 />
@@ -1503,11 +1513,16 @@ const MemberSchedule = () => {
                                   size="small"
                                   multiline
                                   minRows={2}
-                                  value={mealPlanPreferences.specialGuidelines.join(', ')}
-                                  onChange={e => setMealPlanPreferences({
-                                    ...mealPlanPreferences,
-                                    specialGuidelines: e.target.value.split(',').map(item => item.trim())
-                                  })}
+                                  value={tempInput.specialGuidelines}
+                                  onChange={e => {
+                                    setTempInput(prev => ({ ...prev, specialGuidelines: e.target.value }));
+                                  }}
+                                  onBlur={() => {
+                                    setMealPlanPreferences({
+                                      ...mealPlanPreferences,
+                                      specialGuidelines: tempInput.specialGuidelines.split(',').map(item => item.trim()).filter(Boolean)
+                                    });
+                                  }}
                                   placeholder="e.g., No spicy food, low sodium, etc."
                                   sx={{ ml: 1 }}
                                 />
@@ -1532,11 +1547,16 @@ const MemberSchedule = () => {
                                   size="small"
                                   multiline
                                   minRows={2}
-                                  value={mealPlanPreferences.specialScheduleRequest || ''}
-                                  onChange={e => setMealPlanPreferences({
-                                    ...mealPlanPreferences,
-                                    specialScheduleRequest: e.target.value
-                                  })}
+                                  value={tempInput.specialScheduleRequest}
+                                  onChange={e => {
+                                    setTempInput(prev => ({ ...prev, specialScheduleRequest: e.target.value }));
+                                  }}
+                                  onBlur={() => {
+                                    setMealPlanPreferences({
+                                      ...mealPlanPreferences,
+                                      specialScheduleRequest: tempInput.specialScheduleRequest
+                                    });
+                                  }}
                                   placeholder="Describe any special schedule needs (e.g., only evenings, weekends, rotating shifts, etc.)"
                                   sx={{ ml: 1 }}
                                 />
