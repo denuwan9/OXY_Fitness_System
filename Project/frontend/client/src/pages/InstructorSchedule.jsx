@@ -280,9 +280,18 @@ const InstructorSchedule = () => {
       }
     } catch (error) {
       console.error('Error fetching meal plan:', error);
+      // If 404 error, it means no schedules exist yet - this is normal for new members
+      if (error.response?.status === 404) {
+        console.log('No schedules found for member - this is normal for new members');
+        setMemberSchedules(prev => ({
+          ...prev,
+          [memberId]: []
+        }));
+        return []; // Return empty array instead of throwing error
+      }
       setError(`Failed to load meal plan: ${error.message || 'Unknown error'}`);
       setShowError(true);
-      throw error; // Re-throw to be handled by caller
+      throw error; // Re-throw other errors
     }
   };
 
@@ -379,26 +388,39 @@ const InstructorSchedule = () => {
       setShowMemberActions(true);
 
       // Fetch member schedules and meal plans
-      const schedules = await fetchMealPlan(member._id);
-      
-      // Combine all sessions from all schedules
-      const allSessions = schedules.reduce((acc, schedule) => {
-        if (schedule.sessions && Array.isArray(schedule.sessions)) {
-          return [...acc, ...schedule.sessions];
-        }
-        return acc;
-      }, []);
+      try {
+        const schedules = await fetchMealPlan(member._id);
+        
+        // Combine all sessions from all schedules
+        const allSessions = schedules.reduce((acc, schedule) => {
+          if (schedule.sessions && Array.isArray(schedule.sessions)) {
+            return [...acc, ...schedule.sessions];
+          }
+          return acc;
+        }, []);
 
-      if (allSessions.length > 0) {
-        // Sort sessions by date
-        allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
-        const nextSession = allSessions[0];
-        // Keep the current month view but update the selected date
-        const currentDate = new Date();
-        setSelectedDate(currentDate);
-      } else {
-        // If no sessions, set to current date
-        setSelectedDate(new Date());
+        if (allSessions.length > 0) {
+          // Sort sessions by date
+          allSessions.sort((a, b) => new Date(a.date) - new Date(b.date));
+          const nextSession = allSessions[0];
+          // Keep the current month view but update the selected date
+          const currentDate = new Date();
+          setSelectedDate(currentDate);
+        } else {
+          // If no sessions, set to current date
+          setSelectedDate(new Date());
+        }
+      } catch (error) {
+        // If 404 error, it means no schedules exist yet - this is normal for new members
+        if (error.response?.status === 404) {
+          console.log('No schedules found for member - this is normal for new members');
+          setMemberSchedules(prev => ({
+            ...prev,
+            [member._id]: []
+          }));
+        } else {
+          throw error; // Re-throw other errors
+        }
       }
 
       // Reset form data
@@ -689,30 +711,62 @@ const InstructorSchedule = () => {
     setOpenMealPlanDialog(true);
   };
 
-  const handleMealPlanSubmit = async () => {
+  const handleSaveMealPlan = async (mealPlanData) => {
     try {
       if (!selectedMember) {
         setError('Please select a member first');
         return;
       }
 
-      const schedule = memberSchedules[selectedMember._id]?.find(s => 
-        new Date(s.sessions[0].date).toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0]
-      );
-
-      if (!schedule) {
-        setError('Please create a schedule first before adding a meal plan');
-        return;
+      // Validate meal plan data
+      if (!mealPlanData || !mealPlanData.meals || !Array.isArray(mealPlanData.meals)) {
+        throw new Error('Invalid meal plan data structure');
       }
+
+      let schedule = memberSchedules[selectedMember._id]?.[0];
+      if (!schedule) {
+        // Auto-create a new schedule if none exists
+        const newSchedule = await scheduleService.createSchedule({
+          userId: selectedMember._id,
+          coachId: user._id,
+          membershipType: selectedMember.membershipType || 'Silver',
+          scheduleType: 'weekday',
+          sessions: [],
+          mealPlan: null
+        });
+        schedule = newSchedule;
+        // Update local state with new schedule
+        setMemberSchedules(prev => ({
+          ...prev,
+          [selectedMember._id]: [newSchedule, ...(prev[selectedMember._id] || [])]
+        }));
+      }
+
+      // Format meals for backend
+      const formattedMeals = mealPlanData.meals.map(meal => ({
+        day: meal.day,
+        breakfast: Array.isArray(meal.breakfast) ? meal.breakfast.join(', ') : meal.breakfast,
+        lunch: Array.isArray(meal.lunch) ? meal.lunch.join(', ') : meal.lunch,
+        dinner: Array.isArray(meal.dinner) ? meal.dinner.join(', ') : meal.dinner,
+        snacks: Array.isArray(meal.snacks) ? meal.snacks.join(', ') : meal.snacks,
+        nutritionalInfo: {
+          calories: Number(meal.nutritionalInfo?.calories) || 0,
+          protein: Number(meal.nutritionalInfo?.protein) || 0,
+          carbs: Number(meal.nutritionalInfo?.carbs) || 0,
+          fats: Number(meal.nutritionalInfo?.fats) || 0
+        }
+      }));
 
       const mealPlanPayload = {
         scheduleId: schedule._id,
-        membershipType: selectedMember.membershipType,
-        meals: mealPlanData.meals
+        membershipType: selectedMember.membershipType || 'Silver',
+        meals: formattedMeals
       };
 
+      console.log('Saving meal plan payload:', mealPlanPayload);
       const response = await scheduleService.assignMealPlan(mealPlanPayload);
-      
+      console.log('Meal plan save response:', response);
+
       // Update the local state with the new meal plan
       setMemberSchedules(prev => {
         const updatedSchedules = { ...prev };
@@ -732,11 +786,10 @@ const InstructorSchedule = () => {
         return updatedSchedules;
       });
 
-      setOpenMealPlanDialog(false);
-      setError(null); // Clear any previous errors
+      setError(null);
     } catch (error) {
       console.error('Error saving meal plan:', error);
-      setError('Failed to save meal plan. Please try again.');
+      setError(error.message || 'Failed to save meal plan. Please try again.');
       setShowError(true);
     }
   };
@@ -995,43 +1048,13 @@ const InstructorSchedule = () => {
 
     // Get all schedules for the selected member
     const memberSchedulesList = memberSchedules[selectedMember._id] || [];
-    console.log('Member Schedules List:', memberSchedulesList);
     
-    // Find the schedule for the selected date
-    const schedule = memberSchedulesList.find(s => 
-      new Date(s.sessions[0].date).toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0]
-    );
-    console.log('Found Schedule:', schedule);
-
     // Prepare mealPlans prop for MealPlanManager
     let mealPlans = [];
-    if (schedule && schedule.mealPlan) {
-      // Format the meal plan data to match what MealPlanManager expects
-      const formattedMealPlan = {
-        _id: schedule.mealPlan._id,
-        name: '7-Day Meal Plan',
-        description: 'Weekly meal plan',
-        meals: schedule.mealPlan.meals.map(meal => ({
-          day: meal.day,
-          breakfast: meal.breakfast.split(',').map(item => item.trim()),
-          lunch: meal.lunch.split(',').map(item => item.trim()),
-          dinner: meal.dinner.split(',').map(item => item.trim()),
-          snacks: Array.isArray(meal.snacks) ? meal.snacks : [meal.snacks],
-          calories: meal.nutritionalInfo?.calories || 0,
-          protein: meal.nutritionalInfo?.protein || 0,
-          carbs: meal.nutritionalInfo?.carbs || 0,
-          fats: meal.nutritionalInfo?.fats || 0
-        }))
-      };
-      mealPlans = [formattedMealPlan];
-    }
-    console.log('Formatted Meal Plans:', mealPlans);
-
-    // If no meal plan found, try to find any schedule with a meal plan
-    if (mealPlans.length === 0) {
+    if (memberSchedulesList.length > 0) {
+      // Find any schedule with a meal plan
       const scheduleWithMealPlan = memberSchedulesList.find(s => s.mealPlan);
       if (scheduleWithMealPlan) {
-        console.log('Found schedule with meal plan:', scheduleWithMealPlan);
         const formattedMealPlan = {
           _id: scheduleWithMealPlan.mealPlan._id,
           name: '7-Day Meal Plan',
@@ -1048,94 +1071,10 @@ const InstructorSchedule = () => {
             fats: meal.nutritionalInfo?.fats || 0
           }))
         };
-        mealPlans.push(formattedMealPlan);
+        mealPlans = [formattedMealPlan];
       }
     }
-
-    // Handler for saving meal plan
-    const handleSaveMealPlan = async (mealPlanData) => {
-      try {
-        if (!selectedMember) {
-          setError('Please select a member first');
-          return;
-        }
-
-        // Validate meal plan data
-        if (!mealPlanData || !mealPlanData.meals || !Array.isArray(mealPlanData.meals)) {
-          throw new Error('Invalid meal plan data structure');
-        }
-
-        let schedule = memberSchedules[selectedMember._id]?.[0];
-        if (!schedule) {
-          // Auto-create a new schedule if none exists
-          const newSchedule = await scheduleService.createSchedule({
-            userId: selectedMember._id,
-            coachId: user._id,
-            membershipType: selectedMember.membershipType || 'Silver',
-            scheduleType: 'weekday',
-            sessions: [],
-            mealPlan: null
-          });
-          schedule = newSchedule;
-          // Update local state with new schedule
-          setMemberSchedules(prev => ({
-            ...prev,
-            [selectedMember._id]: [newSchedule, ...(prev[selectedMember._id] || [])]
-          }));
-        }
-
-        // Format meals for backend
-        const formattedMeals = mealPlanData.meals.map(meal => ({
-          day: meal.day,
-          breakfast: Array.isArray(meal.breakfast) ? meal.breakfast.join(', ') : meal.breakfast,
-          lunch: Array.isArray(meal.lunch) ? meal.lunch.join(', ') : meal.lunch,
-          dinner: Array.isArray(meal.dinner) ? meal.dinner.join(', ') : meal.dinner,
-          snacks: Array.isArray(meal.snacks) ? meal.snacks.join(', ') : meal.snacks,
-          nutritionalInfo: {
-            calories: Number(meal.nutritionalInfo?.calories) || 0,
-            protein: Number(meal.nutritionalInfo?.protein) || 0,
-            carbs: Number(meal.nutritionalInfo?.carbs) || 0,
-            fats: Number(meal.nutritionalInfo?.fats) || 0
-          }
-        }));
-
-        const mealPlanPayload = {
-          scheduleId: schedule._id,
-          membershipType: selectedMember.membershipType || 'Silver',
-          meals: formattedMeals
-        };
-
-        console.log('Saving meal plan payload:', mealPlanPayload);
-        const response = await scheduleService.assignMealPlan(mealPlanPayload);
-        console.log('Meal plan save response:', response);
-
-        // Update the local state with the new meal plan
-        setMemberSchedules(prev => {
-          const updatedSchedules = { ...prev };
-          if (!updatedSchedules[selectedMember._id]) {
-            updatedSchedules[selectedMember._id] = [];
-          }
-          
-          const scheduleIndex = updatedSchedules[selectedMember._id].findIndex(s => s._id === schedule._id);
-          if (scheduleIndex >= 0) {
-            // Update the existing schedule with the new meal plan
-            updatedSchedules[selectedMember._id][scheduleIndex] = {
-              ...updatedSchedules[selectedMember._id][scheduleIndex],
-              mealPlan: response.mealPlan
-            };
-          }
-          
-          return updatedSchedules;
-        });
-
-        setError(null);
-      } catch (error) {
-        console.error('Error saving meal plan:', error);
-        setError(error.message || 'Failed to save meal plan. Please try again.');
-        setShowError(true);
-      }
-    };
-
+    
     return (
       <StyledPaper>
         <Box sx={{ 
@@ -1210,11 +1149,41 @@ const InstructorSchedule = () => {
             </Box>
           </Box>
         )}
-        <MealPlanManager
-          mealPlans={mealPlans}
-          onAddMealPlan={handleSaveMealPlan}
-          onUpdateMealPlan={handleSaveMealPlan}
-        />
+        {memberSchedulesList.length === 0 ? (
+          <Box sx={{ 
+            p: 4, 
+            textAlign: 'center',
+            background: '#f5f5f5',
+            borderRadius: 2,
+            border: '1px dashed #bdbdbd'
+          }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              No Schedule Created Yet
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+              Please create a schedule for this member first before adding a meal plan.
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<Schedule />}
+              onClick={handleOpenScheduleDialog}
+              sx={{
+                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                '&:hover': {
+                  background: 'linear-gradient(45deg, #1976D2 30%, #1E88E5 90%)',
+                }
+              }}
+            >
+              Create Schedule
+            </Button>
+          </Box>
+        ) : (
+          <MealPlanManager
+            mealPlans={mealPlans}
+            onAddMealPlan={handleSaveMealPlan}
+            onUpdateMealPlan={handleSaveMealPlan}
+          />
+        )}
         {error && (
           <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>
         )}

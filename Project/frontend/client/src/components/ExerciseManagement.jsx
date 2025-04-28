@@ -79,7 +79,8 @@ const ExerciseManagement = ({ onAssignExercises, memberId }) => {
     imageUrl: '',
     difficulty: 'beginner',
     sets: 3,
-    reps: 12
+    reps: 12,
+    workoutType: 'Personal Training'
   });
   const [editingExercise, setEditingExercise] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -134,7 +135,8 @@ const ExerciseManagement = ({ onAssignExercises, memberId }) => {
         imageUrl: '',
         difficulty: 'beginner',
         sets: 3,
-        reps: 12
+        reps: 12,
+        workoutType: 'Personal Training'
       });
     }
     setOpenDialog(true);
@@ -150,7 +152,8 @@ const ExerciseManagement = ({ onAssignExercises, memberId }) => {
       imageUrl: '',
       difficulty: 'beginner',
       sets: 3,
-      reps: 12
+      reps: 12,
+      workoutType: 'Personal Training'
     });
   };
 
@@ -405,6 +408,20 @@ const ExerciseManagement = ({ onAssignExercises, memberId }) => {
                 <MenuItem value="beginner">Beginner</MenuItem>
                 <MenuItem value="intermediate">Intermediate</MenuItem>
                 <MenuItem value="advanced">Advanced</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Workout Type</InputLabel>
+              <Select
+                value={newExercise.workoutType}
+                onChange={(e) => setNewExercise({ ...newExercise, workoutType: e.target.value })}
+              >
+                <MenuItem value="Personal Training">Personal Training</MenuItem>
+                <MenuItem value="Group Class">Group Class</MenuItem>
+                <MenuItem value="Cardio Session">Cardio Session</MenuItem>
+                <MenuItem value="Strength Training">Strength Training</MenuItem>
+                <MenuItem value="HIIT Training">HIIT Training</MenuItem>
+                <MenuItem value="Yoga Session">Yoga Session</MenuItem>
               </Select>
             </FormControl>
             <TextField
