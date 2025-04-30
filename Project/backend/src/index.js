@@ -1,5 +1,5 @@
 import express from "express"
-import dotenv from "dotenv"
+import dotenv, { config } from "dotenv"
 import cors from "cors"
 import cookieparser from "cookie-parser"
 import DbCon from "./utlis/db.js"
@@ -9,6 +9,12 @@ import UserModel from "./models/userModel.js"
 import nodemailer from "nodemailer"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
+import path from "path"
+
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config()
 const PORT = process.env.PORT || 3000
@@ -26,6 +32,7 @@ app.use(cors({
 app.use("/api/auth",AuthRoutes)
 app.use("/api/admin",AdminRoutes)
 
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.post('/forgot-password', (req, res) => {
     const {email} = req.body;
@@ -92,6 +99,11 @@ app.post('/reset-password/:id/:token', (req, res) => {
 })
 
 
+
+
+
+// Then use:
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 app.get("/", (req, res) => {

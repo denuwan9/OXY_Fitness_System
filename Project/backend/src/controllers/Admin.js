@@ -1,6 +1,7 @@
 
 import UserModel from "../models/userModel.js" 
 import bcrypt from "bcryptjs"
+import PDFDocument from "pdfkit"
 
 
 
@@ -95,4 +96,49 @@ const updateUser = async (req, res) => {
       res.status(500).json({ message: "Error updating user", error: error.message });
     }
   };
-export {Getuser,deleteUser,updateUser}
+
+
+  
+    const generatePDF = async (req, res) => {
+      try {
+        const users = await UserModel.find({});
+        
+        // Create PDF
+        const doc = new PDFDocument();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=users_report.pdf');
+        
+        doc.pipe(res);
+        
+        // Add content
+        doc.fontSize(18).text('OXY FITNESS - User Details', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(12).text(`Generated on: ${new Date().toLocaleString()}`, { align: 'center' });
+        doc.moveDown(2);
+        
+        // Add table
+        const table = {
+          headers: ['ID', 'Name', 'Email', 'Role', 'Phone'],
+          rows: users.map(user => [
+            user._id.toString(),
+            `${user.fname} ${user.lname}`,
+            user.email,
+            user.role,
+            user.number || 'N/A'
+          ])
+        };
+        
+        // Simple table implementation
+        doc.font('Helvetica-Bold').text(table.headers.join(' | '));
+        doc.font('Helvetica');
+        table.rows.forEach(row => {
+          doc.text(row.join(' | '));
+        });
+        
+        doc.end();
+      } catch (error) {
+        console.error(error);
+        res.status(500).send('Error generating PDF');
+      }
+    };
+export {Getuser,deleteUser,updateUser,generatePDF}

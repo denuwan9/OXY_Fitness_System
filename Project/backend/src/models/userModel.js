@@ -40,9 +40,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  avatar:{
-    type: String, // store image path or URL
-  },
+  avatar: {
+    type: String,
+    default: ''
+  }
   
 },{timestamps: true});
 

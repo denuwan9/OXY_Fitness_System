@@ -27,27 +27,19 @@ const isAdmin = async (req,res,next) => {
     }
 }
 
-const IsUser=async(req,res,next)=>{
-   try {
-      const token=req.cookies.token
-      if (!token) {
-         return res.status(401).json({messsage:"'Unauthorized: No token provided'"})
-      }
+ const IsUser = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'No token provided' });
 
-      const decoded= jwt.verify(token,process.env.JWT_SECRETE)
-      const user=await UserModel.findById(decoded.userId)
-      if (!user) {
-         return res.status(401).json({messsage:"'user not found'"})
-      }
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = { id: decoded.id }; // Attach ID for multer and controllers
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};
 
-    
-    req.user=user
-      next()
-   
- } catch (error) {
-     console.log(error)
- }
-}
 
 
 const authorizeAdmin = (req, res, next) => {
@@ -118,4 +110,4 @@ const authorizeAdmin = (req, res, next) => {
   
   
 
-export {isAdmin,IsUser, authorizeAdmin, authenticate}
+export {isAdmin, IsUser, authorizeAdmin, authenticate}

@@ -1,7 +1,7 @@
 import express from 'express';
-import { CheckUser, Login, Logout, register, addUser, getUser, userUpdate } from '../controllers/authController.js';
+import { CheckUser, Login, Logout, register, addUser, getUser, userUpdate, uploadAvatar, upload } from '../controllers/authController.js';
 import { IsUser, authenticate } from '../middlewares/verifyToken.js';
-import UserModel from '../models/userModel.js'; // Import the correct model
+
 
 
 const AuthRoutes = express.Router();
@@ -19,4 +19,5 @@ AuthRoutes.get("/getUser/:id", getUser);
 AuthRoutes.put('/userUpdate/:id',  userUpdate);
 
 
+AuthRoutes.put('/avatar',IsUser, upload.single('avatar'), uploadAvatar);
 export default AuthRoutes;

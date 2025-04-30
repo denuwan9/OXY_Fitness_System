@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 import { Logout } from "../redux/AuthSlice";
 import toast from "react-hot-toast";
 import axios from "axios";
-
+import { generateUsersPDF } from "../services/PdfService";
 
 const UserManager = () => {
   const dispatch = useDispatch();
@@ -201,6 +201,24 @@ const handleDeleteUser = async (id) => {
       }
     }
   };
+
+
+  // Function to generate PDF report
+  const handleGeneratePDF = () => {
+    if (users.length === 0) {
+      toast.error("No users data available to generate PDF");
+      return;
+    }
+    
+    try {
+      generateUsersPDF(users);
+      toast.success("PDF generated successfully!");
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
+
 
   // Function to validate a specific field
   const validateField = (name, value) => {
@@ -471,6 +489,8 @@ const handleDeleteUser = async (id) => {
                           </button>
                         </li>
 
+                        
+
             
 
             {/* Logout Button */}
@@ -478,6 +498,15 @@ const handleDeleteUser = async (id) => {
               <button onClick={handleLogout}>
                 <span className="button-icon">🚪</span>
                 <span className="button-text">Log out</span>
+              </button>
+            </li>
+
+
+            {/* Get User Details PDF */}
+            <li>
+            <button onClick={handleGeneratePDF} className="menu-button">
+              <span className="button-icon">📄</span>
+              <span className="button-text">User Details PDF</span> 
               </button>
             </li>
           </ul>

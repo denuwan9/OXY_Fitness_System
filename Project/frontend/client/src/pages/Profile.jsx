@@ -64,38 +64,8 @@ const Profile = () => {
     }
   }, [user]);
 
-  // Function to handle avatar upload
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        alert("Please upload an image file.");
-        return;
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
-        alert("File size should be less than 5MB.");
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageUrl = reader.result;
-        setAvatar(imageUrl);
-        
-        // Update the user's profile picture in the backend
-        if (user) {
-          const updatedUser = { ...user, profilePicture: imageUrl };
-          dispatch(updateUser(updatedUser));
-          
-          // Here you would typically make an API call to save the image to the backend
-          // For example:
-          // post('/api/user/update-profile-picture', { image: imageUrl });
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  
+
 
   // Function to handle input changes
   const handleInputChange = (e) => {
@@ -214,6 +184,39 @@ const Profile = () => {
       console.error("An error occurred during logout:", error);
     }
   };
+
+
+  // State for avatar upload progress/status
+const [uploadStatus, setUploadStatus] = useState({
+  inProgress: false,
+  error: null,
+  success: false
+});
+
+// Enhanced avatar upload handler
+const handleAvatarUpload = async (file) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  const token = localStorage.getItem('token'); // 👈 get the real token here
+
+  try {
+    const response = await axios.put(
+      'http://localhost:6017/api/auth/avatar',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`, // ✅ use actual token
+        },
+      }
+    );
+    console.log('Upload successful:', response.data);
+  } catch (error) {
+    console.error('Upload error details:', error);
+  }
+};
+
 
   // Function to save changes
   const saveChanges = async () => {
@@ -360,14 +363,47 @@ const Profile = () => {
 
       {/* Profile Container */}
       <div className="profile-container">
-        {/* Profile Picture Section */}
-        <div className="profile-picture-section">
-          <div className="avatar-container">
-            
-          </div>
           
-        </div>
-        
+        {/* Profile Picture Section */}
+        {/*
+        <div className="profile-picture-section">
+  <div className="avatar-container">
+    <img 
+      src={avatar || "https://placekitten.com/150/150"} 
+      alt="Profile" 
+      className="avatar" 
+    />
+    {isEditing && (
+      <>
+        <label htmlFor="avatar-upload" className="camera-icon">
+          {uploadStatus.inProgress ? '⏳' : '📷'}
+        </label>
+        <input
+          id="avatar-upload"
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarUpload}
+          className="hidden"
+          disabled={uploadStatus.inProgress}
+        />
+      </>
+    )}
+  </div>
+  
+  {uploadStatus.error && (
+    <p className="error-message">{uploadStatus.error}</p>
+  )}
+  {uploadStatus.success && (
+    <p className="success-message">Avatar updated successfully!</p>
+  )}
+  
+  {isEditing && (
+    <p className="avatar-instruction">
+      Click the camera icon to update your avatar (Max 5MB)
+    </p>
+  )}
+</div>
+        */}
         <div className="user-card">
           <h2>Welcome, {profileInfo.firstName}</h2>
         </div>

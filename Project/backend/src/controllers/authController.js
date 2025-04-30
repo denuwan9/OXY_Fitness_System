@@ -2,6 +2,45 @@ import UserModel from "../models/userModel.js"
 import jwt from "jsonwebtoken"
 import bcryptjs from "bcryptjs"
 import AuthRoutes from "../routes/authRoutes.js"
+import multer from "multer"
+import path from "path"
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+// Get __dirname in ES module style
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure upload path exists
+const uploadPath = path.join(__dirname, '../uploads/avatars');
+fs.mkdirSync(uploadPath, { recursive: true }); // Creates the folder if it doesn't exist
+
+// Configure multer storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, (req.user?.id || 'temp') + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// File filter for images only
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+// Export upload middleware
+export const upload = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 
 const addUser = async (req, res) => {
@@ -32,6 +71,9 @@ const addUser = async (req, res) => {
       number
     });
 
+
+
+
     // Save to database
     await newUser.save();
 
@@ -53,6 +95,51 @@ const addUser = async (req, res) => {
     });
   }
 };
+
+const uploadAvatar = async (req, res) => {
+  try {
+    console.log('Upload request received'); // Debug log
+    console.log('Uploaded file:', req.file); // Debug log
+    
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'No file uploaded' 
+      });
+    }
+
+    // Verify user exists
+    const user = await UserModel.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+
+    // Create proper file path
+    const avatarPath = `/uploads/avatars/${req.file.filename}`;
+    
+    // Update user
+    user.profilePicture = avatarPath;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      avatar: avatarPath,
+      message: 'Avatar updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Server error during avatar upload',
+      error: error.message // Include actual error message
+    });
+  }
+};
+
 
 
 const register = async (req, res) => {
@@ -181,7 +268,8 @@ const userUpdate = async (req, res, next) => {
       email,
       address,
       city,
-      number
+      number,
+      avatar: req.file ? `/uploads/avatars/${req.file.filename}` : user.avatar // Only update avatar if a new file is uploaded
     };
 
     // Update with only the allowed fields
@@ -225,4 +313,8 @@ const userUpdate = async (req, res, next) => {
 
 
 
-export { register, Login, Logout, CheckUser, addUser, getUser, userUpdate };
+
+
+
+
+export { register, Login, Logout, CheckUser, addUser, getUser, userUpdate,uploadAvatar};
