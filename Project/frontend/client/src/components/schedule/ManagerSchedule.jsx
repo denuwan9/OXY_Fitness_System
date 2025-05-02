@@ -27,6 +27,7 @@ import {
   LinearProgress,
   useTheme,
   Badge,
+  TextField,
 } from '@mui/material';
 import {
   CheckCircle,
@@ -331,6 +332,8 @@ const ManagerSchedule = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [memberNameFilter, setMemberNameFilter] = useState('');
+  const [coachNameFilter, setCoachNameFilter] = useState('');
 
   useEffect(() => {
     // Check if user has manager role
@@ -1018,107 +1021,183 @@ const ManagerSchedule = () => {
       );
     }
 
+    const filteredMembers = members.filter(member => {
+      const matchesMemberName = member.name.toLowerCase().includes(memberNameFilter.toLowerCase());
+      const assignedCoach = coaches.find(coach => 
+        coachAssignments[coach._id]?.some(assignment => 
+          assignment.memberId._id === member._id
+        )
+      );
+      const matchesCoachName = assignedCoach ? 
+        assignedCoach.name.toLowerCase().includes(coachNameFilter.toLowerCase()) : 
+        coachNameFilter === '';
+
+      return matchesMemberName && matchesCoachName;
+    });
+
     return (
-      <StyledTableContainer>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Membership Type</TableCell>
-              <TableCell>Assigned Coach</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {members.map((member) => (
-              <TableRow key={member._id}>
-                <TableCell>
-                  <UserCell>
-                    <Avatar src={member.profileImage}>
-                      {member.name?.charAt(0)}
-                    </Avatar>
-                    <Box className="user-info">
-                      <Typography className="name">
-                        {member.name}
-                      </Typography>
-                      <Typography className="email">
-                        {member.email}
-                      </Typography>
-                    </Box>
-                  </UserCell>
-                </TableCell>
-                <TableCell>{member.email}</TableCell>
-                <TableCell>
-                  <MembershipChip
-                    label={member.membershipType}
-                    type={member.membershipType}
-                    size="small"
-                    icon={
-                      member.membershipType === 'Platinum' ? <Star /> :
-                      member.membershipType === 'Gold' ? <EmojiEvents /> :
-                      <Person />
-                    }
-                  />
-                </TableCell>
-                <TableCell>
-                  <FormControl fullWidth size="small">
-                    <StyledSelect
-                      value={coaches.find(coach => 
-                        coachAssignments[coach._id]?.some(assignment => 
-                          assignment.memberId._id === member._id
-                        )
-                      )?._id || ''}
-                      onChange={(e) => handleAssignMember(member._id, e.target.value)}
-                    >
-                      <StyledMenuItem value="">
-                        <em>None</em>
-                      </StyledMenuItem>
-                      {coaches.map((coach) => (
-                        <StyledMenuItem key={coach._id} value={coach._id}>
-                          <Avatar 
-                            src={coach.profileImage}
-                            sx={{ width: 24, height: 24, mr: 1 }}
-                          >
-                            {coach.name?.charAt(0)}
-                          </Avatar>
-                          {coach.name}
-                        </StyledMenuItem>
-                      ))}
-                    </StyledSelect>
-                  </FormControl>
-                </TableCell>
-                <TableCell>
-                  <Tooltip title="Remove Assignment">
-                    <IconButton
-                      color="error"
-                      onClick={() => {
-                        const currentCoach = coaches.find(coach => 
+      <>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search members by name..."
+              value={memberNameFilter}
+              onChange={(e) => setMemberNameFilter(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <Person sx={{ color: 'primary.main', mr: 1 }} />
+                ),
+                sx: {
+                  borderRadius: 3,
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(33, 150, 243, 0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                },
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search by assigned coach..."
+              value={coachNameFilter}
+              onChange={(e) => setCoachNameFilter(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <FitnessCenter sx={{ color: 'primary.main', mr: 1 }} />
+                ),
+                sx: {
+                  borderRadius: 3,
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  '& .MuiOutlinedInput-root': {
+                    '& fieldset': {
+                      borderColor: 'rgba(33, 150, 243, 0.3)',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: 'primary.main',
+                    },
+                  },
+                },
+              }}
+            />
+          </Grid>
+        </Grid>
+        <StyledTableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Membership Type</TableCell>
+                <TableCell>Assigned Coach</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredMembers.map((member) => (
+                <TableRow key={member._id}>
+                  <TableCell>
+                    <UserCell>
+                      <Avatar src={member.profileImage}>
+                        {member.name?.charAt(0)}
+                      </Avatar>
+                      <Box className="user-info">
+                        <Typography className="name">
+                          {member.name}
+                        </Typography>
+                        <Typography className="email">
+                          {member.email}
+                        </Typography>
+                      </Box>
+                    </UserCell>
+                  </TableCell>
+                  <TableCell>{member.email}</TableCell>
+                  <TableCell>
+                    <MembershipChip
+                      label={member.membershipType}
+                      type={member.membershipType}
+                      size="small"
+                      icon={
+                        member.membershipType === 'Platinum' ? <Star /> :
+                        member.membershipType === 'Gold' ? <EmojiEvents /> :
+                        <Person />
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <FormControl fullWidth size="small">
+                      <StyledSelect
+                        value={coaches.find(coach => 
                           coachAssignments[coach._id]?.some(assignment => 
                             assignment.memberId._id === member._id
                           )
-                        );
-                        if (currentCoach) {
-                          handleRemoveMember(member._id, currentCoach._id);
-                        }
-                      }}
-                      sx={{
-                        transition: 'all 0.3s ease',
-                        '&:hover': {
-                          transform: 'scale(1.1)',
-                          backgroundColor: theme.palette.error.light,
-                        },
-                      }}
-                    >
-                      <Delete />
-                    </IconButton>
-                  </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </StyledTableContainer>
+                        )?._id || ''}
+                        onChange={(e) => handleAssignMember(member._id, e.target.value)}
+                      >
+                        <StyledMenuItem value="">
+                          <em>None</em>
+                        </StyledMenuItem>
+                        {coaches.map((coach) => (
+                          <StyledMenuItem key={coach._id} value={coach._id}>
+                            <Avatar 
+                              src={coach.profileImage}
+                              sx={{ width: 24, height: 24, mr: 1 }}
+                            >
+                              {coach.name?.charAt(0)}
+                            </Avatar>
+                            {coach.name}
+                          </StyledMenuItem>
+                        ))}
+                      </StyledSelect>
+                    </FormControl>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title="Remove Assignment">
+                      <IconButton
+                        color="error"
+                        onClick={() => {
+                          const currentCoach = coaches.find(coach => 
+                            coachAssignments[coach._id]?.some(assignment => 
+                              assignment.memberId._id === member._id
+                            )
+                          );
+                          if (currentCoach) {
+                            handleRemoveMember(member._id, currentCoach._id);
+                          }
+                        }}
+                        sx={{
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            transform: 'scale(1.1)',
+                            backgroundColor: theme.palette.error.light,
+                          },
+                        }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </StyledTableContainer>
+      </>
     );
   };
 

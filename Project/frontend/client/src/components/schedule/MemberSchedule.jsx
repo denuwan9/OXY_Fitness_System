@@ -350,6 +350,7 @@ const MemberSchedule = () => {
     specialGuidelines: '',
     specialScheduleRequest: ''
   });
+  const [workoutTypeFilter, setWorkoutTypeFilter] = useState('');
 
   // Set initial date and session when component mounts
   useEffect(() => {
@@ -1314,6 +1315,35 @@ const MemberSchedule = () => {
                     <Typography variant="h5" gutterBottom sx={{ fontWeight: 800, color: 'primary.main', mb: 2 }}>
                       All Sessions
                     </Typography>
+                    <Box sx={{ mb: 3 }}>
+                      <TextField
+                        fullWidth
+                        variant="outlined"
+                        placeholder="Search by workout type..."
+                        value={workoutTypeFilter}
+                        onChange={(e) => setWorkoutTypeFilter(e.target.value)}
+                        InputProps={{
+                          startAdornment: (
+                            <FitnessCenter sx={{ color: 'primary.main', mr: 1 }} />
+                          ),
+                          sx: {
+                            borderRadius: 3,
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            '& .MuiOutlinedInput-root': {
+                              '& fieldset': {
+                                borderColor: 'rgba(33, 150, 243, 0.3)',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: 'primary.main',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: 'primary.main',
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    </Box>
                     <GlassCard sx={{ mt: 2, p: 0, overflow: 'auto', width: '100%' }}>
                       <TableContainer component={Box} sx={{ width: '100%' }}>
                         <Table sx={{ minWidth: 700, width: '100%' }}>
@@ -1328,7 +1358,11 @@ const MemberSchedule = () => {
                           </TableHead>
                           <TableBody>
                             {schedule?.map((scheduleItem) =>
-                              scheduleItem.sessions?.map((session) => (
+                              scheduleItem.sessions
+                                ?.filter(session => 
+                                  session.workoutType.toLowerCase().includes(workoutTypeFilter.toLowerCase())
+                                )
+                                ?.map((session) => (
                                 <TableRow key={session._id} hover sx={{ borderBottom: '2px solid #e3eafc', transition: 'background 0.2s' }}>
                                   <TableCell sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.05rem' }}>
                                     {new Date(session.date).toLocaleDateString()}
