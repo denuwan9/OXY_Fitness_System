@@ -982,21 +982,51 @@ const MemberSchedule = () => {
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                           <Event sx={{ color: 'primary.main', mr: 1 }} />
                                           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                        {session.workoutType}
-                      </Typography>
+                                            {session.workoutType}
+                                          </Typography>
                                         </Box>
                                       }
                                       secondary={
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
                                           <Typography variant="body2" color="text.secondary">
-                        Time: {session.time}
-                      </Typography>
+                                            Time: {session.time}
+                                          </Typography>
                                           <Typography variant="body2" color="text.secondary">
                                             Status: <Chip label={session.status} color={getStatusColor(session.status)} size="small" />
-                        </Typography>
+                                          </Typography>
                                         </Box>
                                       }
                                     />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<FitnessCenter />}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (session && session._id && session.workoutType) {
+                                            setSelectedSession(session);
+                                            setActiveTab(1);
+                                          } else {
+                                            setError('Please select a valid session to view exercises');
+                                          }
+                                        }}
+                                        disabled={!session || !session._id || !session.workoutType}
+                                        sx={{ 
+                                          borderRadius: 20,
+                                          textTransform: 'none',
+                                          '&:hover': {
+                                            background: 'rgba(33,150,243,0.1)'
+                                          },
+                                          '&.Mui-disabled': {
+                                            opacity: 0.5,
+                                            cursor: 'not-allowed'
+                                          }
+                                        }}
+                                      >
+                                        View Exercises
+                                      </Button>
+                                    </Box>
                                   </ListItem>
                                 ))}
                               </List>
