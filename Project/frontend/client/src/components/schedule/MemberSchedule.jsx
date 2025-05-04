@@ -1,57 +1,29 @@
+import React, { useState, useEffect } from 'react';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
+import './ModernCalendar.css';
 import {
-  AccessTime,
-  CalendarToday,
-  CheckCircle,
-  DinnerDining,
-  Download,
-  Edit,
-  Egg,
-  Email,
-  EmojiFoodBeverage,
-  Event,
-  Fastfood,
-  FitnessCenter,
-  Info,
-  LocalBar,
-  LocalDining,
-  LocalPizza,
-  LunchDining,
-  Phone,
-  Repeat,
-  Restaurant,
-  Save,
-  Schedule,
-  Settings,
-  Warning
-} from '@mui/icons-material';
-import {
-  Alert,
-  Avatar,
-  Badge,
   Box,
-  Button,
+  Container,
+  Typography,
+  Paper,
+  Grid,
   Card,
   CardContent,
-  CardMedia,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Container,
+  Button,
   Dialog,
-  DialogActions,
-  DialogContent,
   DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Avatar,
   Divider,
-  FormControl,
-  Grid,
-  InputLabel,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  MenuItem,
-  Paper,
-  Select,
+  IconButton,
+  Tooltip,
+  Alert,
+  CircularProgress,
+  Chip,
+  Tabs,
   Tab,
   Table,
   TableBody,
@@ -59,22 +31,74 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Tabs,
-  TextField,
-  Typography
+  Badge,
+  CardMedia,
+  List,
+  ListItem,
+  ListItemText,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  LinearProgress,
+  Checkbox,
+  FormControlLabel,
+  Switch,
+  Radio,
+  RadioGroup,
 } from '@mui/material';
+import {
+  CalendarToday,
+  Download,
+  Restaurant,
+  FitnessCenter,
+  Person,
+  Schedule,
+  Star,
+  Email,
+  Phone,
+  Event,
+  AccessTime,
+  CheckCircle,
+  Warning,
+  Info,
+  EmojiFoodBeverage,
+  LunchDining,
+  DinnerDining,
+  Fastfood,
+  LocalDining,
+  LocalCafe,
+  LocalPizza,
+  Cake,
+  RestaurantMenu,
+  Egg,
+  Icecream,
+  LocalDrink,
+  LocalBar,
+  LocalDiningOutlined,
+  Repeat,
+  Edit,
+  Save,
+  Notifications,
+  Settings,
+  Security,
+  Language,
+  Palette,
+  Height,
+  MonitorWeight,
+  Favorite,
+  Bloodtype,
+  MedicalServices,
+  RestaurantMenu as RestaurantMenuIcon,
+} from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import React, { useEffect, useState } from 'react';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
 import { useAuth } from '../../contexts/AuthContext';
-import coachAvailabilityService from '../../services/coachAvailabilityService';
-import exerciseService from '../../services/exerciseService';
-import pdfService from '../../services/pdfService';
 import scheduleService from '../../services/scheduleService';
-import Footer from '../layout/Footer';
+import exerciseService from '../../services/exerciseService';
+import coachAvailabilityService from '../../services/coachAvailabilityService';
 import Header from '../layout/Header';
-import './ModernCalendar.css';
+import Footer from '../layout/Footer';
+import pdfService from '../../services/pdfService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),

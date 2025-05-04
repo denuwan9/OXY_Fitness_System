@@ -1,35 +1,43 @@
+import React, { useState, useEffect } from 'react';
 import {
-  Add,
-  Download,
-  FitnessCenter,
-  Restaurant,
-  Schedule
-} from '@mui/icons-material';
-import {
-  Alert,
   Box,
-  Button,
+  Container,
+  Typography,
+  Paper,
+  Grid,
   Card,
   CardContent,
-  Container,
+  Button,
   Dialog,
-  DialogActions,
-  DialogContent,
   DialogTitle,
-  FormControl,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Paper,
-  Select,
+  DialogContent,
+  DialogActions,
   TextField,
-  Typography
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider,
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
+import {
+  FitnessCenter,
+  Restaurant,
+  Edit,
+  Add,
+  Delete,
+  Schedule,
+  Download,
+} from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import pdfService from '../../services/pdfService';
 import scheduleService from '../../services/scheduleService';
+import pdfService from '../../services/pdfService';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
