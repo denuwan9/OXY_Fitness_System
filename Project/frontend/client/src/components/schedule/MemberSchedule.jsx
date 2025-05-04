@@ -786,6 +786,15 @@ const MemberSchedule = () => {
     }
   };
 
+  const handleTabChange = (e, newValue) => {
+    // If trying to switch to Exercise Plan tab (index 1), check for valid session
+    if (newValue === 1 && (!selectedSession || !selectedSession._id || !selectedSession.workoutType)) {
+      setError('Please select a valid session first to view exercises');
+      return;
+    }
+    setActiveTab(newValue);
+  };
+
   if (loading) {
     return (
       <Container>
@@ -852,12 +861,16 @@ const MemberSchedule = () => {
               <GlassCard>
                 <Tabs
                   value={activeTab}
-                  onChange={(e, newValue) => setActiveTab(newValue)}
+                  onChange={handleTabChange}
                   variant="fullWidth"
                   sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, '& .MuiTab-root': { fontWeight: 700, fontSize: '1.1rem' } }}
                 >
                   <Tab icon={<CalendarToday />} label="Calendar" />
-                  <Tab icon={<FitnessCenter />} label="Exercise Plan" />
+                  <Tab 
+                    icon={<FitnessCenter />} 
+                    label="Exercise Plan" 
+                    disabled={!selectedSession || !selectedSession._id || !selectedSession.workoutType}
+                  />
                   <Tab icon={<Restaurant />} label="Meal Plan" />
                   <Tab icon={<Schedule />} label="Sessions" />
                   <Tab icon={<Settings />} label="Preferences" />
@@ -929,9 +942,14 @@ const MemberSchedule = () => {
                                     key={session._id || idx} 
                                     alignItems="flex-start" 
                                     button
-                                    onClick={() => {
-                                      setSelectedSession(session);
-                                      setActiveTab(1); // Switch to Exercise Plan tab
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (session && session._id && session.workoutType) {
+                                        setSelectedSession(session);
+                                        setActiveTab(1);
+                                      } else {
+                                        setError('Please select a valid session to view exercises');
+                                      }
                                     }}
                                     sx={{ 
                                       mb: 1, 
@@ -966,27 +984,6 @@ const MemberSchedule = () => {
                                         </Box>
                                       }
                                     />
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Button
-                                        variant="outlined"
-                                        size="small"
-                                        startIcon={<FitnessCenter />}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedSession(session);
-                                          setActiveTab(1);
-                                        }}
-                                        sx={{ 
-                                          borderRadius: 20,
-                                          textTransform: 'none',
-                                          '&:hover': {
-                                            background: 'rgba(33,150,243,0.1)'
-                                          }
-                                        }}
-                                      >
-                                        View Exercises
-                                      </Button>
-                                    </Box>
                                   </ListItem>
                                 ))}
                               </List>
@@ -1039,140 +1036,148 @@ const MemberSchedule = () => {
                 {/* Exercise Plan Tab */}
                 {activeTab === 1 && (
                   <Box sx={{ p: { xs: 1, md: 3 } }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                      <Button
-                        variant="contained"
-                        startIcon={<Download />}
-                        onClick={handleDownloadWorkoutPlan}
-                      >
-                        Download Workout Plan
-                      </Button>
-                    </Box>
-                    <GlassCard sx={{ mb: 3, p: 3, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap', background: 'rgba(33,150,243,0.07)' }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
-                          Exercise Plan Progress
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={
-                            100 * (Object.values(exerciseProgress).filter(Boolean).length) /
-                            (exercisePlans?.exercises?.length || 0)
-                          }
-                          sx={{ height: 16, borderRadius: 8, background: '#e3f2fd', '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)' } }}
-                        />
-                      </Box>
-                      <Box sx={{ minWidth: 120, textAlign: 'right' }}>
-                        <Typography variant="body1" sx={{ fontWeight: 700, color: Object.values(exerciseProgress).filter(Boolean).length === (exercisePlans?.exercises?.length || 0) ? 'success.main' : 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          {Object.values(exerciseProgress).filter(Boolean).length} / {exercisePlans?.exercises?.length || 0} completed
-                          {Object.values(exerciseProgress).filter(Boolean).length === (exercisePlans?.exercises?.length || 0) && <CheckCircle color="success" />}
-                        </Typography>
-                      </Box>
-                    </GlassCard>
+                    {!selectedSession || !selectedSession._id || !selectedSession.workoutType ? (
+                      <Alert severity="warning" sx={{ mt: 2 }}>
+                        Please select a valid session from the calendar to view exercises.
+                      </Alert>
+                    ) : (
+                      <>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                          <Button
+                            variant="contained"
+                            startIcon={<Download />}
+                            onClick={handleDownloadWorkoutPlan}
+                          >
+                            Download Workout Plan
+                          </Button>
+                        </Box>
+                        <GlassCard sx={{ mb: 3, p: 3, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap', background: 'rgba(33,150,243,0.07)' }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
+                              Exercise Plan Progress
+                            </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={
+                                100 * (Object.values(exerciseProgress).filter(Boolean).length) /
+                                (exercisePlans?.exercises?.length || 0)
+                              }
+                              sx={{ height: 16, borderRadius: 8, background: '#e3f2fd', '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #2196F3 60%, #21CBF3 100%)' } }}
+                            />
+                          </Box>
+                          <Box sx={{ minWidth: 120, textAlign: 'right' }}>
+                            <Typography variant="body1" sx={{ fontWeight: 700, color: Object.values(exerciseProgress).filter(Boolean).length === (exercisePlans?.exercises?.length || 0) ? 'success.main' : 'text.primary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {Object.values(exerciseProgress).filter(Boolean).length} / {exercisePlans?.exercises?.length || 0} completed
+                              {Object.values(exerciseProgress).filter(Boolean).length === (exercisePlans?.exercises?.length || 0) && <CheckCircle color="success" />}
+                            </Typography>
+                          </Box>
+                        </GlassCard>
 
-                    {selectedSession && (
-                      <Paper sx={{ p: 2, mb: 3, background: 'rgba(33,150,243,0.05)', borderRadius: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
-                          Current Session: {selectedSession.workoutType}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Date: {new Date(selectedSession.date).toLocaleDateString()} | Time: {selectedSession.time}
-                        </Typography>
-                      </Paper>
-                    )}
+                        {selectedSession && (
+                          <Paper sx={{ p: 2, mb: 3, background: 'rgba(33,150,243,0.05)', borderRadius: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, color: 'primary.main', mb: 1 }}>
+                              Current Session: {selectedSession.workoutType}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              Date: {new Date(selectedSession.date).toLocaleDateString()} | Time: {selectedSession.time}
+                            </Typography>
+                          </Paper>
+                        )}
 
-                    <Grid container spacing={3}>
-                      {exercisePlans?.exercises?.map((exercise, index) => {
-                        const completed = !!exerciseProgress[exercise._id];
-                        const isAvailable = isExerciseAvailable(exercise);
-                        return (
-                          <Grid item xs={12} sm={6} md={4} key={index}>
-                            <ExerciseCard
-                              sx={{
-                                position: 'relative',
-                                opacity: !isAvailable ? 0.7 : 1,
-                                filter: !isAvailable ? 'grayscale(0.7)' : 'none',
-                                border: completed ? '2px solid #4caf50' : '2px solid transparent',
-                                boxShadow: completed ? '0 0 0 2px #4caf5033' : undefined,
-                                transition: 'box-shadow 0.2s, border 0.2s, opacity 0.2s',
-                                '&:hover': { boxShadow: '0 4px 24px rgba(33,150,243,0.12)', transform: 'translateY(-2px)' }
-                              }}
-                            >
-                              <Box sx={{ position: 'relative' }}>
-                                <ExerciseImage
-                                  image={exercise.imageUrl}
-                                  title={exercise.name}
-                                  sx={{ filter: !isAvailable ? 'grayscale(0.7) brightness(0.8)' : 'none' }}
-                                />
-                                {completed && (
-                                  <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, bgcolor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}>
-                                    <CheckCircle color="success" sx={{ fontSize: 36 }} />
+                        <Grid container spacing={3}>
+                          {exercisePlans?.exercises?.map((exercise, index) => {
+                            const completed = !!exerciseProgress[exercise._id];
+                            const isAvailable = isExerciseAvailable(exercise);
+                            return (
+                              <Grid item xs={12} sm={6} md={4} key={index}>
+                                <ExerciseCard
+                                  sx={{
+                                    position: 'relative',
+                                    opacity: !isAvailable ? 0.7 : 1,
+                                    filter: !isAvailable ? 'grayscale(0.7)' : 'none',
+                                    border: completed ? '2px solid #4caf50' : '2px solid transparent',
+                                    boxShadow: completed ? '0 0 0 2px #4caf5033' : undefined,
+                                    transition: 'box-shadow 0.2s, border 0.2s, opacity 0.2s',
+                                    '&:hover': { boxShadow: '0 4px 24px rgba(33,150,243,0.12)', transform: 'translateY(-2px)' }
+                                  }}
+                                >
+                                  <Box sx={{ position: 'relative' }}>
+                                    <ExerciseImage
+                                      image={exercise.imageUrl}
+                                      title={exercise.name}
+                                      sx={{ filter: !isAvailable ? 'grayscale(0.7) brightness(0.8)' : 'none' }}
+                                    />
+                                    {completed && (
+                                      <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, bgcolor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}>
+                                        <CheckCircle color="success" sx={{ fontSize: 36 }} />
+                                      </Box>
+                                    )}
+                                    {!isAvailable && (
+                                      <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, bgcolor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}>
+                                        <Warning color="warning" sx={{ fontSize: 36 }} />
+                                      </Box>
+                                    )}
                                   </Box>
-                                )}
-                                {!isAvailable && (
-                                  <Box sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, bgcolor: 'rgba(255,255,255,0.85)', borderRadius: '50%' }}>
-                                    <Warning color="warning" sx={{ fontSize: 36 }} />
-                                  </Box>
-                                )}
-                              </Box>
-                              <CardContent>
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-                                  <Checkbox
-                                    checked={completed}
-                                    onChange={e => handleExerciseCheck(exercise._id, e.target.checked)}
-                                    color="success"
-                                    disabled={!isAvailable && !completed}
-                                    sx={{ mr: 1, '& .MuiSvgIcon-root': { fontSize: 32 } }}
-                                  />
-                                  <Typography variant="h6" gutterBottom sx={{ textDecoration: completed ? 'line-through' : 'none', fontWeight: 700 }}>
-                                    {exercise.name}
-                                  </Typography>
-                                </Box>
-                                <Typography variant="body2" color="text.secondary" paragraph>
-                                  {exercise.description}
-                                </Typography>
-                                <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <FitnessCenter sx={{ fontSize: 18, color: 'primary.main' }} />
-                                    <Typography variant="body2">Sets: {exercise.sets}</Typography>
-                                  </Box>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <Repeat sx={{ fontSize: 18, color: 'secondary.main' }} />
-                                    <Typography variant="body2">Reps: {exercise.reps}</Typography>
-                                  </Box>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1 }}>
-                                  <Chip
-                                    label={exercise.difficulty}
-                                    color={exercise.difficulty === 'beginner' ? 'success' : 'warning'}
-                                    size="small"
-                                  />
-                                  <Chip
-                                    label={exercise.category}
-                                    color="primary"
-                                    size="small"
-                                  />
-                                </Box>
-                                {!isAvailable && (
-                                  <Alert severity="warning" sx={{ mt: 2 }}>
-                                    {new Date(selectedSession.date) < new Date() 
-                                      ? 'This exercise is from a past session'
-                                      : 'This exercise is for a future session'}
-                                  </Alert>
-                                )}
-                              </CardContent>
-                            </ExerciseCard>
-                          </Grid>
-                        );
-                      })}
-                      {(!exercisePlans?.exercises?.length) && (
-                        <Grid item xs={12}>
-                          <Alert severity="info" sx={{ mt: 2 }}>
-                            No exercises assigned yet. Please contact your coach to set up your exercise plan.
-                          </Alert>
+                                  <CardContent>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
+                                      <Checkbox
+                                        checked={completed}
+                                        onChange={e => handleExerciseCheck(exercise._id, e.target.checked)}
+                                        color="success"
+                                        disabled={!isAvailable && !completed}
+                                        sx={{ mr: 1, '& .MuiSvgIcon-root': { fontSize: 32 } }}
+                                      />
+                                      <Typography variant="h6" gutterBottom sx={{ textDecoration: completed ? 'line-through' : 'none', fontWeight: 700 }}>
+                                        {exercise.name}
+                                      </Typography>
+                                    </Box>
+                                    <Typography variant="body2" color="text.secondary" paragraph>
+                                      {exercise.description}
+                                    </Typography>
+                                    <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <FitnessCenter sx={{ fontSize: 18, color: 'primary.main' }} />
+                                        <Typography variant="body2">Sets: {exercise.sets}</Typography>
+                                      </Box>
+                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Repeat sx={{ fontSize: 18, color: 'secondary.main' }} />
+                                        <Typography variant="body2">Reps: {exercise.reps}</Typography>
+                                      </Box>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 1 }}>
+                                      <Chip
+                                        label={exercise.difficulty}
+                                        color={exercise.difficulty === 'beginner' ? 'success' : 'warning'}
+                                        size="small"
+                                      />
+                                      <Chip
+                                        label={exercise.category}
+                                        color="primary"
+                                        size="small"
+                                      />
+                                    </Box>
+                                    {!isAvailable && (
+                                      <Alert severity="warning" sx={{ mt: 2 }}>
+                                        {new Date(selectedSession.date) < new Date() 
+                                          ? 'This exercise is from a past session'
+                                          : 'This exercise is for a future session'}
+                                      </Alert>
+                                    )}
+                                  </CardContent>
+                                </ExerciseCard>
+                              </Grid>
+                            );
+                          })}
+                          {(!exercisePlans?.exercises?.length) && (
+                            <Grid item xs={12}>
+                              <Alert severity="info" sx={{ mt: 2 }}>
+                                No exercises assigned yet. Please contact your coach to set up your exercise plan.
+                              </Alert>
+                            </Grid>
+                          )}
                         </Grid>
-                      )}
-                    </Grid>
+                      </>
+                    )}
                   </Box>
                 )}
 
