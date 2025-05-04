@@ -1464,7 +1464,19 @@ const MemberSchedule = () => {
                       <Button
                         variant="contained"
                         startIcon={isEditing ? <Save /> : <Edit />}
-                        onClick={() => isEditing ? handleProfileUpdate() : setIsEditing(true)}
+                        onClick={() => {
+                          if (isEditing) {
+                            handleProfileUpdate();
+                          } else {
+                            // Initialize temp input fields with existing data when entering edit mode
+                            setTempInput({
+                              allergies: mealPlanPreferences.allergies.join(', '),
+                              specialGuidelines: mealPlanPreferences.specialGuidelines.join(', '),
+                              specialScheduleRequest: mealPlanPreferences.specialScheduleRequest || ''
+                            });
+                            setIsEditing(true);
+                          }
+                        }}
                         sx={{
                           borderRadius: 20,
                           fontWeight: 600,
