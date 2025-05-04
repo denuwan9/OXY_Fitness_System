@@ -1,67 +1,77 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import Layout from '../components/layout/Layout';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import {
-  AccessTime,
-  Block,
-  Cancel,
-  CheckCircle,
-  Download,
-  Event,
-  FitnessCenter,
-  InfoOutlined,
-  Person,
-  Restaurant,
-  Schedule,
-  SpaOutlined,
-  WarningAmberOutlined
-} from '@mui/icons-material';
-import {
-  Alert,
   Box,
-  Button,
-  Card,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  FormHelperText,
-  Grid,
-  IconButton,
-  InputLabel,
-  MenuItem,
+  Container,
+  Typography,
   Paper,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Grid,
+  Card,
+  CardContent,
+  IconButton,
+  Tooltip,
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider,
+  useTheme,
+  useMediaQuery,
   Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
-  Tooltip,
-  Typography,
-  useMediaQuery,
-  useTheme
+  CircularProgress,
+  Alert,
+  FormHelperText
 } from '@mui/material';
-import MuiAlert from '@mui/material/Alert';
-import Snackbar from '@mui/material/Snackbar';
+import {
+  FitnessCenter,
+  Restaurant,
+  Event,
+  LocationOn,
+  AccessTime,
+  Edit,
+  Download,
+  CheckCircle,
+  Cancel,
+  Schedule,
+  Person,
+  Delete,
+  InfoOutlined,
+  WarningAmberOutlined,
+  SpaOutlined,
+  Block
+} from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import React, { useEffect, useState } from 'react';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
-import { useForm } from 'react-hook-form';
-import * as yup from 'yup';
-import ExerciseManagement from '../components/ExerciseManagement';
-import Layout from '../components/layout/Layout';
-import MealPlanManager from '../components/schedule/MealPlanManager';
-import { useAuth } from '../contexts/AuthContext';
-import { mockWorkoutTypes } from '../mockData/scheduleData';
+import { mockSchedules, mockWorkoutTypes } from '../mockData/scheduleData';
 import coachAvailabilityService from '../services/coachAvailabilityService';
-import exerciseService from '../services/exerciseService';
-import scheduleService from '../services/scheduleService';
 import userService from '../services/userService';
+import scheduleService from '../services/scheduleService';
+import ExerciseManagement from '../components/ExerciseManagement';
+import exerciseService from '../services/exerciseService';
+import MealPlanManager from '../components/schedule/MealPlanManager';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(4),
