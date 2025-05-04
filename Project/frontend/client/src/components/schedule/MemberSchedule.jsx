@@ -720,15 +720,21 @@ const MemberSchedule = () => {
     }
     
     try {
-      // Ensure schedule is an array and has at least one item
-      const scheduleData = Array.isArray(schedule) ? schedule[0] : schedule;
-      if (!scheduleData || !scheduleData.sessions) {
-        setError('No schedule data available');
+      // Get sessions for selected date
+      const selectedDateSessions = getSessionsForDate(selectedDate);
+      if (selectedDateSessions.length === 0) {
+        setError('No sessions available for the selected date');
         return;
       }
 
+      // Create a modified schedule object with only the selected date's sessions
+      const scheduleData = {
+        ...schedule[0],
+        sessions: selectedDateSessions
+      };
+
       const doc = pdfService.generateSchedulePDF(scheduleData, user, coachInfo);
-      pdfService.downloadPDF(doc, `schedule_${user.name}_${new Date().toISOString().split('T')[0]}.pdf`);
+      pdfService.downloadPDF(doc, `schedule_${user.name}_${selectedDate.toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error generating schedule PDF:', error);
       setError(error.message || 'Failed to generate schedule PDF');
@@ -884,7 +890,14 @@ const MemberSchedule = () => {
                         variant="contained"
                         startIcon={<Download />}
                         onClick={handleDownloadSchedule}
-                        sx={{ mr: 1 }}
+                        disabled={getSessionsForDate(selectedDate).length === 0}
+                        sx={{ 
+                          mr: 1,
+                          '&.Mui-disabled': {
+                            opacity: 0.5,
+                            cursor: 'not-allowed'
+                          }
+                        }}
                       >
                         Download Schedule
                       </Button>
