@@ -1,9 +1,10 @@
 /* General Styles */
+
 .signup-page {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background-image: url("https://wallpapercave.com/wp/wp3325897.jpg");
+  /*background-image: url("https://wallpapercave.com/wp/wp3325897.jpg");*/
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -12,6 +13,7 @@
   align-items: center;
   min-height: 100vh;
   padding: 20px; /* Prevent form from touching edges */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 /* Container Styles */
@@ -128,15 +130,17 @@
 .form-group.checkbox {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 1px;
+  margin-right:20px ;
   margin-bottom: 10px; /* Reduced margin */
 }
 
 .form-group.checkbox label {
-  margin: 0;
+  margin: 1px;
   font-weight: normal;
   font-size: 0.8rem; /* Smaller font size */
 }
+
 
 .forgot-password {
   text-align: center;
@@ -175,3 +179,4 @@
   margin-top: 5px;
   display: block;
 }
+

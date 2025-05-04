@@ -1,80 +1,138 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom"; // Import Link for navigation
-import "./UserManager.css"; // Import the CSS file
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import "./UserManager.css";
+import { get, deleteUser, post } from "../services/ApiEndpoint";
+import { useDispatch } from "react-redux";
+import { Logout } from "../redux/AuthSlice";
+import toast from "react-hot-toast";
+import axios from "axios";
+import { generateUsersPDF } from "../services/PdfService2";
 
 const UserManager = () => {
-  // Mock user data with roles
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      firstName: "John",
-      lastName: "Doe",
-      email: "john@example.com",
-      address: "123 Main Street",
-      city: "New York",
-      phone: "(555) 123-4567",
-      password: "password123",
-      role: "admin", // Added role field
-    },
-    {
-      id: 2,
-      firstName: "Jane",
-      lastName: "Smith",
-      email: "jane@example.com",
-      address: "456 Elm Street",
-      city: "Los Angeles",
-      phone: "(555) 987-6543",
-      password: "password456",
-      role: "manager", // Added role field
-    },
-    {
-      id: 3,
-      firstName: "Alice",
-      lastName: "Johnson",
-      email: "alice@example.com",
-      address: "789 Oak Street",
-      city: "Chicago",
-      phone: "(555) 456-7890",
-      password: "password789",
-      role: "member", // Added role field
-    },
-  ]);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Initialize users as an empty array instead of an empty string
+  const [users, setUsers] = useState([]);
+  console.log('this is users', users);
+  
+  useEffect(() => {
+    const GetUsers = async () => {
+        try {
+            const request = await get('/api/admin/getuser');
+            console.log('API Response:', request.data);
+            
+            // Handle both possible response structures
+            const usersData = request.data.users || request.data.user;
+            
+            if (!usersData) {
+                throw new Error("No users data found in response");
+            }
+
+            setUsers(Array.isArray(usersData) ? usersData : []);
+            
+        } catch (error) {
+            console.error('Error fetching users:', error);
+            toast.error(error.response?.data?.message || "Failed to fetch users");
+        }
+    };
+    GetUsers();
+}, []);
+
+const handleDeleteUser = async (id) => {
+  try {
+    // Confirm deletion
+    const confirmDelete = window.confirm("Are you sure you want to delete this user?");
+    if (!confirmDelete) return;
+
+    // Show loading state
+    const deletingToast = toast.loading('Deleting user...');
+
+    // First check if user is admin
+    const userToDelete = users.find(user => user._id === id);
+    if (userToDelete?.role === 'admin') {
+      toast.error("Cannot delete admin users", { id: deletingToast });
+      return;
+    }
+
+    // Make POST request to match backend route
+    const request = await axios.post(
+      `http://localhost:6017/api/admin/delet/${id}`,
+      {}, // empty data object
+      {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
+      }
+    );
+    
+    // Success handling
+    if (request.status === 200) {
+      toast.success(request.data.message, { id: deletingToast });
+      
+      // Optimistic update (immediate UI update)
+      setUsers(prevUsers => prevUsers.filter(user => user._id !== id));
+      
+      // Alternative: Refetch for data consistency
+      // const refreshRequest = await get('/api/admin/getuser');
+      // setUsers(refreshRequest.data.users || []);
+    }
+  } catch (error) {
+    console.error("Delete error details:", error);
+
+    // Specific error handling
+    if (error.response) {
+      if (error.response.status === 401) {
+        toast.error("Session expired. Please login again.");
+        handleLogout();
+      } else if (error.response.status === 403) {
+        toast.error("Admin users cannot be deleted");
+      } else {
+        toast.error(error.response.data.message || "Failed to delete user");
+      }
+    } else if (error.request) {
+      toast.error("No response from server. Please check your connection.");
+    } else {
+      toast.error("Delete request failed. Please try again.");
+    }
+  }
+};
+
 
   // State for adding a new user
   const [newUser, setNewUser] = useState({
-    firstName: "",
-    lastName: "",
+    fname: "",
+    lname: "",
     email: "",
     address: "",
     city: "",
-    phone: "",
+    number: "",
     password: "",
-    role: "member", // Default role for new users
+    role: "member", // Changed default from "user" to "member" to match options
   });
 
   // State for updating a user
   const [editUser, setEditUser] = useState({
     id: null,
-    firstName: "",
-    lastName: "",
+    fname: "",
+    lname: "",
     email: "",
     address: "",
     city: "",
-    phone: "",
+    number: "",
     password: "",
-    role: "", // Role for editing
+    role: "",
   });
 
   // State for validation errors
   const [errors, setErrors] = useState({
-    firstName: "",
-    lastName: "",
+    fname: "",
+    lname: "",
     email: "",
-    phone: "",
+    number: "",
   });
-
-  // Mock user role (replace with actual role from your authentication system)
-  const userRole = "admin"; // Can be "user", "manager", or "admin"
 
   // State for edit mode
   const [isEditing, setIsEditing] = useState(false);
@@ -82,23 +140,93 @@ const UserManager = () => {
   // Function to handle input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    if (name in newUser) {
-      setNewUser({ ...newUser, [name]: value });
-    } else if (name in editUser) {
+    if (isEditing) {
       setEditUser({ ...editUser, [name]: value });
+    } else {
+      setNewUser({ ...newUser, [name]: value });
     }
 
     // Validate input on change
     validateField(name, value);
   };
 
+  // Logout button function
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("token"); // Retrieve the token
+      if (!token) {
+        throw new Error("No token found");
+      }
+  
+      // Send logout request
+      const response = await post(
+        "/api/auth/logout",
+        {}, // No body needed for logout
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Include the token in the headers
+          },
+        }
+      );
+  
+      if (response.status === 200) {
+        localStorage.removeItem("token"); // Remove the token from localStorage
+        dispatch(Logout()); // Update Redux state
+        navigate("/login"); // Redirect to the login page
+        toast.success(response.data.message); // Show success message
+      }
+    } catch (error) {
+      console.error("Error during logout:", error);
+  
+      // Log the full error response
+      if (error.response) {
+        console.log("Error response data:", error.response.data);
+        console.log("Error status:", error.response.status);
+        console.log("Error headers:", error.response.headers);
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+      } else {
+        console.log("Error message:", error.message);
+      }
+  
+      // Handle token expiry
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem("token"); // Clear the expired token
+        dispatch(Logout()); // Update Redux state
+        navigate("/login"); // Redirect to the login page
+        toast.error("Your session has expired. Please log in again.");
+      } else {
+        // Display specific error messages
+        toast.error(error.response?.data?.message || "Logout failed. Please try again.");
+      }
+    }
+  };
+
+
+  // Function to generate PDF report
+  const handleGeneratePDF = () => {
+    if (users.length === 0) {
+      toast.error("No users data available to generate PDF");
+      return;
+    }
+    
+    try {
+      generateUsersPDF(users);
+      toast.success("PDF generated successfully!");
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast.error("Failed to generate PDF");
+    }
+  };
+
+
   // Function to validate a specific field
   const validateField = (name, value) => {
     let errorMessage = "";
 
     switch (name) {
-      case "firstName":
-      case "lastName":
+      case "fname":
+      case "lname":
         if (!value.trim()) {
           errorMessage = "This field is required.";
         } else if (!/^[A-Za-z\s]+$/.test(value)) {
@@ -114,11 +242,11 @@ const UserManager = () => {
         }
         break;
 
-      case "phone":
+      case "number":
         if (!value.trim()) {
           errorMessage = "This field is required.";
-        } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(value)) {
-          errorMessage = "Phone number must be in the format (555) 123-4567.";
+        } else if (!/^\+?[0-9\s\-\(\)]{8,20}$/.test(value)) {
+          errorMessage = "Please enter a valid phone number (e.g., +1234567890).";
         }
         break;
 
@@ -134,21 +262,21 @@ const UserManager = () => {
     let isValid = true;
     const newErrors = {};
 
-    // Validate firstName
-    if (!user.firstName.trim()) {
-      newErrors.firstName = "First Name is required.";
+    // Validate fname
+    if (!user.fname.trim()) {
+      newErrors.fname = "First Name is required.";
       isValid = false;
-    } else if (!/^[A-Za-z\s]+$/.test(user.firstName)) {
-      newErrors.firstName = "Only letters and spaces are allowed.";
+    } else if (!/^[A-Za-z\s]+$/.test(user.fname)) {
+      newErrors.fname = "Only letters and spaces are allowed.";
       isValid = false;
     }
 
-    // Validate lastName
-    if (!user.lastName.trim()) {
-      newErrors.lastName = "Last Name is required.";
+    // Validate lname
+    if (!user.lname.trim()) {
+      newErrors.lname = "Last Name is required.";
       isValid = false;
-    } else if (!/^[A-Za-z\s]+$/.test(user.lastName)) {
-      newErrors.lastName = "Only letters and spaces are allowed.";
+    } else if (!/^[A-Za-z\s]+$/.test(user.lname)) {
+      newErrors.lname = "Only letters and spaces are allowed.";
       isValid = false;
     }
 
@@ -161,212 +289,337 @@ const UserManager = () => {
       isValid = false;
     }
 
-    // Validate phone
-    if (!user.phone.trim()) {
-      newErrors.phone = "Phone Number is required.";
+    // Validate number
+    if (!user.number.trim()) {
+      newErrors.number = "Phone Number is required.";
       isValid = false;
-    } else if (!/^\(\d{3}\) \d{3}-\d{4}$/.test(user.phone)) {
-      newErrors.phone = "Phone number must be in the format (555) 123-4567.";
+    } else if (!/^\+?[0-9\s\-\(\)]{8,20}$/.test(user.number)) {
+      newErrors.number = "Please enter a valid phone number (e.g., +1234567890).";
       isValid = false;
     }
 
     setErrors(newErrors);
     return isValid;
   };
-
+  const toggleEditMode = () => {
+    setIsEditing(!isEditing);
+  };
   // Function to handle adding a new user
-  const handleAddUser = () => {
-    if (validateForm(newUser)) {
-      const newUserId = users.length + 1; // Auto-increment ID
-      setUsers([...users, { id: newUserId, ...newUser }]);
-      setNewUser({
-        firstName: "",
-        lastName: "",
-        email: "",
-        address: "",
-        city: "",
-        phone: "",
-        password: "",
-        role: "member", // Reset role to default
-      }); // Clear input fields
+  const handleAddUser = async () => {
+    // Password validation with direct toast messages
+    if (!newUser.password) {
+      toast.error("Password is required");
+      return;
+    }
+    
+    if (newUser.password.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+    
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,128}$/.test(newUser.password)) {
+      toast.error("Password must contain: uppercase, lowercase, number, and special character");
+      return;
+    }
+    
+    if (newUser.password.length > 128) {
+      toast.error("Password cannot exceed 128 characters");
+      return;
+    }
+  
+    // Then validate other form fields
+    if (!validateForm(newUser)) {
+      toast.error("Please fill all required fields correctly");
+      return;
+    }
+  
+    try {
+      const addingToast = toast.loading('Adding user...');
+  
+      const response = await axios.post(
+        "http://localhost:6017/api/auth/addUser",
+        newUser,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+  
+      if (response.data.success) {
+        toast.success(response.data.message, { id: addingToast });
+        setUsers([...users, response.data.user]);
+        setNewUser({
+          fname: "",
+          lname: "",
+          email: "",
+          address: "",
+          city: "",
+          number: "",
+          password: "",
+          role: "user",
+        });
+      } else {
+        toast.error(response.data.message, { id: addingToast });
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        "Failed to add user"
+      );
     }
   };
 
-  // Function to handle deleting a user
-  const handleDeleteUser = (id) => {
-    setUsers(users.filter((user) => user.id !== id));
+  // Modified: Function to set up editing mode for a user
+  const setUpEditUser = (userId) => {
+    const userToEdit = users.find(user => user._id === userId);
+    if (userToEdit) {
+      setEditUser({
+        id: userToEdit._id,
+        fname: userToEdit.fname,
+        lname: userToEdit.lname,
+        email: userToEdit.email,
+        address: userToEdit.address || "",
+        city: userToEdit.city || "",
+        number: userToEdit.number || "",
+        password: "", // Don't populate password for security reasons
+        role: userToEdit.role || "user",
+      });
+      setIsEditing(true);
+    }
   };
 
   // Function to handle updating a user
-  const handleUpdateUser = () => {
-    if (validateForm(editUser)) {
-      setUsers(
-        users.map((user) =>
-          user.id === editUser.id ? { ...user, ...editUser } : user
-        )
+  const handleUpdateUser = async () => {
+    if (!validateForm(editUser)) return;
+  
+    try {
+      const updatingToast = toast.loading('Updating user...');
+      
+      // Remove id from the data we're sending
+      const { id, ...updateData } = editUser;
+      
+      const response = await axios.put(
+        `http://localhost:6017/api/admin/updateUser/${id}`,
+        updateData,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
       );
-      setEditUser({
-        id: null,
-        firstName: "",
-        lastName: "",
-        email: "",
-        address: "",
-        city: "",
-        phone: "",
-        password: "",
-        role: "", // Clear role
-      }); // Clear edit form
+  
+      if (response.status === 200) {
+        toast.success(response.data.message, { id: updatingToast });
+        
+        // Update local state with the returned user data
+        setUsers(users.map(user => 
+          user._id === id ? { ...user, ...response.data.user } : user
+        ));
+        
+        // Reset edit form
+        setEditUser({
+          id: null,
+          fname: "",
+          lname: "",
+          email: "",
+          address: "",
+          city: "",
+          number: "",
+          password: "",
+          role: "",
+        });
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error("Update error:", error);
+      toast.error(error.response?.data?.message || "Failed to update user");
     }
   };
 
-  // Function to toggle edit mode
-  const toggleEditMode = () => {
-    setIsEditing(!isEditing);
+  // Function to cancel editing
+  const cancelEdit = () => {
+    setEditUser({
+      id: null,
+      fname: "",
+      lname: "",
+      email: "",
+      address: "",
+      city: "",
+      number: "",
+      password: "",
+      role: "",
+    });
+    setIsEditing(false);
   };
 
   return (
     <div className="user-manager">
       {/* Left Side Menu */}
       <div className="left-side-menu">
-        <div className="menu-logo">OXY FITNESS</div>
-        <nav className="menu-nav">
-          <ul>
-            {/* Home Button */}
-            <li>
-              <Link to="/home" className="menu-button">
-                <span className="button-icon">🏠</span>
-                <span className="button-text">Home</span>
-              </Link>
-            </li>
+  <div className="menu-logo">OXY FITNESS</div>
+  <nav className="menu-nav">
 
-            {/* Profile Button */}
-            <li>
-              <Link to="/profile" className="menu-button">
-                <span className="button-icon">👤</span>
-                <span className="button-text">Profile</span>
-              </Link>
-            </li>
+    {/* Home Button */}
+    <Link to="/" className="menu-button">
+      <span className="button-icon">🏠</span>
+      <span className="button-text">Home</span>
+    </Link>
 
-            {/* Manage Profiles Button (Visible only to managers or admins) */}
-            {(userRole === "manager" || userRole === "admin") && (
-              <li>
-                <Link to="/usermanager" className="menu-button">
-                  <span className="button-icon">👥</span>
-                  <span className="button-text">Manage Profiles</span>
-                </Link>
-              </li>
-            )}
-          </ul>
-        </nav>
-      </div>
+    {/* Profile Button */}
+    <Link to="/profile" className="menu-button">
+      <span className="button-icon">👤</span>
+      <span className="button-text">Profile</span>
+    </Link>
+
+    {/* Edit Profile Button */}
+    <button onClick={toggleEditMode} className="menu-button">
+      <span className="button-icon">✏️</span>
+      <span className="button-text">
+        {isEditing ? "Cancel Editing" : "Edit Profile"}
+      </span>
+    </button>
+
+    {/* Manage Profiles Button (Visible only for admins) */}
+    {users && users.role === "admin" && (
+      <button className="menu-button" onClick={goToAdmin}>
+        <span className="button-icon">👥</span>
+        <span className="button-text">Manage Profiles</span>
+      </button>
+    )}
+
+    {/* Logout Button */}
+    <button onClick={handleLogout} className="menu-button">
+      <span className="button-icon">🚪</span>
+      <span className="button-text">Log out</span>
+    </button>
+
+    {/* Get User Details PDF */}
+            
+    <button onClick={handleGeneratePDF} className="menu-button">
+              <span className="button-icon">📄</span>
+              <span className="button-text">User Details PDF</span> 
+              </button>
+
+  </nav>
+</div>
+
+
+
+            
+            
+          
 
       {/* Main Content */}
       <div className="main-content">
         <h1>User Manager Dashboard</h1>
 
         {/* Add User Form */}
-        <div className="add-user-form">
-          <h2>Add New User</h2>
-          <input
-            type="text"
-            placeholder="First Name"
-            name="firstName"
-            value={newUser.firstName}
-            onChange={handleInputChange}
-          />
-          {errors.firstName && (
-            <span className="error-message">{errors.firstName}</span>
-          )}
-          <input
-            type="text"
-            placeholder="Last Name"
-            name="lastName"
-            value={newUser.lastName}
-            onChange={handleInputChange}
-          />
-          {errors.lastName && (
-            <span className="error-message">{errors.lastName}</span>
-          )}
-          <input
-            type="email"
-            placeholder="Email"
-            name="email"
-            value={newUser.email}
-            onChange={handleInputChange}
-          />
-          {errors.email && (
-            <span className="error-message">{errors.email}</span>
-          )}
-          <input
-            type="text"
-            placeholder="Address"
-            name="address"
-            value={newUser.address}
-            onChange={handleInputChange}
-          />
-          <input
-            type="text"
-            placeholder="City"
-            name="city"
-            value={newUser.city}
-            onChange={handleInputChange}
-          />
-          <input
-            type="tel"
-            placeholder="Phone Number"
-            name="phone"
-            value={newUser.phone}
-            onChange={handleInputChange}
-          />
-          {errors.phone && (
-            <span className="error-message">{errors.phone}</span>
-          )}
-          <input
-            type="password"
-            placeholder="Password"
-            name="password"
-            value={newUser.password}
-            onChange={handleInputChange}
-          />
-          <select
-            name="role"
-            value={newUser.role}
-            onChange={handleInputChange}
-          >
-            <option value="admin">Admin</option>
-            <option value="manager">Manager</option>
-            <option value="member">Member</option>
-            <option value="supplier">Supplier</option>
-            <option value="trainer">Trainer</option>
-          </select>
-          <button className="action-button" onClick={handleAddUser}>
-            Add User
-          </button>
-        </div>
-
-        {/* Update User Form */}
-        {editUser.id && (
+        {!isEditing ? (
+          <div className="add-user-form">
+            <h2>Add New User</h2>
+            <input
+              type="text"
+              placeholder="First Name"
+              name="fname"
+              value={newUser.fname}
+              onChange={handleInputChange}
+            />
+            {errors.fname && (
+              <span className="error-message">{errors.fname}</span>
+            )}
+            <input
+              type="text"
+              placeholder="Last Name"
+              name="lname"
+              value={newUser.lname}
+              onChange={handleInputChange}
+            />
+            {errors.lname && (
+              <span className="error-message">{errors.lname}</span>
+            )}
+            <input
+              type="email"
+              placeholder="Email"
+              name="email"
+              value={newUser.email}
+              onChange={handleInputChange}
+            />
+            {errors.email && (
+              <span className="error-message">{errors.email}</span>
+            )}
+            <input
+              type="text"
+              placeholder="Address"
+              name="address"
+              value={newUser.address}
+              onChange={handleInputChange}
+            />
+            <input
+              type="text"
+              placeholder="City"
+              name="city"
+              value={newUser.city}
+              onChange={handleInputChange}
+            />
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              name="number"
+              value={newUser.number}
+              onChange={handleInputChange}
+            />
+            {errors.number && (
+              <span className="error-message">{errors.number}</span>
+            )}
+            <input
+              type="password"
+              placeholder="Password"
+              name="password"
+              value={newUser.password}
+              onChange={handleInputChange}
+            />
+            <select
+              name="role"
+              value={newUser.role || user}
+              onChange={handleInputChange}
+            >
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="user">User</option>
+              <option value="supplier">Supplier</option>
+              <option value="trainer">Trainer</option>
+            </select>
+            <button className="action-button" onClick={handleAddUser}>
+              Add User
+            </button>
+          </div>
+        ) : (
           <div className="update-user-form">
             <h2>Update User</h2>
             <input
               type="text"
               placeholder="First Name"
-              name="firstName"
-              value={editUser.firstName}
+              name="fname"
+              value={editUser.fname}
               onChange={handleInputChange}
             />
-            {errors.firstName && (
-              <span className="error-message">{errors.firstName}</span>
+            {errors.fname && (
+              <span className="error-message">{errors.fname}</span>
             )}
             <input
               type="text"
               placeholder="Last Name"
-              name="lastName"
-              value={editUser.lastName}
+              name="lname"
+              value={editUser.lname}
               onChange={handleInputChange}
             />
-            {errors.lastName && (
-              <span className="error-message">{errors.lastName}</span>
+            {errors.lname && (
+              <span className="error-message">{errors.lname}</span>
             )}
             <input
               type="email"
@@ -395,16 +648,16 @@ const UserManager = () => {
             <input
               type="tel"
               placeholder="Phone Number"
-              name="phone"
-              value={editUser.phone}
+              name="number"
+              value={editUser.number}
               onChange={handleInputChange}
             />
-            {errors.phone && (
-              <span className="error-message">{errors.phone}</span>
+            {errors.number && (
+              <span className="error-message">{errors.number}</span>
             )}
             <input
               type="password"
-              placeholder="Password"
+              placeholder="New Password"
               name="password"
               value={editUser.password}
               onChange={handleInputChange}
@@ -416,13 +669,18 @@ const UserManager = () => {
             >
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
-              <option value="member">Member</option>
+              <option value="user">User</option>
               <option value="supplier">Supplier</option>
               <option value="trainer">Trainer</option>
             </select>
-            <button className="action-button" onClick={handleUpdateUser}>
-              Update User
-            </button>
+            <div className="button-group">
+              <button className="action-button" onClick={handleUpdateUser}>
+                Update User
+              </button>
+              <button className="action-button cancel-button" onClick={cancelEdit}>
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
@@ -439,39 +697,46 @@ const UserManager = () => {
                 <th>Address</th>
                 <th>City</th>
                 <th>Phone</th>
-                <th>Password</th>
                 <th>Role</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
-                <tr key={user.id}>
-                  <td>{user.id}</td>
-                  <td>{user.firstName}</td>
-                  <td>{user.lastName}</td>
-                  <td>{user.email}</td>
-                  <td>{user.address}</td>
-                  <td>{user.city}</td>
-                  <td>{user.phone}</td>
-                  <td>{user.password}</td>
-                  <td>{user.role}</td>
-                  <td>
-                    <button
-                      className="action-button"
-                      onClick={() => setEditUser(user)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="action-button delete-button"
-                      onClick={() => handleDeleteUser(user.id)}
-                    >
-                      Delete
-                    </button>
+              {/* Added null/empty array check and better rendering */}
+              {Array.isArray(users) && users.length > 0 ? (
+                users.map((elem, index) => (
+                  <tr key={index}>
+                    <td>{elem._id}</td>
+                    <td>{elem.fname}</td>
+                    <td>{elem.lname}</td>
+                    <td>{elem.email}</td>
+                    <td>{elem.address}</td>
+                    <td>{elem.city}</td>
+                    <td>{elem.number}</td>
+                    <td>{elem.role}</td>
+                    <td>
+                      <button
+                        className="action-button"
+                        onClick={() => setUpEditUser(elem._id)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="action-button delete-button"
+                        onClick={() => handleDeleteUser(elem._id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: "center" }}>
+                    No users found or loading...
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

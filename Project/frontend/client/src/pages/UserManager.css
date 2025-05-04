@@ -8,64 +8,55 @@
     background-color: #f9f9f9;
   }
   
-  /* Left Side Menu */
   .left-side-menu {
-    width: 250px; /* Fixed width for the left column */
-    background-color: #2c3e50; /* Dark background */
-    color: #fff; /* White text */
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Add shadow for depth */
+  
+    width: 250px;
+    background-color: #1b3b6f;
+    color: #fff;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     padding: 20px;
   }
   
   .menu-logo {
     font-size: 24px;
     font-weight: bold;
+    margin-top: 30px;
     margin-bottom: 110px;
-    margin-top: 30;
-    color: #fff;
+    color: #0073e6;
     text-align: center;
   }
   
-  .menu-nav ul {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  .menu-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 30px; /* space between buttons */
   }
   
-  .menu-nav ul li {
-    margin-bottom: 50px; /* Space between buttons */
-  }
-  
-  .menu-nav ul li a,
-  .menu-nav ul li button {
+  .menu-button {
     color: #fff;
     text-decoration: none;
     font-size: 16px;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
-    padding: 12px 16px;
+    padding: 12px 26px;
     border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.1);
     border: none;
     cursor: pointer;
-    width: 110%;
     text-align: left;
   }
   
-  .menu-nav ul li a:hover,
-  .menu-nav ul li button:hover {
+  .menu-button:hover {
     background-color: rgba(255, 255, 255, 0.2);
     transform: translateX(5px);
   }
   
-  .menu-nav ul li a:active,
-  .menu-nav ul li button:active {
+  .menu-button:active {
     background-color: rgba(255, 255, 255, 0.3);
   }
   
-  .menu-nav ul li a.active,
-  .menu-nav ul li button.active {
+  .menu-button.active {
     background-color: #0073e6;
   }
   
@@ -75,8 +66,7 @@
     transition: transform 0.3s ease;
   }
   
-  .menu-nav ul li a:hover .button-icon,
-  .menu-nav ul li button:hover .button-icon {
+  .menu-button:hover .button-icon {
     transform: scale(1.1);
   }
   
@@ -86,6 +76,7 @@
   
   /* Main Content */
   .main-content {
+    
     flex: 1; /* Take up remaining space */
     padding: 20px;
     overflow-y: auto; /* Enable scrolling for the main content */
@@ -133,6 +124,12 @@
     font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
   }
   
   .action-button:hover {
@@ -206,4 +203,14 @@
     font-size: 14px;
     margin-top: 5px;
     display: block;
+  }
+
+  .error-input {
+    border: 1px solid red;
+  }
+  
+  .error-message {
+    color: red;
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
   }
