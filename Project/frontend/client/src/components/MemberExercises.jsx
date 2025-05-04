@@ -16,6 +16,8 @@ import {
   Divider,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
+import exerciseService from '../services/exerciseService';
+import { useAuth } from '../contexts/AuthContext';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -39,65 +41,38 @@ const ExerciseImage = styled(CardMedia)(({ theme }) => ({
   height: 200,
   backgroundSize: 'cover',
   backgroundPosition: 'center',
+  backgroundColor: theme.palette.grey[200],
 }));
 
 const MemberExercises = ({ memberId }) => {
+  const { user } = useAuth();
   const [exercises, setExercises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   useEffect(() => {
-    // In a real application, you would fetch exercises from an API
     const fetchExercises = async () => {
       try {
-        // Simulated API call
-        const response = await new Promise(resolve => {
-          setTimeout(() => {
-            resolve([
-              {
-                id: 1,
-                name: 'Push-ups',
-                description: 'A classic bodyweight exercise that targets the chest, shoulders, and triceps',
-                category: 'Strength',
-                imageUrl: '/images/exercises/pushup.jpg',
-                difficulty: 'beginner',
-                sets: 3,
-                reps: 12,
-              },
-              {
-                id: 2,
-                name: 'Squats',
-                description: 'A fundamental lower body exercise that targets the quadriceps, hamstrings, and glutes',
-                category: 'Strength',
-                imageUrl: '/images/exercises/squat.jpg',
-                difficulty: 'beginner',
-                sets: 3,
-                reps: 15,
-              },
-              {
-                id: 3,
-                name: 'Plank',
-                description: 'An isometric core exercise that improves stability and endurance',
-                category: 'Core',
-                imageUrl: '/images/exercises/plank.jpg',
-                difficulty: 'beginner',
-                sets: 3,
-                reps: '30 seconds',
-              },
-            ]);
-          }, 1000);
-        });
+        setLoading(true);
+        // Use the actual memberId from props or fallback to the logged-in user's ID
+        const userId = memberId || user?._id;
+        if (!userId) {
+          throw new Error('No user ID available');
+        }
+        
+        const response = await exerciseService.getMemberExercises(userId);
         setExercises(response);
         setLoading(false);
       } catch (err) {
-        setError('Failed to load exercises');
+        console.error('Error fetching exercises:', err);
+        setError(err.message || 'Failed to load exercises');
         setLoading(false);
       }
     };
 
     fetchExercises();
-  }, [memberId]);
+  }, [memberId, user]);
 
   const handleCategoryChange = (event, newValue) => {
     setSelectedCategory(newValue);
@@ -152,7 +127,7 @@ const MemberExercises = ({ memberId }) => {
             <Grid item xs={12} sm={6} md={4} key={exercise.id}>
               <ExerciseCard>
                 <ExerciseImage
-                  image={exercise.imageUrl}
+                  image={exercise.imageUrl || `https://via.placeholder.com/400x200?text=${encodeURIComponent(exercise.name)}`}
                   title={exercise.name}
                 />
                 <CardContent>
