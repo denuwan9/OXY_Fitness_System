@@ -17,6 +17,10 @@ const Home = () => {
   const [scrollPosition, setScrollPosition] = useState(0);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => {
       setScrollPosition(window.scrollY);
     };
