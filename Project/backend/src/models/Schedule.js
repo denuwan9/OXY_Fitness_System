@@ -86,4 +86,4 @@ scheduleSchema.pre('save', function(next) {
   next();
 });
 
-module.exports = mongoose.model('Schedule', scheduleSchema); 
+module.exports = mongoose.model('Schedule', scheduleSchema); //creating a model for the schedule schema

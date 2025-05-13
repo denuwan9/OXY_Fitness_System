@@ -63,7 +63,7 @@ const scheduleService = {
         const payload = JSON.parse(jsonPayload);
         coachId = payload.userId;
       }
-
+      // Coach authentication validation
       if (!coachId) {
         throw new Error('Coach ID not found. Please log in again.');
       }

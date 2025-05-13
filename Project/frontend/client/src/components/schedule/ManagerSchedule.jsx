@@ -343,7 +343,7 @@ const ManagerSchedule = () => {
     }
     loadData();
   }, [user]);
-
+    
   const loadData = async () => {
     try {
       console.log('Starting to load data...');

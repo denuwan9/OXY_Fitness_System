@@ -14,7 +14,7 @@ const timeRangeSchema = new mongoose.Schema({
     default: 1,
     min: 1
   }
-}, { _id: false });
+}, { _id: false }); // _id: false is used to avoid creating a new _id field for the timeRangeSchema
 
 const availabilityDaySchema = new mongoose.Schema({
   day: {

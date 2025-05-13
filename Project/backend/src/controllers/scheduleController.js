@@ -32,6 +32,7 @@ exports.createSchedule = async (req, res) => {
     }
 
     // Check for existing sessions at the same time
+    //prevent overlapping or  duplicate session entries
     for (const session of sessions) {
       const existingSession = await Schedule.findOne({
         userId: userId,

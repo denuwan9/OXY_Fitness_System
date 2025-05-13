@@ -1692,6 +1692,7 @@ const MemberSchedule = () => {
               Request Reschedule
             </DialogTitle>
             <DialogContent sx={{ p: 4 }}>
+              {/* Current Session Information*/}
               {selectedSession && (
                 <Box sx={{ mb: 3, p: 2, borderRadius: 2, background: 'rgba(33,150,243,0.07)', display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Typography variant="subtitle2" sx={{ color: 'primary.main', fontWeight: 700 }}>
@@ -1706,6 +1707,7 @@ const MemberSchedule = () => {
                   </Typography>
                 </Box>
               )}
+              {/* Coach Availability selection in reschedule request dialog*/}
               {coachAvailability && coachAvailability.availability && coachAvailability.availability.length > 0 ? (
                 <>
                   <FormControl fullWidth sx={{ mb: 3 }}>
@@ -1726,6 +1728,7 @@ const MemberSchedule = () => {
                       ))}
                     </Select>
                   </FormControl>
+                  {/* Time Range selection*/}
                   <FormControl fullWidth sx={{ mb: 3 }}>
                     <InputLabel><AccessTime sx={{ fontSize: 18, mr: 1, color: 'secondary.main' }} />Time Range</InputLabel>
                     <Select
@@ -1743,6 +1746,7 @@ const MemberSchedule = () => {
                         )) || []}
                     </Select>
                   </FormControl>
+                  {/* Reason for Reschedule*/}
                   <TextField
                     label="Reason for Reschedule"
                     multiline

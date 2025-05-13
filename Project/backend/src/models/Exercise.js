@@ -57,7 +57,7 @@ const exerciseSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add indexes for better query performance
+// Add indexes for better query performance (for faster search and filtering)
 exerciseSchema.index({ name: 1 });
 exerciseSchema.index({ category: 1 });
 exerciseSchema.index({ difficulty: 1 });

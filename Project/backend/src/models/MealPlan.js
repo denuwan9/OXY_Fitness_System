@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // Importing mongoose library
 
 const mealPlanSchema = new mongoose.Schema({
   membershipType: {
