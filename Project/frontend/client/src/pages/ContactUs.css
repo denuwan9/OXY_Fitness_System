@@ -1,0 +1,136 @@
+.contact-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  
+}
+
+.body5 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding-top: 80px;
+}
+.contact-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.contact-header h1 {
+  font-size: 2.5rem;
+  color: #2d3748;
+  margin-bottom: 1rem;
+}
+
+.subheading {
+  font-size: 1.2rem;
+  color: #ffffff;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.contact-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.contact-card {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.contact-card:hover {
+  transform: translateY(-5px);
+}
+
+.icon-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.icon-circle.sales {
+  background-color: #ebf8ff;
+  color: #3182ce;
+}
+
+.icon-circle.support {
+  background-color: #fff5f5;
+  color: #e53e3e;
+}
+
+.icon-circle.locations {
+  background-color: #f0fff4;
+  color: #38a169;
+}
+
+.contact-icon {
+  font-size: 1.5rem;
+}
+
+.contact-card h3 {
+  font-size: 1.5rem;
+  color: #2d3748;
+  margin-bottom: 1rem;
+}
+
+.contact-card p {
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.contact-detail {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  color: #4a5568;
+}
+
+.detail-icon {
+  margin-right: 0.8rem;
+  color: #718096;
+}
+
+.location-details {
+  margin: 1.5rem 0;
+}
+
+.location {
+  margin-bottom: 1.5rem;
+}
+
+.location h4 {
+  font-size: 1.1rem;
+  color: #2d3748;
+  margin-bottom: 0.3rem;
+}
+
+.location p {
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+  color: #718096;
+}
+
+.link-text {
+  display: inline-block;
+  color: #3182ce;
+  font-weight: 600;
+  text-decoration: none;
+  margin-top: 1rem;
+  transition: color 0.2s;
+}
+
+.link-text:hover {
+  color: #2c5282;
+  text-decoration: underline;
+}

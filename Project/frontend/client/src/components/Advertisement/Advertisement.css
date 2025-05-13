@@ -1,0 +1,143 @@
+/* Main Container */
+.advertisement-container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 30px;
+  }
+  
+  .ad-content {
+    background: linear-gradient(135deg, #3498db 0%, #2c3e50 100%);
+    border-radius: 15px;
+    padding: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    box-shadow: 0 10px 30px rgba(52, 152, 219, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  /* Text Content */
+  .ad-text {
+    flex: 1;
+    z-index: 2;
+  }
+  
+  .ad-title {
+    font-size: 28px;
+    font-weight: 800;
+    margin-bottom: 15px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #fff;
+  }
+  
+  .ad-description {
+    font-size: 18px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  
+  .highlight {
+    font-weight: 700;
+    color: #f1c40f;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Payment Methods */
+  .payment-methods {
+    display: flex;
+    gap: 15px;
+    margin: 25px 0;
+  }
+  
+  .payment-icon {
+    width: 60px;
+    height: 40px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  
+  .mastercard {
+    background-image: url('src/assets/master.png');
+  }
+  
+  .visa {
+    background-image: url('src/assets/visanew.png');
+  }
+  
+  /* Promo Code */
+  .ad-terms {
+    font-size: 16px;
+    margin-top: 10px;
+  }
+  
+  .promo-code {
+    background: #f1c40f;
+    color: #2c3e50;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-weight: 700;
+    margin-left: 5px;
+  }
+  
+  /* Image Container */
+  .ad-image-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .discount-bubble {
+    background: #f1c40f;
+    color: #2c3e50;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 24px;
+    font-weight: 800;
+    animation: pulse 2s infinite;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Animation */
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .ad-content {
+      flex-direction: column;
+      text-align: center;
+      padding: 25px;
+    }
+    
+    .payment-methods {
+      justify-content: center;
+    }
+    
+    .ad-image-container {
+      margin-top: 20px;
+      width: 150px;
+      height: 150px;
+    }
+    
+    .ad-title {
+      font-size: 24px;
+    }
+    
+    .ad-description {
+      font-size: 16px;
+    }
+  }

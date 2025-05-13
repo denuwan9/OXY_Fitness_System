@@ -1,0 +1,133 @@
+.side-panel {
+    width: 250px;
+    background-color: #1b3b6f;
+    color: #fff;
+    height: 100vh;
+    padding: 30px 20px;
+    box-sizing: border-box;
+    transition: width 0.3s ease-in-out;
+    border-right: 2px solid #00aaff;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1000;
+  }
+  
+  .side-panel h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 24px;
+    color: #00aaff;
+    font-weight: 600;
+  }
+  
+  .side-panel ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .side-panel ul li {
+    margin: 20px 0;
+  }
+  
+  .side-panel ul li a {
+    color: #ecf0f1;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    border-radius: 8px;
+    transition: background-color 0.3s ease, padding 0.3s ease;
+    font-size: 16px;
+    position: relative;
+  }
+  
+  .side-panel ul li a:hover, 
+  .side-panel ul li a.active {
+    background-color: #295891;
+    padding-left: 20px;  
+  }
+  
+  .side-panel ul li a .icon {
+    margin-right: 15px;
+    font-size: 18px;
+    transition: transform 0.3s ease;
+  }
+  
+  .side-panel ul li a:hover .icon {
+    transform: rotate(15deg);
+  }
+  
+  .new-order-indicator {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 8px;
+    height: 8px;
+    background-color: #ff4444;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  
+  /* Add new styles for the main content area */
+  .main-content {
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    min-height: 100vh;
+    background-color: #f5f6fa;
+  }
+  
+  /* Update responsive styles */
+  @media screen and (max-width: 768px) {
+    .side-panel {
+      width: 100%;
+      height: auto;
+      padding: 20px 15px;
+      position: relative;
+    }
+  
+    .main-content {
+      margin-left: 0;
+      width: 100%;
+    }
+  
+    .side-panel h2 {
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+  
+    .side-panel ul li {
+      margin: 15px 0;
+    }
+  }
+  
+  @media screen and (max-width: 480px) {
+    .side-panel {
+      padding: 15px 10px;
+    }
+  
+    .side-panel ul li a {
+      padding: 12px;
+      font-size: 14px;
+    }
+  
+    .side-panel ul li a .icon {
+      font-size: 16px;
+      margin-right: 10px;
+    }
+  }
