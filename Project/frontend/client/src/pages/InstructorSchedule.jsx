@@ -1171,12 +1171,23 @@ const InstructorSchedule = () => {
       return;
     }
 
-    // Calculate the target date string
-    const today = new Date();
+    // Calculate the target date string in IST
+    const now = new Date();
+    const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const today = new Date(istDate.getFullYear(), istDate.getMonth(), istDate.getDate());
     const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(newDate);
+    const currentDayIndex = today.getDay();
+    let daysToAdd = dayIndex - currentDayIndex;
+    if (daysToAdd <= 0) {
+      daysToAdd += 7;
+    }
     const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
-    const formattedDate = targetDate.toISOString().split('T')[0];
+    targetDate.setDate(today.getDate() + daysToAdd);
+    // Format date as YYYY-MM-DD in IST
+    const yyyy = targetDate.getFullYear();
+    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(targetDate.getDate()).padStart(2, '0');
+    const formattedDate = `${yyyy}-${mm}-${dd}`;
     const [startTime] = newTime.split('-');
 
     // Find the selected time range and its capacity
@@ -1202,7 +1213,7 @@ const InstructorSchedule = () => {
       const rescheduleData = {
         scheduleId: selectedSession.scheduleId,
         sessionId: selectedSession._id,
-        newDate: targetDate.toISOString().split('T')[0],
+        newDate: formattedDate,
         newTime: startTime.trim(),
         endTime: selectedTimeRange.endTime,
         reason,
@@ -1227,7 +1238,7 @@ const InstructorSchedule = () => {
               memberSchedule[scheduleIndex].sessions[sessionIndex] = {
                 ...memberSchedule[scheduleIndex].sessions[sessionIndex],
                 rescheduled: true,
-                newDate: targetDate.toISOString().split('T')[0],
+                newDate: formattedDate,
                 newTime: startTime.trim(),
                 endTime: selectedTimeRange.endTime,
                 reason,
@@ -1829,7 +1840,7 @@ const InstructorSchedule = () => {
                           daysToAdd += 7;
                         }
                         
-                        const targetDate = new Date(today);
+                          const targetDate = new Date(today);
                         targetDate.setDate(today.getDate() + daysToAdd);
                         
                         // Format the date for display
@@ -1922,7 +1933,7 @@ const InstructorSchedule = () => {
                       label="Workout Type"
                       value={watch('workoutType') || ''}
                       onChange={(e) => setValue('workoutType', e.target.value)}
-                      sx={{
+                      sx={{ 
                         borderRadius: 2,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: 'rgba(0, 0, 0, 0.1)',
