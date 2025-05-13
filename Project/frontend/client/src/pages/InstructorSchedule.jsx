@@ -368,6 +368,7 @@ const InstructorSchedule = () => {
         throw new Error('User ID not found');
       }
       const availability = await coachAvailabilityService.getCoachAvailability(userId);
+      console.log('Loaded Instructor Availability:', availability);
       setInstructorAvailability(availability);
     } catch (error) {
       console.error('Error loading instructor availability:', error);
@@ -578,66 +579,28 @@ const InstructorSchedule = () => {
 
       // Convert the selected day to a date
       const selectedDay = data.day;
-      const today = new Date();
+      // Get current date in IST
+      const now = new Date();
+      const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+      const today = new Date(istDate.getFullYear(), istDate.getMonth(), istDate.getDate());
+      // Calculate days until next occurrence of selected day
       const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(selectedDay);
+      const currentDayIndex = today.getDay();
+      let daysToAdd = dayIndex - currentDayIndex;
+      if (daysToAdd <= 0) {
+        daysToAdd += 7; // Move to next week if the day has already passed
+      }
+      // Create target date
       const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
-      const formattedDate = targetDate.toISOString().split('T')[0];
+      targetDate.setDate(today.getDate() + daysToAdd);
+      // Format date as YYYY-MM-DD (ISO format)
+      const yyyy = targetDate.getFullYear();
+      const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const dd = String(targetDate.getDate()).padStart(2, '0');
+      const formattedDate = `${yyyy}-${mm}-${dd}`;
 
       // Split the time range into start and end times
-      const [startTime, endTime] = data.time.split('-');
-
-      // Check if the selected time slot has available capacity
-      const selectedDayAvailability = instructorAvailability?.availability.find(day => day.day === selectedDay);
-      if (!selectedDayAvailability) {
-        setError('Selected day is not available');
-        return;
-      }
-
-      const selectedTimeRange = selectedDayAvailability.timeRanges.find(
-        range => range.startTime === startTime.trim() && range.endTime === endTime.trim()
-      );
-
-      if (!selectedTimeRange) {
-        setError('Selected time range is not available');
-        return;
-      }
-
-      // Check if member already has a session at this time
-      const memberSessions = memberSchedules[selectedMember._id] || [];
-      const hasExistingSession = memberSessions.some(schedule => 
-        schedule.sessions.some(session => 
-          session.date === formattedDate && 
-          session.time === startTime.trim() &&
-          session.status !== 'cancelled' &&
-          session.status !== 'pending_reschedule'
-        )
-      );
-
-      if (hasExistingSession) {
-        setError('Member already has a session scheduled at this time');
-        return;
-      }
-
-      // Get current sessions for the selected time slot across all members
-      const currentSessions = getCurrentSessionsForTimeSlot(
-        formattedDate,
-        startTime.trim()
-      );
-
-      console.log('Capacity check:', {
-        date: formattedDate,
-        time: startTime.trim(),
-        capacity: selectedTimeRange.capacity,
-        currentSessions: currentSessions.length,
-        hasExistingSession
-      });
-
-      // Check if the time slot has available capacity
-      if (currentSessions.length >= selectedTimeRange.capacity) {
-        setError('This time slot has reached its maximum capacity');
-        return;
-      }
+      const [startTime, endTime] = data.time.split('-').map(time => time.trim());
 
       // Get the workout type name from mockWorkoutTypes
       const selectedWorkoutType = mockWorkoutTypes.find(type => type.id === parseInt(data.workoutType));
@@ -645,11 +608,21 @@ const InstructorSchedule = () => {
         throw new Error('Invalid workout type selected');
       }
 
+      // Debug logging
+      console.log('Schedule Payload Debug:', {
+        selectedDay,
+        targetDate: targetDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+        formattedDate,
+        startTime,
+        endTime,
+        workoutType: selectedWorkoutType.name
+      });
+
       const scheduleData = {
         memberId: selectedMember._id,
         date: formattedDate,
-        time: startTime.trim(),
-        endTime: endTime.trim(),
+        time: startTime,
+        endTime: endTime,
         workoutType: selectedWorkoutType.name,
         duration: data.duration,
         notes: data.notes,
@@ -1748,6 +1721,32 @@ const InstructorSchedule = () => {
                     <Select
                       {...register('day')}
                       label="Day"
+                      value={watch('day') || ''}
+                      onChange={(e) => {
+                        setValue('day', e.target.value);
+                        // Get current date in IST (GMT+5:30)
+                        const now = new Date();
+                        const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+                        const today = new Date(istDate.getFullYear(), istDate.getMonth(), istDate.getDate());
+                        const selectedDay = e.target.value;
+                        const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(selectedDay);
+                        const currentDayIndex = today.getDay();
+                        let daysToAdd = dayIndex - currentDayIndex;
+                        if (daysToAdd <= 0) {
+                          daysToAdd += 7;
+                        }
+                        const targetDate = new Date(today);
+                        targetDate.setDate(today.getDate() + daysToAdd);
+                        console.log('Day Selection Debug:', {
+                          selectedDay,
+                          currentISTDate: istDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+                          today: today.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+                          currentDayIndex,
+                          dayIndex,
+                          daysToAdd,
+                          calculatedDate: targetDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+                        });
+                      }}
                       sx={{ 
                         borderRadius: 2,
                         '& .MuiOutlinedInput-notchedOutline': {
@@ -1770,6 +1769,30 @@ const InstructorSchedule = () => {
                     <Select
                       {...register('time')}
                       label="Time Range"
+                      value={watch('time') || ''}
+                      onChange={(e) => {
+                        setValue('time', e.target.value);
+                        const selectedTime = e.target.value;
+                        const selectedDay = watch('day');
+                        // Get current date in IST
+                        const now = new Date();
+                        const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+                        const today = new Date(istDate.getFullYear(), istDate.getMonth(), istDate.getDate());
+                        // Calculate target date based on selected day
+                        const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(selectedDay);
+                        const currentDayIndex = today.getDay();
+                        let daysToAdd = dayIndex - currentDayIndex;
+                        if (daysToAdd <= 0) {
+                          daysToAdd += 7;
+                        }
+                        const targetDate = new Date(today);
+                        targetDate.setDate(today.getDate() + daysToAdd);
+                        console.log('Time Range Selection:', {
+                          selectedDay,
+                          selectedTime,
+                          targetDate: targetDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })
+                        });
+                      }}
                       sx={{ 
                         borderRadius: 2,
                         '& .MuiOutlinedInput-notchedOutline': {
@@ -1777,50 +1800,86 @@ const InstructorSchedule = () => {
                         },
                       }}
                     >
-                      {instructorAvailability?.availability
-                        .find(day => day.day === watch('day'))?.timeRanges
-                        .filter(range => {
-                          // Get the target date based on the selected day
-                          const today = new Date();
-                          const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(watch('day'));
-                          const targetDate = new Date(today);
-                          targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
-                          const formattedDate = targetDate.toISOString().split('T')[0];
+                      {(() => {
+                        const selectedDay = watch('day');
+                        console.log('Selected Day:', selectedDay);
+                        console.log('Full Instructor Availability:', instructorAvailability);
 
-                          // Check if member already has a session at this time
-                          if (hasMemberSessionAtTime(selectedMember._id, formattedDate, range.startTime)) {
-                            console.log('Member has existing session at:', {
-                              date: formattedDate,
-                              time: range.startTime
-                            });
-                            return false;
+                        if (!selectedDay) {
+                          console.log('No day selected');
+                          return [];
+                        }
+
+                        if (!instructorAvailability?.availability) {
+                          console.log('No instructor availability data');
+                          return [];
+                        }
+
+                        // Get current date in IST
+                        const now = new Date();
+                        const istDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+                        const today = new Date(istDate.getFullYear(), istDate.getMonth(), istDate.getDate());
+                        
+                        // Calculate target date based on selected day
+                        const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(selectedDay);
+                        const currentDayIndex = today.getDay();
+                        
+                        let daysToAdd = dayIndex - currentDayIndex;
+                        if (daysToAdd <= 0) {
+                          daysToAdd += 7;
+                        }
+                        
+                        const targetDate = new Date(today);
+                        targetDate.setDate(today.getDate() + daysToAdd);
+                        
+                        // Format the date for display
+                        const displayDate = targetDate.toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          timeZone: 'Asia/Kolkata'
+                        });
+
+                        // Format date for internal use
+                        const formattedDate = targetDate.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          timeZone: 'Asia/Kolkata'
+                        }).split('/').reverse().join('-');
+
+                        // Get available time ranges for the selected day
+                        const selectedDayAvailability = instructorAvailability.availability.find(day => day.day === selectedDay);
+                        console.log('Selected Day Availability:', selectedDayAvailability);
+
+                        if (!selectedDayAvailability) {
+                          console.log('No availability found for selected day');
+                          return [];
+                        }
+
+                        if (!selectedDayAvailability.timeRanges || !Array.isArray(selectedDayAvailability.timeRanges)) {
+                          console.log('No time ranges found for selected day');
+                          return [];
+                        }
+
+                        console.log('Time Range Debug:', {
+                          selectedDay,
+                          today: today.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+                          targetDate: targetDate.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }),
+                          displayDate,
+                          formattedDate,
+                          availableTimeRanges: selectedDayAvailability.timeRanges
+                        });
+
+                        // Show all time ranges for debugging
+                        const timeRanges = selectedDayAvailability.timeRanges.map((range, index) => {
+                          console.log(`Processing time range ${index}:`, range);
+                          
+                          if (!range || !range.startTime) {
+                            console.log('Invalid time range:', range);
+                            return null;
                           }
-
-                          // Calculate current sessions for this time slot across all members
-                          const currentSessions = getCurrentSessionsForTimeSlot(formattedDate, range.startTime);
-                          const availableCapacity = range.capacity - currentSessions.length;
-                          
-                          // Log the capacity check
-                          console.log('Time range capacity check:', {
-                            date: formattedDate,
-                            range: `${range.startTime}-${range.endTime}`,
-                            capacity: range.capacity,
-                            currentSessions: currentSessions.length,
-                            availableCapacity,
-                            hasExistingSession: hasMemberSessionAtTime(selectedMember._id, formattedDate, range.startTime),
-                            sessions: currentSessions
-                          });
-                          
-                          // Only show time slots that have available capacity
-                          return availableCapacity > 0;
-                        })
-                        .map((range) => {
-                          // Get the target date based on the selected day
-                          const today = new Date();
-                          const dayIndex = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(watch('day'));
-                          const targetDate = new Date(today);
-                          targetDate.setDate(today.getDate() + (dayIndex - today.getDay() + 7) % 7);
-                          const formattedDate = targetDate.toISOString().split('T')[0];
 
                           // Calculate current sessions for this time slot across all members
                           const currentSessions = getCurrentSessionsForTimeSlot(formattedDate, range.startTime);
@@ -1829,16 +1888,28 @@ const InstructorSchedule = () => {
                           // Check if member already has a session at this time
                           const hasExistingSession = hasMemberSessionAtTime(selectedMember._id, formattedDate, range.startTime);
 
+                          console.log('Time Range Details:', {
+                            time: `${range.startTime} - ${range.endTime}`,
+                            capacity: range.capacity,
+                            currentSessions: currentSessions.length,
+                            availableCapacity,
+                            hasExistingSession
+                          });
+
                           return (
                             <MenuItem 
                               key={`${range.startTime}-${range.endTime}`} 
                               value={`${range.startTime}-${range.endTime}`}
                               disabled={hasExistingSession || availableCapacity <= 0}
                             >
-                              {`${range.startTime} - ${range.endTime} (${availableCapacity} slots available)`}
+                              {`${range.startTime} - ${range.endTime} (${availableCapacity} slots available) - ${displayDate}`}
                             </MenuItem>
                           );
-                        }) || []}
+                        }).filter(Boolean);
+
+                        console.log('Final time ranges to display:', timeRanges);
+                        return timeRanges;
+                      })()}
                     </Select>
                     <FormHelperText>{errors.time?.message}</FormHelperText>
                   </FormControl>
@@ -1849,7 +1920,9 @@ const InstructorSchedule = () => {
                     <Select
                       {...register('workoutType')}
                       label="Workout Type"
-                      sx={{ 
+                      value={watch('workoutType') || ''}
+                      onChange={(e) => setValue('workoutType', e.target.value)}
+                      sx={{
                         borderRadius: 2,
                         '& .MuiOutlinedInput-notchedOutline': {
                           borderColor: 'rgba(0, 0, 0, 0.1)',
