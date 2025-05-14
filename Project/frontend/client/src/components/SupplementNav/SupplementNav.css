@@ -11,34 +11,57 @@
     margin-top: -10px;
     border-radius: 0;
     overflow: hidden;
-  }
-  
-  .supplement-tab {
+}
+
+.supplement-tab {
     padding: 12px 20px;
     text-align: center;
     font-size: 16px;
     font-weight: bold;
     color: #fff;
     cursor: pointer;
-    transition: background 0.3s ease, transform 0.3s ease, color 0.3s ease;
+    transition: all 0.3s ease;
     border-radius: 5px;
     margin: 0 10px;
-  }
-  
-  .supplement-tab:hover, .supplement-tab.active {
-    background: rgba(255, 255, 255, 0.2);
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.supplement-tab:hover, .supplement-tab.active {
+    background: rgba(255, 255, 255, 0.15);
     color: #ffffff;
-    transform: translateY(-3px);
-  }
-  
-  .supplement-tab span {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.supplement-tab span {
     font-size: 12px;
     font-weight: 600;
-    color: #0073e6;
+    color: #4fc3f7;
     transition: color 0.3s ease;
-  }
-  
-  .supplement-tab.active span {
+    display: block;
+    margin-top: 4px;
+}
+
+.supplement-tab.active span {
     color: #ffffff;
     font-weight: 700;
-  }
+}
+
+.supplement-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: #4fc3f7;
+    transition: all 0.3s ease;
+    transform: translateX(-50%);
+}
+
+.supplement-tab:hover::after,
+.supplement-tab.active::after {
+    width: 80%;
+}

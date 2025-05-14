@@ -39,6 +39,10 @@ import Eadd from "./pages/payment/add";
 import EEtable from "./pages/payment/table";
 import ContactUs from "./pages/ContactUs.jsx";
 
+import Vitamins from "./pages/Vitamins/Vitamins";
+import Proteins from "./pages/Proteins/Proteins";
+import Boosters from "./pages/Boosters/Boosters";
+
 // Modified ScrollToTop component for shop pages only
 const ShopScrollToTop = () => {
   React.useEffect(() => {
@@ -204,6 +208,10 @@ return(
             <Footer />
           </>
         } />
+
+        <Route path="/vitamins" element={<Vitamins />} />
+        <Route path="/proteins" element={<Proteins />} />
+        <Route path="/boosters" element={<Boosters />} />
 
       </Routes>
     </Router>
