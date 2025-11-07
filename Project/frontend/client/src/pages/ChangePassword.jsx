@@ -12,107 +12,17 @@ const ChangePassword = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-<<<<<<< Updated upstream
-  const [fieldErrors, setFieldErrors] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-=======
->>>>>>> Stashed changes
   const navigate = useNavigate();
 
   const { currentPassword, newPassword, confirmPassword } = formData;
 
-<<<<<<< Updated upstream
-  // Password regex that requires at least one uppercase, one lowercase, 
-  // one number and one special character
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
-
-  const validateField = (name, value) => {
-    let errorMsg = '';
-    
-    if (name === 'newPassword') {
-      if (!value) {
-        errorMsg = "Password is required.";
-      } else if (value.length < 8) {
-        errorMsg = "Password must be at least 8 characters long.";
-      } else if (!value.match(passwordRegex)) {
-        errorMsg = "Password must contain uppercase, lowercase, number, and special character.";
-      } else if (value.length > 68) {
-        errorMsg = "Password cannot exceed 68 characters.";
-      }
-    } else if (name === 'confirmPassword') {
-      if (value !== newPassword) {
-        errorMsg = "Passwords do not match";
-      }
-    } else if (name === 'currentPassword' && !value) {
-      errorMsg = "Current password is required";
-    }
-
-    setFieldErrors({
-      ...fieldErrors,
-      [name]: errorMsg
-    });
-
-    return !errorMsg;
-  };
-
-  const onChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    
-    // Validate the field when it changes
-    if (name === 'newPassword' || name === 'confirmPassword' || name === 'currentPassword') {
-      validateField(name, value);
-    }
-  };
-
-  const validateForm = () => {
-    let isValid = true;
-    const newErrors = { ...fieldErrors };
-
-    // Validate current password
-    if (!currentPassword) {
-      newErrors.currentPassword = "Current password is required";
-      isValid = false;
-    }
-
-    // Validate new password
-    if (!newPassword) {
-      newErrors.newPassword = "Password is required.";
-      isValid = false;
-    } else if (newPassword.length < 8) {
-      newErrors.newPassword = "Password must be at least 8 characters long.";
-      isValid = false;
-    } else if (!newPassword.match(passwordRegex)) {
-      newErrors.newPassword = "Password must contain uppercase, lowercase, number, and special character.";
-      isValid = false;
-    } else if (newPassword.length > 68) {
-      newErrors.newPassword = "Password cannot exceed 68 characters.";
-      isValid = false;
-    }
-
-    // Validate confirm password
-    if (newPassword !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
-      isValid = false;
-    }
-
-    setFieldErrors(newErrors);
-    return isValid;
-=======
   const onChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
->>>>>>> Stashed changes
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
 
-<<<<<<< Updated upstream
-    if (!validateForm()) {
-=======
     // Validation
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
@@ -121,7 +31,6 @@ const ChangePassword = () => {
 
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters');
->>>>>>> Stashed changes
       return;
     }
 
@@ -141,14 +50,6 @@ const ChangePassword = () => {
         newPassword: '',
         confirmPassword: '',
       });
-<<<<<<< Updated upstream
-      setFieldErrors({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-=======
->>>>>>> Stashed changes
 
       setTimeout(() => {
         navigate('/profile');
@@ -180,12 +81,6 @@ const ChangePassword = () => {
               onChange={onChange}
               required
             />
-<<<<<<< Updated upstream
-            {fieldErrors.currentPassword && (
-              <div className="error-message">{fieldErrors.currentPassword}</div>
-            )}
-=======
->>>>>>> Stashed changes
           </div>
 
           <div className="form-group">
@@ -198,12 +93,6 @@ const ChangePassword = () => {
               onChange={onChange}
               required
             />
-<<<<<<< Updated upstream
-            {fieldErrors.newPassword && (
-              <div className="error-message">{fieldErrors.newPassword}</div>
-            )}
-=======
->>>>>>> Stashed changes
           </div>
 
           <div className="form-group">
@@ -216,12 +105,6 @@ const ChangePassword = () => {
               onChange={onChange}
               required
             />
-<<<<<<< Updated upstream
-            {fieldErrors.confirmPassword && (
-              <div className="error-message">{fieldErrors.confirmPassword}</div>
-            )}
-=======
->>>>>>> Stashed changes
           </div>
 
           <div style={{ display: "flex", gap: "1rem" }}>
@@ -243,8 +126,4 @@ const ChangePassword = () => {
   );
 };
 
-<<<<<<< Updated upstream
 export default ChangePassword;
-=======
-export default ChangePassword;
->>>>>>> Stashed changes

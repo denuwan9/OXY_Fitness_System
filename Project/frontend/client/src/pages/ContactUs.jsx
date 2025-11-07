@@ -2,18 +2,8 @@ import { FaPhone, FaHeadset, FaGlobeAmericas } from 'react-icons/fa';
 import { MdEmail } from 'react-icons/md';
 import "./ContactUs.css"; // Assuming you have a CSS file for styling
 import { Link } from 'react-router-dom';
-<<<<<<< Updated upstream
-import React, { useState, useEffect } from 'react';
 
 const ContactUs = () => {
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
-
-=======
-
-const ContactUs = () => {
->>>>>>> Stashed changes
   return (
     <div className="body5">
     <div className="contact-container">
