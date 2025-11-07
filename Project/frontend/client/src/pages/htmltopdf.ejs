@@ -1,0 +1,43 @@
+{/* Users Table */}
+<div className="users-table">
+  <h2>User List</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Email</th>
+        <th>Address</th>
+        <th>City</th>
+        <th>Phone</th>
+        <th>Role</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {/* Added null/empty array check and better rendering */}
+      {Array.isArray(users) && users.length > 0 ? (
+        users.map((elem) => (
+          <tr key={elem._id}>
+            <td>{elem._id}</td>
+            <td>{elem.fname}</td>
+            <td>{elem.lname}</td>
+            <td>{elem.email}</td>
+            <td>{elem.address}</td>
+            <td>{elem.city}</td>
+            <td>{elem.number}</td>
+            <td>{elem.role}</td>
+            
+          </tr>
+        ))
+      ) : (
+        <tr>
+          <td colSpan="9" className="no-users-message">
+            No users found or loading...
+          </td>
+        </tr>
+      )}
+    </tbody>
+  </table>
+</div>

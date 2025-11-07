@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+.settings-page-container {
+  background: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  margin: 30px;
+  font-family: 'Poppins', sans-serif;
+}
+
+.settings-form-section {
+  width: 48%;
+}
+
+.settings-form-group {
+  margin-bottom: 15px;
+}
+
+.settings-form-group label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #1b3b6f;
+}
+
+.settings-form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 14px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.settings-form-group input:focus {
+  border-color: #1b3b6f;
+  box-shadow: 0 0 5px rgba(27, 59, 111, 0.5);
+  outline: none;
+}
+
+.settings-form-group input::placeholder {
+  font-family: 'Poppins', sans-serif;
+  color: #aaa;
+}
+
+/* Profile Image Section */
+.settings-profile-image-section {
+  text-align: center;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.settings-profile-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #1b3b6f;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.settings-profile-image:hover {
+  transform: scale(1.05);
+}
+
+.settings-profile-image-upload {
+  display: none;
+}
+
+.settings-profile-image-label {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  transform: translate(50%, 50%);
+  background-color: #1b3b6f;
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.settings-profile-image-label:hover {
+  background-color: #295891;
+}
+
+/* Form Section Headings */
+.settings-form-section h3 {
+  margin-bottom: 20px;
+  color: #1b3b6f;
+  font-weight: 600;
+}
+
+/* Toggle Switch Styles */
+.settings-toggle-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 10px 0;
+}
+
+.settings-toggle-switch label {
+  color: #26355e;
+  font-weight: 500;
+}
+
+.settings-toggle-switch input[type="checkbox"] {
+  position: relative;
+  width: 40px;
+  height: 20px;
+  appearance: none;
+  background-color: #ccc;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.settings-toggle-switch input[type="checkbox"]:checked {
+  background-color: #1b3b6f;
+}
+
+.settings-toggle-switch input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: white;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s ease;
+}
+
+.settings-toggle-switch input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+/* Save Button */
+.settings-save-btn {
+  background-color: #1b3b6f;
+  color: white;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 15px;
+  transition: background-color 0.3s ease;
+  font-family: 'Poppins', sans-serif;
+  width: 100px;
+  margin-left: 0;
+  margin-right: 0;
+  display: block;
+}
+
+.settings-save-btn:hover {
+  background-color: #295891;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settings-page-container {
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .settings-form-section {
+    width: 100%;
+  }
+} 

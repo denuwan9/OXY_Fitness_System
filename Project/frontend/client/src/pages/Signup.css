@@ -1,0 +1,182 @@
+/* General Styles */
+
+.signup-page {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  /*background-image: url("https://wallpapercave.com/wp/wp3325897.jpg");*/
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px; /* Prevent form from touching edges */
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Container Styles */
+.container {
+  background-color: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  overflow: hidden; /* Prevent scrolling */
+  width: 90%;
+  max-width: 1000px;
+  min-height: 700px; /* Increased height to fit all content */
+  flex-direction: column; /* Stack columns vertically on small screens */
+}
+
+@media (min-width: 768px) {
+  .container {
+    flex-direction: row; /* Side-by-side layout for larger screens */
+    min-height: 600px; /* Adjust height for larger screens */
+  }
+}
+
+/* Left Column (Image) */
+.left-column {
+  flex: 0.8; /* Adjust the flex ratio as needed */
+  background-image: url("https://media.istockphoto.com/id/542197916/photo/running-on-treadmill.jpg?s=612x612&w=0&k=20&c=CYywmb71uOepSHWa534hG9230AzawSa4i3sA89o4qCQ=");
+  background-size: cover; /* Ensures the image covers the entire column */
+  background-position: center; /* Centers the image */
+  background-repeat: no-repeat; /* Prevents the image from repeating */
+  position: relative;
+  display: flex; /* Ensures it stretches to match the right column */
+  min-height: 100%; /* Ensures the column takes up full height */
+}
+
+/* Optional: Add an overlay to the left column */
+.left-column::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent overlay */
+}
+
+/* Right Column (Form) */
+.right-column {
+  flex: 1;
+  padding: 20px; /* Reduced padding to fit more content */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Align content to the top */
+  overflow-y: auto; /* Enable vertical scrolling */
+  max-height: 100vh; /* Limit height to viewport height */
+}
+
+.right-column h2 {
+  text-align: center;
+  margin-bottom: 10px; /* Reduced margin */
+  font-size: 1.8rem; /* Slightly smaller font size */
+  color: #333;
+}
+
+.right-column p {
+  text-align: center;
+  margin-bottom: 15px; /* Reduced margin */
+  color: #555;
+  font-size: 0.9rem; /* Smaller font size */
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 10px; /* Reduced margin */
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px; /* Reduced margin */
+  font-weight: bold;
+  color: #555;
+  font-size: 1rem; /* Smaller font size */
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px; /* Reduced padding */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem; /* Smaller font size */
+  box-sizing: border-box;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.form-group input:focus {
+  border-color: #333;
+  outline: none;
+}
+
+.form-group button {
+  width: 100%;
+  padding: 10px; /* Reduced padding */
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem; /* Smaller font size */
+  cursor: pointer;
+}
+
+.form-group button:hover {
+  opacity: 0.9;
+}
+
+.form-group.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-right:20px ;
+  margin-bottom: 10px; /* Reduced margin */
+}
+
+.form-group.checkbox label {
+  margin: 1px;
+  font-weight: normal;
+  font-size: 0.8rem; /* Smaller font size */
+}
+
+
+.forgot-password {
+  text-align: center;
+  margin-top: 10px; /* Reduced margin */
+}
+
+.forgot-password a {
+  color: #333;
+  text-decoration: none;
+  font-size: 0.9rem; /* Smaller font size */
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}
+
+.signin-link {
+  text-align: center;
+  margin-top: 10px; /* Reduced margin */
+}
+
+.signin-link a {
+  color: #333;
+  text-decoration: none;
+  font-size: 0.9rem; /* Smaller font size */
+}
+
+.signin-link a:hover {
+  text-decoration: underline;
+}
+
+/* Error message styling */
+.error {
+  color: red;
+  font-size: 0.8rem; /* Smaller font size */
+  margin-top: 5px;
+  display: block;
+}
+
