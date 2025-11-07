@@ -17,10 +17,13 @@ const Home = () => {
   const [scrollPosition, setScrollPosition] = useState(0);
 
   useEffect(() => {
+<<<<<<< Updated upstream
     window.scrollTo(0, 0);
   }, []);
 
   useEffect(() => {
+=======
+>>>>>>> Stashed changes
     const handleScroll = () => {
       setScrollPosition(window.scrollY);
     };

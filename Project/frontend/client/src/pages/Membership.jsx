@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 import React, { useState, useEffect } from 'react';
+=======
+import React, { useState } from 'react';
+>>>>>>> Stashed changes
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import Footer from '../components/Footer/Footer';
@@ -9,10 +13,13 @@ const Membership = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showPromoSearch, setShowPromoSearch] = useState(false);
 
+<<<<<<< Updated upstream
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+=======
+>>>>>>> Stashed changes
   const packages = [
     {
       name: 'Silver',

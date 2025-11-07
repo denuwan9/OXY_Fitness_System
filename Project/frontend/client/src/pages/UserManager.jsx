@@ -717,6 +717,7 @@ const goToAdmin = () => {
                     <td>{elem.role}</td>
                     <td>
                       <button
+<<<<<<< Updated upstream
                         className="action-button emoji-button"
                         onClick={() => setUpEditUser(elem._id)}
                         title="Edit"
@@ -729,6 +730,18 @@ const goToAdmin = () => {
                         title="Delete"
                       >
                         🗑️
+=======
+                        className="action-button"
+                        onClick={() => setUpEditUser(elem._id)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="action-button delete-button"
+                        onClick={() => handleDeleteUser(elem._id)}
+                      >
+                        Delete
+>>>>>>> Stashed changes
                       </button>
                     </td>
                   </tr>

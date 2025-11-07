@@ -309,6 +309,7 @@
     color: red;
     font-size: 0.8rem;
     margin-top: 0.25rem;
+<<<<<<< Updated upstream
   }
 
   /* Add these styles to your UserManager.css */
@@ -333,3 +334,6 @@
 .action-button.emoji-button {
   color: inherit;
 }
+=======
+  }
+>>>>>>> Stashed changes

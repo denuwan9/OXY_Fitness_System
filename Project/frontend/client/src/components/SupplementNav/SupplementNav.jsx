@@ -1,5 +1,6 @@
 // components/SupplementNav/SupplementNav.jsx
 import React from 'react';
+<<<<<<< Updated upstream
 import { Link, useLocation } from 'react-router-dom';
 import './SupplementNav.css';
 
@@ -20,6 +21,17 @@ const SupplementNav = () => {
       <Link to="/boosters" className={`supplement-tab ${location.pathname === '/boosters' ? 'active' : ''}`}>
         BOOSTERS
       </Link>
+=======
+import './SupplementNav.css';
+
+const SupplementNav = () => {
+  return (
+    <section className="supplement-nav">
+      <div className="supplement-tab active">SUPER DEALS<br /><span>UP TO 40% OFF</span></div>
+      <div className="supplement-tab">VITAMINS</div>
+      <div className="supplement-tab">PROTEINS</div>
+      <div className="supplement-tab">BOOSTERS</div>
+>>>>>>> Stashed changes
     </section>
   );
 };

@@ -11,15 +11,22 @@
     margin-top: -10px;
     border-radius: 0;
     overflow: hidden;
+<<<<<<< Updated upstream
 }
 
 .supplement-tab {
+=======
+  }
+  
+  .supplement-tab {
+>>>>>>> Stashed changes
     padding: 12px 20px;
     text-align: center;
     font-size: 16px;
     font-weight: bold;
     color: #fff;
     cursor: pointer;
+<<<<<<< Updated upstream
     transition: all 0.3s ease;
     border-radius: 5px;
     margin: 0 10px;
@@ -65,3 +72,27 @@
 .supplement-tab.active::after {
     width: 80%;
 }
+=======
+    transition: background 0.3s ease, transform 0.3s ease, color 0.3s ease;
+    border-radius: 5px;
+    margin: 0 10px;
+  }
+  
+  .supplement-tab:hover, .supplement-tab.active {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    transform: translateY(-3px);
+  }
+  
+  .supplement-tab span {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0073e6;
+    transition: color 0.3s ease;
+  }
+  
+  .supplement-tab.active span {
+    color: #ffffff;
+    font-weight: 700;
+  }
+>>>>>>> Stashed changes

@@ -72,8 +72,13 @@ const Signup = () => {
       newErrors.password = "Password must be at least 8 characters long.";
     } else if (!formData.password.match(passwordRegex)) {
       newErrors.password = "Password must contain uppercase, lowercase, number, and special character.";
+<<<<<<< Updated upstream
     } else if (formData.password.length > 68) {
       newErrors.password = "Password cannot exceed 68 characters.";
+=======
+    } else if (formData.password.length > 128) {
+      newErrors.password = "Password cannot exceed 128 characters.";
+>>>>>>> Stashed changes
     }
 
     if (!formData.confirmPassword) {

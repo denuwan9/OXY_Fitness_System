@@ -5,8 +5,12 @@ import profileImg from '../../assets/profileimg.png';
 import { jsPDF } from 'jspdf';
 import { orderService } from '../../services/orderService';
 import { getAllInventory } from '../../services/inventoryService';
+<<<<<<< Updated upstream
 import { useSelector } from 'react-redux';
 
+=======
+import { useSelector, useDispatch } from "react-redux";
+>>>>>>> Stashed changes
 const SupplierDashboard = () => {
   const user = useSelector((state) => state.Auth.user);
   const [metrics, setMetrics] = useState({
